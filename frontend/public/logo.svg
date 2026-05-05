@@ -1,0 +1,7 @@
+<svg width="180" height="48" viewBox="0 0 180 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="48" height="48" rx="6" fill="#0B3D91"/>
+  <path d="M12 17L24 11L36 17L24 23L12 17Z" fill="#FFFFFF"/>
+  <path d="M16 22V30C19 33 29 33 32 30V22L24 26L16 22Z" fill="#C8102E"/>
+  <text x="60" y="29" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#0B2447">VLE</text>
+  <text x="98" y="29" font-family="Arial, sans-serif" font-size="14" fill="#C8102E">Learning</text>
+</svg>
