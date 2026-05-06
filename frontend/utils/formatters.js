@@ -37,5 +37,9 @@ export function unwrap(response) {
 }
 
 export function errorMessage(error) {
+  if (error?.message === "Network Error" && !error?.response) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "the configured API server";
+    return `Cannot reach the backend API at ${baseUrl}. Make sure the backend server is running and its database is configured.`;
+  }
   return error?.response?.data?.message || error?.message || "Something went wrong.";
 }

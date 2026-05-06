@@ -5,6 +5,7 @@ import { errorMessage, unwrap } from "@/utils/formatters";
 
 export function useFetch(loader, deps = []) {
   const [data, setData] = useState(null);
+  const [meta, setMeta] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -14,6 +15,11 @@ export function useFetch(loader, deps = []) {
     try {
       const response = await loader();
       setData(unwrap(response));
+      setMeta({
+        count: response?.data?.count,
+        page: response?.data?.page,
+        totalPages: response?.data?.totalPages
+      });
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -25,5 +31,5 @@ export function useFetch(loader, deps = []) {
     load();
   }, [load]);
 
-  return { data, loading, error, reload: load, setData };
+  return { data, meta, loading, error, reload: load, setData };
 }

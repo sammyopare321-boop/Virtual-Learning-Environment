@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { adminApi } from "@/utils/api/adminApi";
 import Badge from "@/components/shared/Badge";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
@@ -19,7 +20,7 @@ export default function CourseAdminTable({ courses = [], onChanged }) {
         <tbody>
           {courses.map((course) => (
             <tr key={course._id}>
-              <td>{course.title}</td>
+              <td><Link href={`/admin/courses/${course._id}`}>{course.title}</Link></td>
               <td>{course.code}</td>
               <td>{course.teacher?.name || "Unassigned"}</td>
               <td><Badge>{course.status}</Badge></td>

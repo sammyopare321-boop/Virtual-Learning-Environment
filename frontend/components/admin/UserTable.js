@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { adminApi } from "@/utils/api/adminApi";
 import Badge from "@/components/shared/Badge";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import { dashboardPath } from "@/utils/roleGuard";
 
 export default function UserTable({ users = [], onChanged }) {
   const changeRole = async (id, role) => {
@@ -17,10 +19,12 @@ export default function UserTable({ users = [], onChanged }) {
 
   const impersonate = async (id) => {
     const response = await adminApi.impersonate(id);
-    const token = response.data?.token;
+    const token = response.data?.impersonationToken || response.data?.token;
+    const role = response.data?.data?.role || users.find((user) => user._id === id)?.role;
     if (token) document.cookie = `token=${encodeURIComponent(token)}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+    if (role) document.cookie = `role=${encodeURIComponent(role)}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
     document.cookie = "impersonating=true; path=/; max-age=86400; SameSite=Lax";
-    window.location.href = "/dashboard/student";
+    window.location.href = dashboardPath(role);
   };
 
   return (
@@ -32,7 +36,7 @@ export default function UserTable({ users = [], onChanged }) {
         <tbody>
           {users.map((user) => (
             <tr key={user._id}>
-              <td>{user.name}</td>
+              <td><Link href={`/admin/users/${user._id}`}>{user.name}</Link></td>
               <td>{user.email}</td>
               <td><Badge>{user.role}</Badge></td>
               <td>{user.status || "active"}</td>
