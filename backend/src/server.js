@@ -45,9 +45,34 @@ app.use(helmet());
 
 // CORS
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true
+  origin: function (origin, callback) {
+    const allowed = [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      // Allow dynamic process.env.CLIENT_URL as well
+      process.env.CLIENT_URL,
+      // Add your Vercel/Netlify/Render frontend URL here once deployed:
+      // 'https://your-frontend.vercel.app',
+      'https://virtual-learning-environment-th7m.onrender.com', // Added the render backend itself just in case
+      'https://unilearn-frontend.onrender.com', // Expected Render frontend URL
+    ].filter(Boolean);
+
+    // Allow requests with no origin (mobile apps, Postman, curl)
+    if (!origin) return callback(null, true);
+
+    if (allowed.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS blocked: ${origin} not in allowed list`));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// Handles preflight OPTIONS requests
+app.options('*', cors());
 
 // Body parsing
 app.use(express.json({ limit: '50mb' }));
