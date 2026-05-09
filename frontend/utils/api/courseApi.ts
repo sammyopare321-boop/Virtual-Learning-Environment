@@ -1,0 +1,47 @@
+import api from './axiosInstance';
+
+export const courseApi = {
+  getAll:      (params?: any)  => api.get('/api/courses', { params }),
+  getOne:      (id: string)    => api.get(`/api/courses/${id}`),
+  create:      (data: any)     => api.post('/api/courses', data),
+  update:      (id: string, data: any)   => api.put(`/api/courses/${id}`, data),
+  delete:      (id: string)    => api.delete(`/api/courses/${id}`),
+  getStudents: (id: string)    => api.get(`/api/courses/${id}/students`),
+  enroll:      (id: string)    => api.post(`/api/courses/${id}/enroll`),
+  drop:        (id: string)    => api.delete(`/api/courses/${id}/enroll`),
+  getMyCourses: ()             => api.get('/api/students/me/courses'),
+  getModules:  (id: string)    => api.get(`/api/courses/${id}/modules`),
+  createModule:(id: string, data: any)   => api.post(`/api/courses/${id}/modules`, data),
+  createLesson:(id: string, modId: string, formData: FormData) => api.post(`/api/courses/${id}/modules/${modId}/lessons`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  getAssignments: (id: string) => api.get(`/api/courses/${id}/assignments`),
+  createAssignment:(id: string, data: any)=> api.post(`/api/courses/${id}/assignments`, data),
+  getQuizzes:  (id: string)    => api.get(`/api/courses/${id}/quizzes`),
+  createQuiz:  (id: string, data: any)   => api.post(`/api/courses/${id}/quizzes`, data),
+  getGradebook:(id: string)    => api.get(`/api/courses/${id}/gradebook`),
+  getAnalytics:(id: string)    => api.get(`/api/courses/${id}/analytics`),
+  getAtRisk:   (id: string)    => api.get(`/api/courses/${id}/analytics/at-risk`),
+  getGradeWeights:(id: string) => api.get(`/api/courses/${id}/grade-weights`),
+  setGradeWeights:(id: string, data: any) => api.post(`/api/courses/${id}/grade-weights`, data),
+  getAttendance:(id: string)   => api.get(`/api/courses/${id}/attendance`),
+  createAttendance:(id: string, data: any)=> api.post(`/api/courses/${id}/attendance`, data),
+  getAnnouncements:(id: string)=> api.get(`/api/courses/${id}/announcements`),
+  createAnnouncement:(id: string, data: any)=>api.post(`/api/courses/${id}/announcements`,data),
+  getDiscussions:(id: string)  => api.get(`/api/courses/${id}/discussions`),
+  createDiscussion:(id: string, data: any)=> api.post(`/api/courses/${id}/discussions`, data),
+  getLiveSessions:(id: string) => api.get(`/api/courses/${id}/live-sessions`),
+  createLiveSession:(id: string, data: any)=>api.post(`/api/courses/${id}/live-sessions`,data),
+  getModuleContent: (modId: string) => api.get(`/api/modules/${modId}/content`),
+  uploadContent: (modId: string, data: FormData) => api.post(`/api/modules/${modId}/content`, data, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteContent: (contentId: string) => api.delete(`/api/content/${contentId}`),
+  getAssignment: (id: string) => api.get(`/api/assignments/${id}`),
+  getMySubmission: (id: string) => api.get(`/api/assignments/${id}/my-submission`),
+  getSubmissions: (id: string) => api.get(`/api/assignments/${id}/submissions`),
+  submitAssignment: (id: string, data: FormData) => api.post(`/api/assignments/${id}/submit`, data, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  gradeSubmission: (subId: string, data: { grade: number, feedback: string }) => api.patch(`/api/submissions/${subId}/grade`, data),
+};

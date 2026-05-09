@@ -174,6 +174,14 @@ exports.changeCourseStatus = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, data: course });
 });
 
+// @desc    Approve a course (set status to active)
+// @route   PATCH /api/admin/courses/:id/approve
+// @access  Private (Admin)
+exports.approveCourse = asyncHandler(async (req, res, next) => {
+  req.body.status = 'active';
+  return exports.changeCourseStatus(req, res, next);
+});
+
 // @desc    Delete course with deep cascade across all 17 related collections
 // @route   DELETE /api/admin/courses/:id
 // @access  Private (Admin)

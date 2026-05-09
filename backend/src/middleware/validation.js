@@ -23,7 +23,8 @@ const registerSchema = Joi.object({
   password: Joi.string().min(8).required()
     .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
     .message('Password must contain uppercase, lowercase, and a number'),
-  role: Joi.string().valid('student', 'teacher', 'admin').required(),
+  // role is intentionally excluded — all public registrations default to 'student'.
+  // Admins can promote users via PATCH /api/admin/users/:id/role
   department: Joi.string().max(100).optional()
 });
 

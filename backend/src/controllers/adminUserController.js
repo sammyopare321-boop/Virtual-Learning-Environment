@@ -102,6 +102,53 @@ exports.getUser = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, data: user });
 });
 
+// @desc    Update user (role, status, or other fields)
+// @route   PUT /api/admin/users/:id
+// @access  Private (Admin)
+exports.updateUser = asyncHandler(async (req, res, next) => {
+  if (req.user.isImpersonation) {
+    return res.status(403).json({ success: false, message: 'Action restricted during impersonation' });
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ success: false, message: 'Invalid user ID' });
+  }
+
+  if (req.params.id === req.user.id) {
+    return res.status(403).json({ success: false, message: 'Cannot update your own account via admin panel' });
+  }
+
+  const { role, status, ...otherFields } = req.body;
+  const updates = {};
+
+  if (role) {
+    const validRoles = ['student', 'teacher', 'admin'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ success: false, message: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
+    }
+    updates.role = role;
+  }
+
+  if (status) {
+    const validStatuses = ['active', 'suspended'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: `Invalid status. Must be: active or suspended` });
+    }
+    updates.status = status;
+  }
+
+  // Allow updating name and email as well
+  if (otherFields.name) updates.name = otherFields.name;
+  if (otherFields.email) updates.email = otherFields.email;
+
+  const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
+  if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+  await logAdminAction(req.user.id, 'UPDATE_USER', 'User', user._id, { updates }, req);
+
+  res.status(200).json({ success: true, data: user });
+});
+
 // @desc    Change user role
 // @route   PATCH /api/admin/users/:id/role
 // @access  Private (Admin)

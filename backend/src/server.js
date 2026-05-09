@@ -7,6 +7,7 @@ dotenv.config();
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
@@ -18,6 +19,7 @@ const logger = require('./utils/logger');
 // Route imports
 const authRoutes = require('./routes/auth');
 const courseRoutes = require('./routes/courses');
+const courseNestedRoutes = require('./routes/courseNested');
 const enrollmentRoutes = require('./routes/enrollments');
 const moduleRoutes = require('./routes/modules');
 const contentRoutes = require('./routes/content');
@@ -28,6 +30,7 @@ const quizRoutes = require('./routes/quizzes');
 const attendanceRoutes = require('./routes/attendance');
 const communicationRoutes = require('./routes/communication');
 const liveRoutes = require('./routes/liveSessions');
+const studentRoutes = require('./routes/students');
 const adminRoutes = require('./routes/admin');
 
 // Connect to MongoDB
@@ -49,6 +52,9 @@ app.use(cors({
 // Body parsing
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Cookie parsing — required for HttpOnly JWT cookie support
+app.use(cookieParser());
 
 // NoSQL injection protection
 // Temporarily disabled due to Express 5 compatibility issues
@@ -93,6 +99,7 @@ if (!process.env.JEST_WORKER_ID) {
 // ─── ROUTES ──────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
+app.use('/api/courses/:id', courseNestedRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/modules', moduleRoutes);
 app.use('/api/content', contentRoutes);
@@ -103,6 +110,7 @@ app.use('/api', quizRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/communication', communicationRoutes);
 app.use('/api/live-sessions', liveRoutes);
+app.use('/api/students', studentRoutes);
 app.use('/api/admin', adminRoutes);
 
 // API Documentation

@@ -11,7 +11,7 @@ exports.register = asyncHandler(async (req, res, next) => {
     name,
     email,
     password,
-    role: req.body.role || 'student',
+    role: 'student', // Always 'student'. Admins promote via PATCH /api/admin/users/:id/role
     department,
   });
 
@@ -88,17 +88,39 @@ exports.updateMe = asyncHandler(async (req, res, next) => {
   });
 });
 
-// Get token from model, create cookie and send response
+// @desc    Logout user — clears the HttpOnly token cookie
+// @route   POST /api/auth/logout
+// @access  Private
+exports.logout = asyncHandler(async (req, res) => {
+  res.cookie('token', 'none', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 0, // Immediately expire
+  });
+  res.status(200).json({ success: true, message: 'Logged out successfully' });
+});
+
+// Get token from model, set HttpOnly cookie, and send response
 const sendTokenResponse = (user, statusCode, res) => {
-  // Create token
   const token = user.getSignedJwtToken();
+
+  const cookieOptions = {
+    httpOnly: true,                                      // Not accessible via document.cookie — XSS safe
+    secure: process.env.NODE_ENV === 'production',       // HTTPS only in production
+    sameSite: 'lax',                                     // CSRF protection
+    maxAge: 7 * 24 * 60 * 60 * 1000,                    // 7 days in ms
+  };
 
   const userData = user.toObject();
   delete userData.password;
 
-  res.status(statusCode).json({
-    success: true,
-    token,
-    data: userData,
-  });
+  res
+    .status(statusCode)
+    .cookie('token', token, cookieOptions)
+    .json({
+      success: true,
+      token, // Also returned in body for clients that prefer header-based auth
+      data: userData,
+    });
 };

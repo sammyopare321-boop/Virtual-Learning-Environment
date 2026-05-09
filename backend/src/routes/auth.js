@@ -2,6 +2,7 @@ const express = require('express');
 const {
   register,
   login,
+  logout,
   getMe,
   updateMe,
 } = require('../controllers/authController');
@@ -22,6 +23,7 @@ const { validate, schemas } = require('../middleware/validation');
 
 router.post('/register', validate(schemas.register), register);
 router.post('/login', loginLimiter, validate(schemas.login), login);
+router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
 router.put('/me', protect, updateMe);
 

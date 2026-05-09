@@ -5,6 +5,7 @@ const { protect, authorize } = require('../middleware/auth');
 const {
   getUsers,
   getUser,
+  updateUser,
   changeUserRole,
   changeUserStatus,
   deleteUser,
@@ -17,6 +18,7 @@ const {
   getCourse,
   reassignTeacher,
   changeCourseStatus,
+  approveCourse,
   deleteCourse
 } = require('../controllers/adminCourseController');
 
@@ -42,6 +44,7 @@ router.use(authorize('admin'));
 // User management
 router.get('/users', getUsers);
 router.get('/users/:id', getUser);
+router.put('/users/:id', updateUser);
 router.patch('/users/:id/role', changeUserRole);
 router.patch('/users/:id/status', changeUserStatus);
 router.delete('/users/:id', deleteUser);
@@ -53,9 +56,11 @@ router.get('/courses', getCourses);
 router.get('/courses/:id', getCourse);
 router.patch('/courses/:id/teacher', reassignTeacher);
 router.patch('/courses/:id/status', changeCourseStatus);
+router.patch('/courses/:id/approve', approveCourse);
 router.delete('/courses/:id', deleteCourse);
 
 // Analytics
+router.get('/stats', getOverview);
 router.get('/analytics/overview', getOverview);
 router.get('/analytics/users', getUserAnalytics);
 router.get('/analytics/courses', getCourseAnalytics);
