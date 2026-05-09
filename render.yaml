@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: unilearn-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://virtual-learning-environment-th7m.onrender.com
+      - key: NEXT_PUBLIC_SOCKET_URL
+        value: https://virtual-learning-environment-th7m.onrender.com
+      - key: NODE_ENV
+        value: production
