@@ -119,7 +119,17 @@ if (!process.env.JEST_WORKER_ID) {
   app.use('/api/auth', authLimiter);
 }
 
-// ─── ROUTES ──────────────────────────────────────────────────────────────────
+// Root Route (Health Check)
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'UniLearn API is running...',
+    version: '1.0.0',
+    environment: process.env.NODE_ENV
+  });
+});
+
+// ─── API ROUTES ──────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/courses/:id', courseNestedRoutes);
