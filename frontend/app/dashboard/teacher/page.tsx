@@ -357,7 +357,7 @@ export default function TeacherDashboard() {
                   </div>
                   <div className="space-y-2.5">
                     <label className="text-xs font-bold text-surface-400 uppercase tracking-widest ml-1">Semester</label>
-                    <select className="w-full bg-surface-950 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-primary-500 transition-all outline-none appearance-none text-sm font-medium" value={form.semester} onChange={e => setForm(p=>({...p,semester:e.target.value}))}>
+                    <select aria-label="Semester" title="Semester" className="w-full bg-surface-950 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-primary-500 transition-all outline-none appearance-none text-sm font-medium" value={form.semester} onChange={e => setForm(p=>({...p,semester:e.target.value}))}>
                       <option>Semester 1</option>
                       <option>Semester 2</option>
                     </select>
