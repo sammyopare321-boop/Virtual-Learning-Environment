@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { courseApi } from '@/utils/api/courseApi';
-import api from '@/utils/axiosInstance';
+import api from '@/utils/api/axiosInstance';
 import { 
   FileText, Clock, ChevronRight, Plus, 
   HelpCircle, AlertCircle, CheckCircle2, 
