@@ -5,13 +5,18 @@ const asyncHandler = require('express-async-handler');
 // @route   POST /api/auth/register
 // @access  Public
 exports.register = asyncHandler(async (req, res, next) => {
-  const { name, email, password, department } = req.body;
+  let { name, email, password, department, role } = req.body;
+
+  // Security: Prevent registration as admin
+  if (role === 'admin') {
+    role = 'student';
+  }
 
   const user = await User.create({
     name,
     email,
     password,
-    role: 'student', // Always 'student'. Admins promote via PATCH /api/admin/users/:id/role
+    role: role || 'student',
     department,
   });
 

@@ -52,11 +52,7 @@ export default function RegisterPage() {
     });
   }, [form.password]);
 
-  function setFrontendCookie(token: string, days = 7) {
-    if (typeof document === 'undefined') return;
-    const secure = location.protocol === 'https:' ? '; Secure' : '';
-    document.cookie = `token=${token}; path=/; max-age=${days * 24 * 60 * 60}; SameSite=Lax${secure}`;
-  }
+  const { updateUser } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,9 +64,16 @@ export default function RegisterPage() {
     try {
       const res = await authApi.register(form);
       const { data, token } = res.data;
+      
+      // 1. Set global token for Axios
       setAuthToken(token);
-      setFrontendCookie(token);
+      
+      // 2. Update global user state
+      updateUser(data);
+      
       toast.success('Account created! Welcome to UniLearn.');
+      
+      // 3. Navigate to appropriate dashboard
       router.push(`/dashboard/${data.role}`);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Registration failed';
