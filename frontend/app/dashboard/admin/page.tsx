@@ -9,6 +9,7 @@ import {
   User as UserIcon, LogOut, GraduationCap, Calendar, Shield, 
   ChevronRight, Search, Plus, Bell
 } from 'lucide-react';
+import Sidebar from '@/components/shared/Sidebar';
 
 interface DashboardStats {
   totalUsers: number;
@@ -64,64 +65,7 @@ export default function AdminDashboard() {
         <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-indigo-50/50 rounded-full blur-[120px]" />
       </div>
 
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-slate-200 bg-white/80 backdrop-blur-xl flex flex-col z-20 relative shadow-sm">
-        <div className="p-6 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-600/20">
-              <GraduationCap size={20} className="text-white" />
-            </div>
-            <span className="font-extrabold text-xl tracking-tight text-slate-900">UniLearn</span>
-          </div>
-        </div>
-
-        <div className="px-4 py-8 flex-1">
-          <p className="px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-4">Administration</p>
-          <nav className="flex flex-col gap-1.5">
-            <Link href="/dashboard/admin" className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-blue-50 text-blue-700 font-bold border border-blue-100 transition-all">
-              <LayoutDashboard size={18} />
-              <span className="text-sm">Dashboard</span>
-            </Link>
-            <Link href="/admin/users" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 font-semibold hover:bg-slate-50 hover:text-slate-900 transition-all group">
-              <Users size={18} className="group-hover:text-blue-600 transition-colors" />
-              <span className="text-sm">Users</span>
-            </Link>
-            <Link href="/admin/courses" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 font-semibold hover:bg-slate-50 hover:text-slate-900 transition-all group">
-              <BookOpen size={18} className="group-hover:text-blue-600 transition-colors" />
-              <span className="text-sm">Courses</span>
-            </Link>
-            <Link href="/admin/analytics" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 font-semibold hover:bg-slate-50 hover:text-slate-900 transition-all group">
-              <BarChart3 size={18} className="group-hover:text-blue-600 transition-colors" />
-              <span className="text-sm">Analytics</span>
-            </Link>
-            <Link href="/admin/logs" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 font-semibold hover:bg-slate-50 hover:text-slate-900 transition-all group">
-              <Activity size={18} className="group-hover:text-blue-600 transition-colors" />
-              <span className="text-sm">Activity Logs</span>
-            </Link>
-            <Link href="/profile" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 font-semibold hover:bg-slate-50 hover:text-slate-900 transition-all group mt-4">
-              <UserIcon size={18} className="group-hover:text-blue-600 transition-colors" />
-              <span className="text-sm">Profile</span>
-            </Link>
-          </nav>
-        </div>
-
-        <div className="p-4 mt-auto border-t border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white border border-slate-200 mb-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm border border-blue-200 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-              {user?.name?.charAt(0) || 'A'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-slate-900 truncate">{user?.name || 'Admin'}</p>
-              <p className="text-[10px] font-bold text-slate-400 truncate uppercase tracking-wider">{user?.role || 'Admin'}</p>
-            </div>
-          </div>
-          
-          <button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-600 font-bold hover:bg-red-50 hover:text-red-700 transition-all w-full text-left">
-            <LogOut size={18} />
-            <span className="text-sm">Sign out securely</span>
-          </button>
-        </div>
-      </aside>
+      <Sidebar />
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto relative z-10 scroll-smooth">
@@ -134,7 +78,7 @@ export default function AdminDashboard() {
                 <Calendar size={14} />
                 <span>{currentDate}</span>
               </motion.div>
-              <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-3">
+              <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter mb-4 leading-none">
                 {greeting}, {user?.name?.split(' ')[0]} 👋
               </motion.h1>
               <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-slate-500 text-lg max-w-xl leading-relaxed font-medium">

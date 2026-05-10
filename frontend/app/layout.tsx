@@ -7,7 +7,7 @@ import { AuthProvider } from "@/context/AuthContext";
 const sora = Sora({
   subsets: ["latin"],
   variable: "--font-sora",
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -16,10 +16,11 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "UniLearn | Your Learning Journey Starts Here",
-  description: "Premium University Learning Management System",
+  title: "UniLearn | The Intelligent Academic Workspace",
+  description: "Experience the future of education with UniLearn. A premium, enterprise-grade SaaS platform for students, educators, and institutions.",
+  keywords: ["LMS", "University Management", "SaaS", "Education Technology", "Academic Analytics"],
   icons: {
-    icon: "/favicon.ico", // Ensure this exists or use a default
+    icon: "/favicon.ico",
   }
 };
 

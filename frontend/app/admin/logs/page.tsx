@@ -68,21 +68,29 @@ export default function AdminLogsPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const fetchLogs = useCallback(() => {
-    setLoading(true);
-    adminApi.getLogs()
-      .then(res => {
+  const fetchLogs = useCallback(async (ignore = false) => {
+    await Promise.resolve();
+    if (!ignore) setLoading(true);
+    try {
+      const res = await adminApi.getLogs();
+      if (!ignore) {
         const raw = (res.data.data || []) as LogEntry[];
         setLogs(raw.map(logToDisplay));
-      })
-      .catch((err: any) => {
-        showToast(err.response?.data?.message || 'Failed to fetch audit logs', 'error');
-        setLogs([]);
-      })
-      .finally(() => setLoading(false));
+      }
+    } catch (err) {
+      const error = err as AxiosError<{message: string}>;
+      showToast(error.response?.data?.message || 'Failed to fetch audit logs', 'error');
+      if (!ignore) setLogs([]);
+    } finally {
+      if (!ignore) setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+  useEffect(() => {
+    let ignore = false;
+    Promise.resolve().then(() => fetchLogs(ignore));
+    return () => { ignore = true; };
+  }, [fetchLogs]);
 
   const filteredLogs = logs.filter(l => {
     const q = searchTerm.toLowerCase();
@@ -151,6 +159,8 @@ export default function AdminLogsPage() {
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <select 
+                  aria-label="Filter logs by type"
+                  title="Filter logs by type"
                   className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 pl-10 pr-10 h-12 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-sm cursor-pointer min-w-[150px]"
                   value={typeFilter} onChange={e => setTypeFilter(e.target.value as LogType)}
                 >
@@ -162,7 +172,7 @@ export default function AdminLogsPage() {
                 </select>
               </div>
 
-              <button onClick={fetchLogs} 
+              <button onClick={() => fetchLogs()} 
                 className="h-12 px-4 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 font-bold hover:bg-blue-100 transition-colors flex items-center gap-2 group">
                 <RefreshCw size={16} className={`${loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} /> 
                 Refresh

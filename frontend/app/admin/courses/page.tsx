@@ -19,7 +19,7 @@ interface Course {
   semester: string;
   academicYear: string;
   enrollmentCount?: number;
-  teacher?: { _id: string; name: string; email: string; } | string | any;
+  teacher?: Teacher | string;
 }
 
 interface Teacher {
@@ -59,18 +59,42 @@ export default function AdminCoursesPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const fetchCourses = useCallback(() => {
-    setLoading(true);
-    const params: any = { page, limit:10 };
-    if (search)               params.search = search;
-    if (statusFilter !== 'all') params.status = statusFilter;
-    adminApi.getAllCourses(params)
-      .then(res => { setCourses(res.data.data || []); setTotalPages(res.data.totalPages || 1); })
-      .catch(() => setCourses([]))
-      .finally(() => setLoading(false));
-  }, [search, statusFilter, page]);
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
 
-  useEffect(() => { fetchCourses(); }, [fetchCourses]);
+  // Debounce logic
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  const fetchCourses = useCallback(async (ignore = false) => {
+    await Promise.resolve(); // Break synchronous execution to avoid cascading render warning
+    if (!ignore) setLoading(true);
+    try {
+      const params: Record<string, string | number> = { page, limit: 10 };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (statusFilter !== 'all') params.status = statusFilter;
+      
+      const res = await adminApi.getAllCourses(params);
+      if (!ignore) {
+        setCourses(res.data.data || []);
+        setTotalPages(res.data.totalPages || 1);
+      }
+    } catch {
+      if (!ignore) setCourses([]);
+    } finally {
+      if (!ignore) setLoading(false);
+    }
+  }, [debouncedSearch, statusFilter, page]);
+
+  useEffect(() => {
+    let ignore = false;
+    Promise.resolve().then(() => fetchCourses(ignore));
+    return () => { ignore = true; };
+  }, [fetchCourses]);
 
   useEffect(() => {
     adminApi.getAllUsers({ role:'teacher', limit:100 })
@@ -84,8 +108,9 @@ export default function AdminCoursesPage() {
       await adminApi.changeCourseStatus(course._id, newStatus);
       setCourses(p => p.map(c => c._id === course._id ? { ...c, status: newStatus } : c));
       showToast(`Course ${newStatus === 'archived' ? 'archived' : 'reactivated'} successfully.`);
-    } catch (e: any) {
-      showToast(e.response?.data?.message || 'Action failed.', 'error');
+    } catch (e) {
+      const err = e as AxiosError<{message: string}>;
+      showToast(err.response?.data?.message || 'Action failed.', 'error');
     } finally { setActionLoading(null); setConfirm(null); }
   };
 
@@ -95,8 +120,9 @@ export default function AdminCoursesPage() {
       await adminApi.deleteCourse(course._id);
       setCourses(p => p.filter(c => c._id !== course._id));
       showToast('Course and all related data deleted.');
-    } catch (e: any) {
-      showToast(e.response?.data?.message || 'Delete failed.', 'error');
+    } catch (e) {
+      const err = e as AxiosError<{message: string}>;
+      showToast(err.response?.data?.message || 'Delete failed.', 'error');
     } finally { setActionLoading(null); setConfirm(null); }
   };
 
@@ -106,11 +132,12 @@ export default function AdminCoursesPage() {
     try {
       await adminApi.reassignTeacher(reassignModal._id, newTeacherId);
       const teacher = teachers.find(t => t._id === newTeacherId);
-      setCourses(p => p.map(c => c._id === reassignModal._id ? { ...c, teacher: teacher as any } : c));
+      setCourses(p => p.map(c => c._id === reassignModal._id ? { ...c, teacher: teacher as Teacher } : c));
       showToast('Teacher reassigned successfully.');
       setReassignModal(null); setNewTeacherId('');
-    } catch (e: any) {
-      showToast(e.response?.data?.message || 'Reassignment failed.', 'error');
+    } catch (e) {
+      const err = e as AxiosError<{message: string}>;
+      showToast(err.response?.data?.message || 'Reassignment failed.', 'error');
     } finally { setActionLoading(null); }
   };
 
@@ -186,7 +213,11 @@ export default function AdminCoursesPage() {
               <p className="text-slate-500 font-medium mb-6">Assigning teacher for <span className="text-slate-900 font-bold">{reassignModal.title}</span></p>
               
               <div className="mb-8 relative">
+                <label htmlFor="teacher-select" className="sr-only">Choose a new teacher</label>
                 <select 
+                  id="teacher-select"
+                  aria-label="Choose a new teacher"
+                  title="Choose a new teacher"
                   className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-900 px-4 h-14 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold cursor-pointer"
                   value={newTeacherId} onChange={e => setNewTeacherId(e.target.value)}
                 >
@@ -242,6 +273,8 @@ export default function AdminCoursesPage() {
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <select 
+                  aria-label="Filter by Course Status"
+                  title="Filter by Course Status"
                   className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 pl-10 pr-10 h-12 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-sm cursor-pointer min-w-[150px]"
                   value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
                 >

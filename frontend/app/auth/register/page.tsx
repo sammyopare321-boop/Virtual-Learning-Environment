@@ -3,14 +3,14 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { authApi } from '@/utils/api/authApi';
 import { useAuth } from '@/context/AuthContext';
 import { 
   GraduationCap, User, BookOpen, Building2, Mail, Lock, 
   Check, Loader2, ArrowRight, ShieldCheck, Zap, 
-  BarChart3, Users, Sparkles
+  BarChart3, Users, Sparkles, Star, Globe, Shield
 } from 'lucide-react';
 
 const ROLES = [
@@ -62,14 +62,9 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      // Step 1: Create the account
       await authApi.register(form);
       toast.success('Account created! Welcome to UniLearn.');
-      
-      // Step 2: Login immediately (this sets relay cookie + Bearer token)
       const loggedInUser = await login(form.email, form.password);
-      
-      // Step 3: Redirect to role-specific dashboard
       router.push(`/dashboard/${loggedInUser.role}`);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Registration failed';
@@ -83,110 +78,128 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row overflow-hidden font-sans selection:bg-blue-100 selection:text-blue-900">
-      {/* Left Side: Visuals & Value Prop */}
-      <section className="hidden lg:flex lg:w-1/2 relative bg-white items-center justify-center p-12 overflow-hidden border-r border-slate-200">
+      
+      {/* Left Side: Premium Storytelling & Branding */}
+      <section className="hidden lg:flex lg:w-1/2 relative bg-white items-center justify-center p-16 lg:p-24 overflow-hidden border-r border-slate-200">
+        
+        {/* Advanced Ambient Gradients */}
         <div className="absolute inset-0 z-0 pointer-events-none">
-          <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-blue-50 rounded-full blur-[140px]" />
-          <div className="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-indigo-50 rounded-full blur-[120px]" />
+          <motion.div 
+            animate={{ 
+              scale: [1, 1.2, 1],
+              opacity: [0.2, 0.4, 0.2] 
+            }}
+            transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-[-30%] left-[-20%] w-[1200px] h-[1200px] bg-blue-100/30 rounded-full blur-[160px]" 
+          />
+          <div className="absolute bottom-[-15%] right-[-10%] w-[1000px] h-[1000px] bg-indigo-50/50 rounded-full blur-[140px]" />
+          <div className="absolute top-[20%] right-[10%] w-[500px] h-[500px] bg-purple-50/30 rounded-full blur-[120px]" />
         </div>
 
-        <div className="relative z-10 max-w-xl w-full mt-12">
+        <div className="relative z-10 max-w-2xl w-full">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <div className="flex items-center gap-3 mb-10">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
-                <GraduationCap size={22} className="text-white" />
+            <Link href="/" className="flex items-center gap-4 mb-16 group">
+              <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-2xl shadow-blue-600/30 group-hover:scale-110 transition-transform">
+                <GraduationCap size={26} className="text-white" />
               </div>
-              <span className="font-extrabold text-2xl tracking-tight text-slate-900">UniLearn</span>
-            </div>
+              <span className="font-black text-3xl tracking-tighter text-slate-900 uppercase">UniLearn</span>
+            </Link>
 
-            <h2 className="text-4xl lg:text-5xl font-extrabold text-slate-900 mb-6 leading-[1.1] tracking-tight">
-              One platform for <br />
-              <span className="text-blue-600 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">academic excellence.</span>
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="inline-flex px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-600 mb-10 shadow-sm"
+            >
+              Next-Gen Academic Engine
+            </motion.div>
+
+            <h2 className="text-6xl lg:text-[5.5rem] font-black text-slate-900 mb-10 leading-[0.9] tracking-tighter">
+              Start your <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">evolution.</span>
             </h2>
-            <p className="text-lg text-slate-500 mb-12 leading-relaxed font-medium">
-              Join 50,000+ students and educators using our intelligent workspace to manage courses, 
-              automate grading, and collaborate in real-time.
+            
+            <p className="text-xl text-slate-500 mb-16 leading-relaxed font-medium max-w-lg">
+              Join 50,000+ students and educators using our intelligent workspace to redefine the future of education.
             </p>
 
-            {/* Floating Visual Cards */}
+            {/* Visual Feature Card */}
             <div className="relative mb-20 group">
-              <div className="relative rounded-3xl border border-slate-200 overflow-hidden shadow-2xl shadow-slate-200/50 bg-white scale-105 group-hover:scale-[1.07] transition-transform duration-700">
-                <Image 
-                  src="/images/registration_visual.png" 
-                  alt="UniLearn Platform" 
-                  width={800} 
-                  height={600}
-                  className="opacity-95"
-                />
+              <div className="relative rounded-[48px] border border-slate-200 overflow-hidden shadow-[0_40px_100px_rgba(15,23,42,0.1)] bg-white p-5 group-hover:scale-[1.02] transition-transform duration-1000">
+                <div className="rounded-[32px] overflow-hidden bg-slate-50 relative">
+                  <Image 
+                    src="/images/registration_visual.png" 
+                    alt="UniLearn Platform Core" 
+                    width={1000} 
+                    height={800}
+                    className="opacity-95"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-white/30 via-transparent to-transparent" />
+                </div>
               </div>
               
-              {/* Stats Badge */}
+              {/* Animated Floating Metric */}
               <motion.div 
-                animate={{ y: [0, -8, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -bottom-6 -left-6 bg-white/90 backdrop-blur-xl p-5 rounded-2xl border border-slate-100 shadow-xl"
+                animate={{ y: [0, -12, 0] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -bottom-10 -left-10 bg-white/95 backdrop-blur-2xl p-8 rounded-[32px] border border-slate-100 shadow-2xl group-hover:translate-x-2 transition-transform duration-500"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-                    <BarChart3 className="text-emerald-600" size={24} />
+                <div className="flex items-center gap-6">
+                  <div className="w-16 h-16 rounded-[24px] bg-emerald-600 flex items-center justify-center shadow-xl shadow-emerald-600/30">
+                    <BarChart3 className="text-white" size={32} />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-slate-900">99.9%</p>
-                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Platform Uptime</p>
+                    <p className="text-3xl font-black text-slate-900 tracking-tight leading-none mb-2">99.9%</p>
+                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-[0.2em] leading-none">Global Uptime</p>
                   </div>
                 </div>
               </motion.div>
             </div>
 
-            <div className="flex items-center gap-10 opacity-70">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-                <ShieldCheck size={20} className="text-blue-500" />
-                <span>Enterprise Security</span>
+            <div className="grid grid-cols-2 gap-8 pt-8 border-t border-slate-100">
+              <div className="flex items-center gap-4 text-sm font-black text-slate-900 uppercase tracking-widest">
+                <Shield className="text-blue-600" size={24} />
+                <span>Enterprise Privacy</span>
               </div>
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-                <Sparkles size={20} className="text-amber-500" />
-                <span>AI Powered Insights</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-                <Zap size={20} className="text-emerald-500" />
-                <span>Real-time Sync</span>
+              <div className="flex items-center gap-4 text-sm font-black text-slate-900 uppercase tracking-widest">
+                <Zap className="text-amber-500" size={24} />
+                <span>Live Sync Core</span>
               </div>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Right Side: Signup Form */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 lg:p-20 relative">
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-100/50 rounded-full blur-[100px] -z-10 pointer-events-none" />
+      {/* Right Side: High-Conversion Enrollment Form */}
+      <main className="flex-1 flex flex-col items-center justify-center p-8 lg:p-24 relative bg-slate-50/30">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-100/20 rounded-full blur-[140px] -z-10 pointer-events-none" />
         
         <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="w-full max-w-[540px] relative z-10"
+          initial={{ opacity: 0, scale: 0.98, x: 20 }}
+          animate={{ opacity: 1, scale: 1, x: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="w-full max-w-[580px] relative z-10"
         >
-          <div className="mb-10 text-center lg:text-left">
-            <h1 className="text-3xl lg:text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">Create your account</h1>
-            <p className="text-slate-500 font-medium text-lg">
-              Access courses, collaboration tools, and analytics from one workspace.
+          <div className="mb-14 text-center lg:text-left">
+            <h1 className="text-4xl lg:text-5xl font-black text-slate-900 mb-5 tracking-tighter leading-none">Create your account.</h1>
+            <p className="text-slate-500 font-medium text-lg leading-relaxed max-w-md">
+              Unlock courses, research tools, and deep analytics with a unified workspace.
             </p>
           </div>
 
-          <div className="bg-white rounded-[32px] p-8 lg:p-10 shadow-2xl shadow-slate-200/50 border border-slate-100 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-              <GraduationCap size={120} className="text-blue-900" />
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
-              {/* Role Selection */}
-              <div className="space-y-4">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Choose your role</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white rounded-[56px] p-10 lg:p-14 shadow-[0_40px_120px_rgba(15,23,42,0.1)] border border-slate-100 relative overflow-hidden transition-all duration-500 hover:shadow-[0_40px_140px_rgba(15,23,42,0.12)]">
+            
+            <form onSubmit={handleSubmit} className="space-y-10 relative z-10">
+              
+              {/* Advanced Role Selection */}
+              <div className="space-y-5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Choose your Identity</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   {ROLES.map(r => {
                     const isSelected = form.role === r.value;
                     return (
@@ -194,21 +207,21 @@ export default function RegisterPage() {
                         type="button" 
                         key={r.value}
                         onClick={() => setForm(p => ({ ...p, role: r.value }))}
-                        className={`group relative p-6 rounded-2xl border transition-all duration-300 text-left ${
+                        className={`group relative p-8 rounded-[32px] border-2 transition-all duration-500 text-left active:scale-95 ${
                           isSelected 
-                            ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-500/10' 
-                            : 'border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300 hover:shadow-sm'
+                            ? 'border-blue-600 bg-blue-50/50 shadow-xl shadow-blue-900/5' 
+                            : 'border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200'
                         }`}
                       >
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 ${
-                          isSelected ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white border border-slate-200 text-slate-500'
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-all duration-500 ${
+                          isSelected ? 'bg-blue-600 text-white shadow-2xl shadow-blue-600/40 scale-110' : 'bg-white border border-slate-200 text-slate-400'
                         }`}>
-                          <r.icon size={24} />
+                          <r.icon size={28} />
                         </div>
-                        <h4 className={`font-bold mb-1 transition-colors ${isSelected ? 'text-blue-900' : 'text-slate-700'}`}>
+                        <h4 className={`text-xl font-black mb-2 transition-colors uppercase tracking-tight ${isSelected ? 'text-blue-900' : 'text-slate-800'}`}>
                           {r.label}
                         </h4>
-                        <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                        <p className="text-xs text-slate-500 leading-relaxed font-medium">
                           {r.desc}
                         </p>
                       </button>
@@ -217,32 +230,32 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Form Inputs */}
-              <div className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div className="space-y-2 group">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Full Name</label>
+              {/* Precise Field Grid */}
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-3 group/field">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Full Legal Name</label>
                     <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                      <User className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/field:text-blue-600 transition-colors" size={22} />
                       <input 
                         type="text" 
                         required
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 pl-12 pr-4 h-12 rounded-2xl hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-medium text-sm"
-                        placeholder="e.g. John Doe"
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 pl-14 pr-6 h-16 rounded-[24px] hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none font-bold text-lg tracking-tight"
+                        placeholder="John Doe"
                         value={form.name}
                         onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                       />
                     </div>
                   </div>
-                  <div className="space-y-2 group">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Department</label>
+                  <div className="space-y-3 group/field">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Primary Department</label>
                     <div className="relative">
-                      <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                      <Building2 className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/field:text-blue-600 transition-colors" size={22} />
                       <input 
                         type="text" 
                         required
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 pl-12 pr-4 h-12 rounded-2xl hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-medium text-sm"
-                        placeholder="e.g. Science"
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 pl-14 pr-6 h-16 rounded-[24px] hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none font-bold text-lg tracking-tight"
+                        placeholder="e.g. CS"
                         value={form.department}
                         onChange={e => setForm(p => ({ ...p, department: e.target.value }))}
                       />
@@ -250,14 +263,14 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2 group">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Email Address</label>
+                <div className="space-y-3 group/field">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">University Email</label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                    <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/field:text-blue-600 transition-colors" size={22} />
                     <input 
                       type="email" 
                       required
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-900 pl-12 pr-4 h-12 rounded-2xl hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-medium text-sm"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-900 pl-14 pr-6 h-16 rounded-[24px] hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none font-bold text-lg tracking-tight"
                       placeholder="name@university.edu"
                       value={form.email}
                       onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
@@ -265,50 +278,50 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <div className="space-y-3 group">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Password</label>
+                <div className="space-y-4 group/field">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Secure Password</label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                    <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/field:text-blue-600 transition-colors" size={22} />
                     <input 
                       type="password" 
                       required
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-900 pl-12 pr-4 h-12 rounded-2xl hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-medium text-sm tracking-wide"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-900 pl-14 pr-6 h-16 rounded-[24px] hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none font-bold text-lg tracking-tight"
                       placeholder="••••••••"
                       value={form.password}
                       onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
                     />
                   </div>
                   
-                  {/* Password Strength Indicator */}
-                  <div className="space-y-3 pt-1 px-1">
-                    <div className="flex gap-2">
+                  {/* Premium Strength Analysis */}
+                  <div className="space-y-4 pt-2 px-2">
+                    <div className="flex gap-3">
                       {[1, 2, 3].map(i => (
                         <div 
                           key={i} 
-                          className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
+                          className={`h-2 flex-1 rounded-full transition-all duration-700 ${
                             passStrength >= i 
-                              ? passStrength === 3 ? 'bg-emerald-500 shadow-sm' : 'bg-amber-400' 
-                              : 'bg-slate-200'
+                              ? passStrength === 3 ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-amber-400' 
+                              : 'bg-slate-100'
                           }`} 
                         />
                       ))}
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                    <div className="flex flex-wrap gap-x-8 gap-y-3">
                       {[
-                        { key: 'length', label: '8+ Characters' },
-                        { key: 'upper', label: 'Uppercase Letter' },
-                        { key: 'number', label: 'Includes Number' },
+                        { key: 'length', label: '8+ Symbols' },
+                        { key: 'upper', label: 'Upper Case' },
+                        { key: 'number', label: 'Numerical' },
                       ].map(check => (
-                        <div key={check.key} className="flex items-center gap-2">
-                          <div className={`w-4 h-4 rounded-full flex items-center justify-center border transition-all ${
+                        <div key={check.key} className="flex items-center gap-3">
+                          <div className={`w-5 h-5 rounded-lg flex items-center justify-center border-2 transition-all ${
                             passChecks[check.key as keyof typeof passChecks] 
-                              ? 'bg-emerald-100 border-emerald-200 text-emerald-600' 
-                              : 'border-slate-200 bg-slate-50 text-slate-300'
+                              ? 'bg-emerald-600 border-emerald-600 text-white' 
+                              : 'border-slate-200 bg-slate-50 text-transparent'
                           }`}>
-                            <Check size={10} strokeWidth={4} />
+                            <Check size={12} strokeWidth={4} />
                           </div>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                          <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${
                             passChecks[check.key as keyof typeof passChecks] ? 'text-emerald-600' : 'text-slate-400'
                           }`}>
                             {check.label}
@@ -323,33 +336,34 @@ export default function RegisterPage() {
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-base font-bold shadow-xl shadow-blue-600/20 group relative overflow-hidden transition-all hover:-translate-y-0.5 disabled:opacity-70 disabled:hover:translate-y-0"
+                className="w-full h-20 rounded-[32px] bg-blue-600 hover:bg-blue-700 text-white text-xl font-black shadow-2xl shadow-blue-600/30 group relative overflow-hidden transition-all hover:-translate-y-1 active:scale-95 disabled:opacity-70 disabled:hover:translate-y-0 uppercase tracking-widest"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                {loading ? <Loader2 className="animate-spin mx-auto" size={24} /> : (
-                  <span className="flex items-center justify-center gap-2">
-                    Create Account <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                {loading ? <Loader2 className="animate-spin mx-auto" size={28} /> : (
+                  <span className="flex items-center justify-center gap-4">
+                    Create Workspace <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
                   </span>
                 )}
               </button>
             </form>
 
-            <div className="mt-8 pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-sm font-medium text-slate-500">
-                Have an account?{' '}
-                <Link href="/auth/login" className="text-blue-600 font-bold hover:text-blue-800 transition-colors">
+            <div className="mt-12 pt-10 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-6">
+              <p className="text-base font-bold text-slate-500">
+                Already registered?{' '}
+                <Link href="/auth/login" className="text-blue-600 font-black hover:text-blue-800 transition-colors uppercase tracking-widest border-b-2 border-blue-100 hover:border-blue-600 pb-0.5">
                   Sign in
                 </Link>
               </p>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 uppercase tracking-widest bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
-                <ShieldCheck size={14} />
-                <span>Encrypted Auth</span>
+              <div className="flex items-center gap-3 text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] bg-emerald-50 px-5 py-2.5 rounded-full border border-emerald-100">
+                <ShieldCheck size={16} />
+                <span>Encrypted Flow</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-8 flex justify-center gap-8 opacity-60 pointer-events-none">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Trusted by 150+ Institutions</span>
+          <div className="mt-12 flex justify-center gap-10 opacity-30 pointer-events-none grayscale">
+             <span className="font-black text-2xl tracking-tighter text-slate-900"><Globe size={24} className="inline mr-2"/> GlobalEdu</span>
+             <span className="font-black text-2xl tracking-tighter text-slate-900"><Building2 size={24} className="inline mr-2"/> Ivy Institute</span>
           </div>
         </motion.div>
       </main>

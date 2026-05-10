@@ -65,20 +65,37 @@ export default function AdminUsersPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const fetchUsers = useCallback(() => {
-    setLoading(true);
-    const params: any = { page, limit:10 };
-    if (search)                   params.search = search;
-    if (roleFilter !== 'all')     params.role   = roleFilter;
-    if (statusFilter !== 'all')   params.status = statusFilter;
-    adminApi.getAllUsers(params)
-      .then(res => {
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+  // Debounce logic
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  const fetchUsers = useCallback(async (ignore = false) => {
+    await Promise.resolve(); // Break synchronous execution
+    if (!ignore) setLoading(true);
+    try {
+      const params: Record<string, string | number> = { page, limit: 10 };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (roleFilter !== 'all') params.role = roleFilter;
+      if (statusFilter !== 'all') params.status = statusFilter;
+      
+      const res = await adminApi.getAllUsers(params);
+      if (!ignore) {
         setUsers(res.data.data || []);
         setTotalPages(res.data.totalPages || 1);
-      })
-      .catch(() => setUsers([]))
-      .finally(() => setLoading(false));
-  }, [search, roleFilter, statusFilter, page]);
+      }
+    } catch {
+      if (!ignore) setUsers([]);
+    } finally {
+      if (!ignore) setLoading(false);
+    }
+  }, [debouncedSearch, roleFilter, statusFilter, page]);
 
   useEffect(() => {
     adminApi.getOverview()
@@ -86,13 +103,11 @@ export default function AdminUsersPage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
-
-  // Debounce search
   useEffect(() => {
-    const t = setTimeout(() => { setPage(1); fetchUsers(); }, 400);
-    return () => clearTimeout(t);
-  }, [search]); // eslint-disable-line
+    let ignore = false;
+    Promise.resolve().then(() => fetchUsers(ignore));
+    return () => { ignore = true; };
+  }, [fetchUsers]);
 
   const handleStatusToggle = async (u: User) => {
     const newStatus = u.status === 'suspended' ? 'active' : 'suspended';
@@ -101,8 +116,9 @@ export default function AdminUsersPage() {
       await adminApi.changeStatus(u._id, newStatus);
       setUsers(p => p.map(x => x._id === u._id ? { ...x, status: newStatus } : x));
       showToast(`${u.name} ${newStatus === 'suspended' ? 'suspended' : 'reactivated'} successfully.`);
-    } catch (e: any) {
-      showToast(e.response?.data?.message || 'Action failed.', 'error');
+    } catch (e) {
+      const err = e as AxiosError<{message: string}>;
+      showToast(err.response?.data?.message || 'Action failed.', 'error');
     } finally { setActionLoading(null); setConfirm(null); }
   };
 
@@ -112,8 +128,9 @@ export default function AdminUsersPage() {
       await adminApi.changeRole(userId, newRole);
       setUsers(p => p.map(x => x._id === userId ? { ...x, role: newRole } : x));
       showToast('Role updated successfully.');
-    } catch (e: any) {
-      showToast(e.response?.data?.message || 'Role change failed.', 'error');
+    } catch (e) {
+      const err = e as AxiosError<{message: string}>;
+      showToast(err.response?.data?.message || 'Role change failed.', 'error');
     } finally { setActionLoading(null); }
   };
 
@@ -123,8 +140,9 @@ export default function AdminUsersPage() {
       await adminApi.deleteUser(u._id);
       setUsers(p => p.filter(x => x._id !== u._id));
       showToast(`${u.name} deleted successfully.`);
-    } catch (e: any) {
-      showToast(e.response?.data?.message || 'Delete failed.', 'error');
+    } catch (e) {
+      const err = e as AxiosError<{message: string}>;
+      showToast(err.response?.data?.message || 'Delete failed.', 'error');
     } finally { setActionLoading(null); setConfirm(null); }
   };
 
@@ -134,8 +152,9 @@ export default function AdminUsersPage() {
       const res = await adminApi.impersonate(u._id);
       document.cookie = `token=${res.data.impersonationToken}; path=/; max-age=900`;
       window.location.href = `/dashboard/${u.role}`;
-    } catch (e: any) {
-      showToast(e.response?.data?.message || 'Impersonation failed.', 'error');
+    } catch (e) {
+      const err = e as AxiosError<{message: string}>;
+      showToast(err.response?.data?.message || 'Impersonation failed.', 'error');
       setActionLoading(null);
     }
   };
@@ -248,6 +267,8 @@ export default function AdminUsersPage() {
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <select 
+                  aria-label="Filter by Role"
+                  title="Filter by Role"
                   className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 pl-10 pr-10 h-12 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-sm cursor-pointer min-w-[140px]"
                   value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setPage(1); }}
                 >
@@ -258,6 +279,8 @@ export default function AdminUsersPage() {
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <select 
+                  aria-label="Filter by Status"
+                  title="Filter by Status"
                   className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 pl-10 pr-10 h-12 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-sm cursor-pointer min-w-[150px]"
                   value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
                 >
@@ -328,6 +351,8 @@ export default function AdminUsersPage() {
                           </td>
                           <td className="px-6 py-4">
                             <select
+                              aria-label={`Change role for ${u.name}`}
+                              title={`Change role for ${u.name}`}
                               value={u.role}
                               disabled={isMe || actionLoading === u._id+'_role'}
                               onChange={e => handleRoleChange(u._id, e.target.value)}

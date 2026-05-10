@@ -9,6 +9,7 @@ import {
   FileText, Video, Presentation, FileCode2, Image as ImageIcon, 
   ChevronDown, Plus, ExternalLink, Trash2, Paperclip, Loader2, BookOpen
 } from 'lucide-react';
+import { AxiosError } from 'axios';
 
 interface Module {
   _id: string;
@@ -111,8 +112,9 @@ export default function ModulesPage() {
       setModules(p => [...p, res.data.data]);
       setModForm({ title:'', weekNumber:'', order:'' });
       setShowModForm(false);
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to create module.');
+    } catch (err) {
+      const error = err as AxiosError<{message: string}>;
+      alert(error.response?.data?.message || 'Failed to create module.');
     } finally { setCreating(false); }
   };
 
@@ -136,8 +138,9 @@ export default function ModulesPage() {
       fd.append('order', String((content[moduleId]?.length || 0) + 1));
       const res = await courseApi.uploadContent(moduleId, fd);
       setContent(p => ({ ...p, [moduleId]: [...(p[moduleId] || []), res.data.data] }));
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Upload failed.');
+    } catch (err) {
+      const error = err as AxiosError<{message: string}>;
+      alert(error.response?.data?.message || 'Upload failed.');
     } finally { setUploading(null); if (e.target) e.target.value = ''; }
   };
 
@@ -151,27 +154,46 @@ export default function ModulesPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto pb-20">
+    <div className="max-w-[1000px] mx-auto p-8 lg:p-12">
       
-      {/* Header Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Course Modules</h2>
-          <p className="text-slate-500 font-medium">{modules.length} module{modules.length !== 1 ? 's' : ''} structured for this course</p>
+      {/* Header Area */}
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+        <div className="flex-1">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-3 text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] mb-4"
+          >
+            <BookOpen size={14} />
+            Syllabus Structure
+          </motion.div>
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter leading-none mb-6"
+          >
+            Course <span className="text-blue-600">Modules.</span>
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="text-slate-500 text-lg font-medium max-w-xl leading-relaxed"
+          >
+            Access your lecture materials, resources, and weekly learning paths in a structured workspace.
+          </motion.p>
         </div>
+
         {isOwner && (
-          <button 
-            onClick={() => setShowModForm(p => !p)} 
-            className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold transition-all ${
+          <motion.button 
+            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+            onClick={() => setShowModForm(p => !p)}
+            className={`flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black text-lg shadow-xl transition-all hover:-translate-y-1 active:scale-95 uppercase tracking-widest ${
               showModForm 
-                ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' 
-                : 'bg-slate-900 text-white shadow-lg shadow-slate-900/10 hover:bg-slate-800 hover:-translate-y-0.5'
+                ? 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' 
+                : 'bg-blue-600 text-white shadow-blue-600/20 hover:bg-blue-700'
             }`}
           >
-            {showModForm ? 'Cancel' : <><Plus size={18} /> Add Module</>}
-          </button>
+            {showModForm ? 'Cancel' : <><Plus size={20} strokeWidth={3} /> Add Module</>}
+          </motion.button>
         )}
-      </div>
+      </header>
 
       {/* Create Module Form */}
       <AnimatePresence>
@@ -287,11 +309,11 @@ export default function ModulesPage() {
                                   </div>
 
                                   <div className="flex items-center gap-2 shrink-0">
-                                    <a href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-50 text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                                    <a aria-label={`Open ${item.title}`} title={`Open ${item.title}`} href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-50 text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors">
                                       <ExternalLink size={18} />
                                     </a>
                                     {isOwner && (
-                                      <button onClick={() => handleDeleteContent(mod._id, item._id)} className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors">
+                                      <button aria-label={`Delete ${item.title}`} title={`Delete ${item.title}`} onClick={() => handleDeleteContent(mod._id, item._id)} className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors">
                                         <Trash2 size={18} />
                                       </button>
                                     )}

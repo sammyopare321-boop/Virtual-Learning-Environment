@@ -72,7 +72,7 @@ export default function MessagesPage() {
             <div className="p-6 pb-4">
               <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Messages</h1>
-                <button className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all shadow-sm">
+                <button aria-label="New Message" title="New Message" className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all shadow-sm">
                   <Plus size={20} />
                 </button>
               </div>
@@ -176,13 +176,13 @@ export default function MessagesPage() {
                   </div>
                   
                   <div className="flex gap-2">
-                    <button className="w-10 h-10 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                    <button aria-label="Audio Call" title="Audio Call" className="w-10 h-10 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-colors">
                       <Phone size={18} />
                     </button>
-                    <button className="w-10 h-10 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                    <button aria-label="Video Call" title="Video Call" className="w-10 h-10 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-colors">
                       <Video size={18} />
                     </button>
-                    <button className="w-10 h-10 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-slate-100 transition-colors">
+                    <button aria-label="Conversation Info" title="Info" className="w-10 h-10 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-slate-100 transition-colors">
                       <Info size={18} />
                     </button>
                   </div>
@@ -222,7 +222,7 @@ export default function MessagesPage() {
                 {/* Chat Input */}
                 <div className="p-6 bg-white border-t border-slate-100 shrink-0">
                   <form onSubmit={handleSend} className="flex gap-3 relative">
-                    <button type="button" className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-100 hover:text-slate-600 transition-colors shrink-0">
+                    <button aria-label="Attach File" title="Attach" type="button" className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-100 hover:text-slate-600 transition-colors shrink-0">
                       <Plus size={20} />
                     </button>
                     <input
@@ -233,6 +233,8 @@ export default function MessagesPage() {
                       onChange={e => setMessage(e.target.value)}
                     />
                     <button 
+                      aria-label="Send Message"
+                      title="Send"
                       type="submit" 
                       disabled={!message.trim()} 
                       className="w-14 h-14 rounded-2xl bg-blue-600 text-white border-none cursor-pointer flex items-center justify-center shadow-md shadow-blue-600/20 disabled:opacity-50 disabled:shadow-none hover:bg-blue-700 transition-all shrink-0"

@@ -8,8 +8,9 @@ import { courseApi } from '@/utils/api/courseApi';
 import { Course } from '@/types';
 import { 
   FileText, Calendar, Clock, Trophy, ChevronRight, 
-  Plus, Loader2, CheckCircle2, AlertCircle
+  Plus, Loader2, CheckCircle2, AlertCircle, LucideIcon
 } from 'lucide-react';
+import { AxiosError } from 'axios';
 
 interface Assignment {
   _id: string;
@@ -25,7 +26,7 @@ interface Submission {
   grade?: number;
 }
 
-const statusBadge: Record<string, { bg: string, text: string, border: string, label: string, icon: any }> = {
+const statusBadge: Record<string, { bg: string, text: string, border: string, label: string, icon: LucideIcon }> = {
   submitted: { bg:'bg-blue-50',     text:'text-blue-700',    border:'border-blue-100',    label:'Submitted', icon: CheckCircle2 },
   graded:    { bg:'bg-emerald-50',  text:'text-emerald-700', border:'border-emerald-100', label:'Graded',    icon: CheckCircle2 },
   late:      { bg:'bg-rose-50',     text:'text-rose-700',    border:'border-rose-100',    label:'Late',      icon: AlertCircle },
@@ -97,33 +98,53 @@ export default function AssignmentsPage() {
       setAssignments(p => [...p, res.data.data]);
       setForm({ title:'', description:'', dueDate:'', totalMarks:'' });
       setShowForm(false);
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to create assignment.');
+    } catch (err) {
+      const error = err as AxiosError<{message: string}>;
+      alert(error.response?.data?.message || 'Failed to create assignment.');
     } finally { setCreating(false); }
   };
 
   return (
-    <div className="max-w-4xl mx-auto pb-20">
+    <div className="max-w-[1000px] mx-auto p-8 lg:p-12">
       
-      {/* Header Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Course Assignments</h2>
-          <p className="text-slate-500 font-medium">{assignments.length} task{assignments.length !== 1 ? 's' : ''} assigned</p>
+      {/* Header Area */}
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+        <div className="flex-1">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-3 text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] mb-4"
+          >
+            <FileText size={14} />
+            Academic Tasks
+          </motion.div>
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter leading-none mb-6"
+          >
+            Course <span className="text-blue-600">Assignments.</span>
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="text-slate-500 text-lg font-medium max-w-xl leading-relaxed"
+          >
+            Manage your submissions, track deadlines, and view detailed academic feedback.
+          </motion.p>
         </div>
+
         {isOwner && (
-          <button 
-            onClick={() => setShowForm(p => !p)} 
-            className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold transition-all ${
+          <motion.button 
+            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+            onClick={() => setShowForm(p => !p)}
+            className={`flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black text-lg shadow-xl transition-all hover:-translate-y-1 active:scale-95 uppercase tracking-widest ${
               showForm 
-                ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' 
-                : 'bg-slate-900 text-white shadow-lg shadow-slate-900/10 hover:bg-slate-800 hover:-translate-y-0.5'
+                ? 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' 
+                : 'bg-blue-600 text-white shadow-blue-600/20 hover:bg-blue-700'
             }`}
           >
-            {showForm ? 'Cancel' : <><Plus size={18} /> New Assignment</>}
-          </button>
+            {showForm ? 'Cancel' : <><Plus size={20} strokeWidth={3} /> New Assignment</>}
+          </motion.button>
         )}
-      </div>
+      </header>
 
       {/* Create Form */}
       <AnimatePresence>
@@ -139,20 +160,20 @@ export default function AssignmentsPage() {
               <form onSubmit={handleCreate}>
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 mb-8">
                   <div className="sm:col-span-6">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assignment Title *</label>
-                    <input className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-4 h-12 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium" placeholder="e.g. Algorithm Analysis" value={form.title} onChange={e => setForm(p=>({...p,title:e.target.value}))} required />
+                    <label htmlFor="assign-title" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assignment Title *</label>
+                    <input id="assign-title" title="Assignment Title" className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-4 h-12 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium" placeholder="e.g. Algorithm Analysis" value={form.title} onChange={e => setForm(p=>({...p,title:e.target.value}))} required />
                   </div>
                   <div className="sm:col-span-3">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Marks *</label>
-                    <input type="number" min="1" className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-4 h-12 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium" placeholder="100" value={form.totalMarks} onChange={e => setForm(p=>({...p,totalMarks:e.target.value}))} required />
+                    <label htmlFor="assign-marks" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Marks *</label>
+                    <input id="assign-marks" title="Total Marks" type="number" min="1" className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-4 h-12 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium" placeholder="100" value={form.totalMarks} onChange={e => setForm(p=>({...p,totalMarks:e.target.value}))} required />
                   </div>
                   <div className="sm:col-span-3">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Due Date *</label>
-                    <input type="datetime-local" className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-4 h-12 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium text-sm" value={form.dueDate} onChange={e => setForm(p=>({...p,dueDate:e.target.value}))} required />
+                    <label htmlFor="assign-due" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Due Date *</label>
+                    <input id="assign-due" title="Due Date" type="datetime-local" className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-4 h-12 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium text-sm" value={form.dueDate} onChange={e => setForm(p=>({...p,dueDate:e.target.value}))} required />
                   </div>
                   <div className="sm:col-span-12">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
-                    <textarea rows={3} className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-4 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium resize-none" placeholder="Describe the assignment requirements..." value={form.description} onChange={e => setForm(p=>({...p,description:e.target.value}))} />
+                    <label htmlFor="assign-desc" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
+                    <textarea id="assign-desc" title="Description" rows={3} className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-4 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium resize-none" placeholder="Describe the assignment requirements..." value={form.description} onChange={e => setForm(p=>({...p,description:e.target.value}))} />
                   </div>
                 </div>
                 <div className="flex gap-4">
