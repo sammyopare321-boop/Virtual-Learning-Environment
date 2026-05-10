@@ -178,28 +178,72 @@ export default function QuizzesPage() {
               <form onSubmit={handleCreate}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Quiz Title *</label>
-                    <input className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none font-bold" placeholder="e.g. Midterm Examination" value={form.title} onChange={e => setForm({...form, title: e.target.value})} required />
+                    <label htmlFor="quiz-title" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Quiz Title *</label>
+                    <input 
+                      id="quiz-title"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none font-bold" 
+                      placeholder="e.g. Midterm Examination" 
+                      value={form.title} 
+                      onChange={e => setForm({...form, title: e.target.value})} 
+                      required 
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Total Marks *</label>
-                    <input type="number" min="1" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" value={form.totalMarks} onChange={e => setForm({...form, totalMarks: parseInt(e.target.value)})} required />
+                    <label htmlFor="quiz-marks" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Total Marks *</label>
+                    <input 
+                      id="quiz-marks"
+                      type="number" 
+                      min="1" 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" 
+                      value={form.totalMarks} 
+                      onChange={e => setForm({...form, totalMarks: parseInt(e.target.value)})} 
+                      required 
+                    />
                   </div>
                   <div className="md:col-span-3">
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Description</label>
-                    <textarea rows={3} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-medium resize-none" placeholder="Provide instructions or scope..." value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
+                    <label htmlFor="quiz-desc" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Description</label>
+                    <textarea 
+                      id="quiz-desc"
+                      rows={3} 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-medium resize-none" 
+                      placeholder="Provide instructions or scope..." 
+                      value={form.description} 
+                      onChange={e => setForm({...form, description: e.target.value})} 
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Duration (mins) *</label>
-                    <input type="number" min="1" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" value={form.duration} onChange={e => setForm({...form, duration: parseInt(e.target.value)})} required />
+                    <label htmlFor="quiz-duration" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Duration (mins) *</label>
+                    <input 
+                      id="quiz-duration"
+                      type="number" 
+                      min="1" 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" 
+                      value={form.duration} 
+                      onChange={e => setForm({...form, duration: parseInt(e.target.value)})} 
+                      required 
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Start Time *</label>
-                    <input type="datetime-local" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" value={form.startTime} onChange={e => setForm({...form, startTime: e.target.value})} required />
+                    <label htmlFor="quiz-start" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Start Time *</label>
+                    <input 
+                      id="quiz-start"
+                      type="datetime-local" 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" 
+                      value={form.startTime} 
+                      onChange={e => setForm({...form, startTime: e.target.value})} 
+                      required 
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">End Time *</label>
-                    <input type="datetime-local" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" value={form.endTime} onChange={e => setForm({...form, endTime: e.target.value})} required />
+                    <label htmlFor="quiz-end" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">End Time *</label>
+                    <input 
+                      id="quiz-end"
+                      type="datetime-local" 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" 
+                      value={form.endTime} 
+                      onChange={e => setForm({...form, endTime: e.target.value})} 
+                      required 
+                    />
                   </div>
                 </div>
                 <div className="flex gap-4">
@@ -222,6 +266,7 @@ export default function QuizzesPage() {
         <div className="relative flex-1 group">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
           <input 
+            aria-label="Search quizzes by title"
             type="text" 
             placeholder="Search by quiz title..."
             className="w-full bg-white border border-slate-200 text-slate-900 pl-14 pr-6 h-16 rounded-2xl focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none font-bold shadow-sm"
