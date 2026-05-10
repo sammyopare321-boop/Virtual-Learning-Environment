@@ -424,7 +424,7 @@ export default function GradesPage() {
                               <span className={`px-4 py-1.5 rounded-xl font-black text-sm tracking-tight border ${getGradeColor(fp)}`}>
                                 {fp}%
                               </span>
-                              <button className="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center border border-slate-100">
+                              <button aria-label="View student details" className="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center border border-slate-100">
                                 <ArrowUpRight size={14} />
                               </button>
                            </div>

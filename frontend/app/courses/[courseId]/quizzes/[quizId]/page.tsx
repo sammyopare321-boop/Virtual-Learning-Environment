@@ -512,7 +512,7 @@ export default function QuizDetailPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                       <button className="w-9 h-9 rounded-lg bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors flex items-center justify-center">
+                       <button aria-label="Delete question" className="w-9 h-9 rounded-lg bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors flex items-center justify-center">
                          <Trash2 size={16} />
                        </button>
                     </div>
