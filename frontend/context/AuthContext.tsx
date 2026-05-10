@@ -47,10 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // The browser will automatically send the HttpOnly 'token' cookie if it exists.
     authApi.getMe()
       .then(res => {
-        const { data } = res.data;
-        setUser(data);
-        // If the backend returned a new token in the body (fallback), set it in headers
-        if (res.data.token) setAuthToken(res.data.token);
+        setUser(res.data.data);
       })
       .catch(() => {
         setAuthToken(null);
