@@ -4,12 +4,13 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { 
   LayoutDashboard, BookOpen, MessageSquare, Bell, User as UserIcon, 
-  LogOut, GraduationCap, Users, BarChart3, Activity
+  LogOut, GraduationCap, Users, BarChart3, Activity, Radar
 } from 'lucide-react';
 
 const studentLinks = [
   { href: '/dashboard/student',    label: 'Dashboard',      icon: LayoutDashboard },
   { href: '/courses',              label: 'My Courses',     icon: BookOpen },
+  { href: '/radar',                label: 'Radar',          icon: Radar },
   { href: '/messages',             label: 'Messages',       icon: MessageSquare },
   { href: '/notifications',        label: 'Notifications',  icon: Bell },
   { href: '/profile',              label: 'Profile',        icon: UserIcon },

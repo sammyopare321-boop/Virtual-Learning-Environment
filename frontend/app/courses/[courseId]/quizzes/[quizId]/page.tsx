@@ -1,36 +1,33 @@
 'use client';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
-import { courseApi } from '@/utils/api/courseApi';
 import api from '@/utils/api/axiosInstance';
+import ImmersiveQuizPlayer from '@/components/learning/ImmersiveQuizPlayer';
 import { 
-  FileText, Clock, ChevronRight, Plus, 
-  HelpCircle, AlertCircle, CheckCircle2, 
-  BarChart3, Loader2, Play, Star, ArrowRight,
-  X, Save, Trash2, Globe, Lock, Timer,
-  Send, User, MessageSquare, List, CheckSquare
+  Sparkles, Star, Clock, Play, Loader2, 
+  CheckCircle2, Plus, Trash2, List, AlertCircle 
 } from 'lucide-react';
-import Link from 'next/link';
-import { AxiosError } from 'axios';
 
 interface Question {
   _id: string;
   text: string;
   type: 'multiple_choice' | 'true_false' | 'short_answer';
   options?: string[];
-  correctAnswer?: string;
+  correctAnswer: string;
   marks: number;
 }
 
 interface Attempt {
   _id: string;
-  status: 'in_progress' | 'submitted' | 'graded';
+  status: 'in_progress' | 'completed';
   startedAt: string;
-  submittedAt?: string;
   score?: number;
-  student?: { _id: string; name: string; email: string };
+  student?: {
+    _id: string;
+    name: string;
+  };
 }
 
 export default function QuizDetailPage() {
@@ -42,13 +39,11 @@ export default function QuizDetailPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [allAttempts, setAllAttempts] = useState<Attempt[]>([]);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [starting, setStarting] = useState(false);
-  const [addingQ, setAddingQ] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [showQForm, setShowQForm] = useState(false);
+  const [addingQ, setAddingQ] = useState(false);
   
   const [qForm, setQForm] = useState({
     text: '',
@@ -63,10 +58,6 @@ export default function QuizDetailPage() {
 
   const isTeacher = user?.role === 'teacher';
   const isStudent = user?.role === 'student';
-  const isOwner = isTeacher && (
-    (typeof quiz?.course?.teacher === 'object' && quiz.course.teacher?._id === user?._id) ||
-    (quiz?.course?.teacher === user?._id) || true // fallback for simplified checks
-  );
 
   const showToast = (msg: string, type: string = 'success') => {
     setToast({ msg, type });
@@ -103,7 +94,6 @@ export default function QuizDetailPage() {
     loadData();
   }, [loadData]);
 
-  // Timer logic
   useEffect(() => {
     if (!attempt || attempt.status !== 'in_progress' || !quiz) return;
     
@@ -113,20 +103,12 @@ export default function QuizDetailPage() {
       setTimeLeft(left);
       if (left === 0) {
         clearInterval(tick);
-        handleSubmit(); // Auto-submit when time is up
+        handleFinalSubmit({}); // Auto-submit empty if needed
       }
     }, 1000);
     
     return () => clearInterval(tick);
   }, [attempt, quiz]);
-
-  const formatTime = (ms: number) => {
-    const s = Math.floor(ms / 1000);
-    const m = Math.floor(s / 60);
-    const h = Math.floor(m / 60);
-    if (h > 0) return `${h}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-    return `${m}:${String(s % 60).padStart(2, '0')}`;
-  };
 
   const handleStart = async () => {
     setStarting(true);
@@ -141,8 +123,7 @@ export default function QuizDetailPage() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (submitting) return;
+  const handleFinalSubmit = async (answers: Record<string, string>) => {
     setSubmitting(true);
     try {
       const answersArr = Object.entries(answers).map(([questionId, answer]) => ({ questionId, answer }));
@@ -160,31 +141,12 @@ export default function QuizDetailPage() {
     e.preventDefault();
     setAddingQ(true);
     try {
-      const payload: any = { 
-        ...qForm, 
-        marks: parseInt(qForm.marks.toString()), 
-        order: questions.length + 1 
-      };
+      const payload: any = { ...qForm, marks: parseInt(qForm.marks.toString()), order: questions.length + 1 };
+      if (qForm.type === 'multiple_choice') payload.options = qForm.options.filter(o => o.trim());
+      else delete payload.options;
       
-      if (qForm.type === 'multiple_choice') {
-        payload.options = qForm.options.filter(o => o.trim());
-      } else {
-        delete payload.options;
-      }
-      
-      if (qForm.type === 'short_answer') {
-        delete payload.correctAnswer;
-      }
-
       const res = await api.post(`/api/quizzes/${quizId}/questions`, payload);
       setQuestions(p => [...p, res.data.data]);
-      setQForm({ 
-        text: '', 
-        type: 'multiple_choice', 
-        options: ['', '', '', ''], 
-        correctAnswer: '', 
-        marks: 5 
-      });
       setShowQForm(false);
       showToast('Question integrated successfully!');
     } catch (e: any) {
@@ -195,414 +157,264 @@ export default function QuizDetailPage() {
   };
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+    <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
     </div>
   );
 
-  // Student — Active Quiz View
-  if (isStudent && attempt?.status === 'in_progress') return (
-    <div className="max-w-4xl mx-auto py-10 px-4">
-      <header className="bg-white rounded-[32px] border border-slate-200 p-8 shadow-sm mb-10 flex flex-col md:flex-row items-center justify-between gap-6">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">{quiz?.title}</h1>
-          <p className="text-slate-500 font-medium">{questions.length} Questions · {quiz?.totalMarks} Total Marks</p>
-        </div>
-        <div className={`px-10 py-5 rounded-2xl border-2 flex flex-col items-center justify-center min-w-[160px] ${
-          timeLeft && timeLeft < 300000 ? 'bg-rose-50 border-rose-200 animate-pulse' : 'bg-blue-50 border-blue-200'
-        }`}>
-          <span className={`text-4xl font-black font-mono leading-none ${
-            timeLeft && timeLeft < 300000 ? 'text-rose-600' : 'text-blue-600'
-          }`}>
-            {timeLeft !== null ? formatTime(timeLeft) : '--:--'}
-          </span>
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Remaining Time</span>
-        </div>
-      </header>
-
-      <div className="space-y-6 mb-12">
-        {questions.map((q, idx) => (
-          <motion.div 
-            key={q._id} 
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
-            className="bg-white rounded-[32px] border border-slate-200 p-8 shadow-sm"
-          >
-            <div className="flex items-start gap-4 mb-8">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-black text-sm shrink-0 border border-blue-100">
-                {idx + 1}
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-slate-900 leading-relaxed mb-1">{q.text}</h3>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{q.marks} Marks Available</span>
-              </div>
-            </div>
-
-            {q.type === 'multiple_choice' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-14">
-                {q.options?.map((opt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setAnswers(p => ({ ...p, [q._id]: String(i) }))}
-                    className={`flex items-center gap-4 p-5 rounded-2xl border-2 transition-all text-left font-bold ${
-                      answers[q._id] === String(i) 
-                        ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-md' 
-                        : 'border-slate-100 bg-slate-50 hover:border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                      answers[q._id] === String(i) ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'
-                    }`}>
-                      {answers[q._id] === String(i) && <div className="w-2 h-2 rounded-full bg-white" />}
-                    </div>
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {q.type === 'true_false' && (
-              <div className="flex gap-4 pl-14 max-w-sm">
-                {['true', 'false'].map(v => (
-                  <button
-                    key={v}
-                    onClick={() => setAnswers(p => ({ ...p, [q._id]: v }))}
-                    className={`flex-1 flex items-center justify-center gap-3 p-5 rounded-2xl border-2 transition-all font-black uppercase tracking-widest text-sm ${
-                      answers[q._id] === v 
-                        ? 'border-blue-600 bg-blue-50 text-blue-900' 
-                        : 'border-slate-100 bg-slate-50 hover:border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    {v === 'true' ? <CheckCircle2 size={18} /> : <X size={18} />}
-                    {v}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {q.type === 'short_answer' && (
-              <div className="pl-14">
-                <textarea
-                  rows={4}
-                  placeholder="Type your academic response here..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-medium resize-none shadow-inner"
-                  value={answers[q._id] || ''}
-                  onChange={e => setAnswers(p => ({ ...p, [q._id]: e.target.value }))}
-                />
-              </div>
-            )}
-          </motion.div>
-        ))}
-      </div>
-
-      <button
-        onClick={handleSubmit}
-        disabled={submitting}
-        className="w-full h-18 bg-blue-600 text-white rounded-3xl font-black text-xl shadow-2xl shadow-blue-600/30 hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-4 uppercase tracking-[0.2em]"
-      >
-        {submitting ? <Loader2 className="animate-spin" /> : <Send size={24} />}
-        {submitting ? 'Finalizing Submission...' : 'Submit Assessment'}
-      </button>
-    </div>
-  );
+  // STUDENT — ACTIVE MODE
+  if (isStudent && attempt?.status === 'in_progress') {
+    return (
+      <ImmersiveQuizPlayer 
+        quiz={quiz} 
+        questions={questions} 
+        attempt={attempt} 
+        onSubmit={handleFinalSubmit}
+        timeLeft={timeLeft}
+      />
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto py-10 px-4">
-      
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }} exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className={`fixed top-8 left-1/2 z-50 px-6 py-3 rounded-full font-bold shadow-xl border flex items-center gap-2 ${
-              toast.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            }`}
-          >
-            {toast.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
-            {toast.msg}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        <div className="lg:col-span-2 space-y-8">
-          {/* Info Card */}
-          <section className="bg-white rounded-[40px] border border-slate-200 p-10 shadow-sm relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-8 opacity-5 text-blue-600 pointer-events-none">
-               <HelpCircle size={140} />
-             </div>
-             <div className="relative z-10">
-               <div className="flex items-start justify-between mb-8">
-                 <div>
-                   <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-4">{quiz?.title}</h1>
-                   <div className="flex flex-wrap gap-4">
-                     <span className="px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-black uppercase tracking-widest shadow-sm flex items-center gap-2">
-                       <Star size={12} /> {quiz?.totalMarks} Marks Total
-                     </span>
-                     <span className="px-4 py-1.5 rounded-full bg-slate-50 text-slate-600 border border-slate-100 text-[10px] font-black uppercase tracking-widest shadow-sm flex items-center gap-2">
-                       <Clock size={12} /> {quiz?.duration} Minutes
-                     </span>
-                   </div>
-                 </div>
-               </div>
-               <p className="text-lg text-slate-500 font-medium leading-relaxed max-w-2xl mb-8">
-                 {quiz?.description || 'Detailed academic assessment module designed to evaluate course core competencies.'}
-               </p>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8 border-t border-slate-50">
-                 <div>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Availability Window</p>
-                   <p className="text-sm font-bold text-slate-700">
-                     Starts: <span className="text-slate-900">{quiz?.startTime ? new Date(quiz.startTime).toLocaleString() : 'N/A'}</span>
-                   </p>
-                   <p className="text-sm font-bold text-slate-700">
-                     Ends: <span className="text-slate-900">{quiz?.endTime ? new Date(quiz.endTime).toLocaleString() : 'N/A'}</span>
-                   </p>
-                 </div>
-               </div>
-             </div>
-          </section>
-
-          {/* Student Result View */}
-          {isStudent && attempt && attempt.status !== 'in_progress' && (
-            <section className="bg-slate-900 rounded-[40px] p-10 text-white shadow-2xl relative overflow-hidden">
-              <div className="absolute top-[-20%] left-[-10%] w-[300px] h-[300px] bg-blue-600/20 rounded-full blur-[80px]" />
-              <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
-                <div className="w-24 h-24 rounded-[32px] bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-900/40">
-                  <BarChart3 size={40} />
-                </div>
-                <div className="flex-1 text-center md:text-left">
-                  <h3 className="text-2xl font-black mb-2 tracking-tight">Assessment Completed</h3>
-                  <p className="text-slate-400 font-medium mb-0">Your responses have been archived. {attempt.status === 'graded' ? 'The final evaluation is now available.' : 'Final grading is in progress.'}</p>
-                </div>
-                <div className="bg-white/10 backdrop-blur-xl border border-white/10 rounded-[32px] p-8 min-w-[200px] text-center">
-                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-2">Final Score</p>
-                  <p className="text-5xl font-black tracking-tighter leading-none mb-2">
-                    {attempt.score !== undefined ? attempt.score : '--'}
-                    <span className="text-xl text-slate-500">/{quiz?.totalMarks}</span>
-                  </p>
-                  {attempt.score !== undefined && (
-                    <p className="text-xs font-bold text-emerald-400">{Math.round((attempt.score / quiz?.totalMarks) * 100)}% Proficiency</p>
-                  )}
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Student Start Quiz */}
-          {isStudent && !attempt && (
-            <section className="bg-white rounded-[40px] border-2 border-dashed border-slate-200 p-16 text-center">
-              <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-8 text-blue-600 shadow-inner">
-                <Timer size={40} />
-              </div>
-              <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">Ready to begin?</h3>
-              <p className="text-slate-500 font-medium max-w-sm mx-auto mb-10 leading-relaxed">
-                Ensure you have a stable connection. Once you start, the {quiz?.duration}-minute timer cannot be paused.
-              </p>
-              <button
-                onClick={handleStart}
-                disabled={starting}
-                className="px-14 h-16 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 uppercase tracking-widest"
+    <div className="min-h-screen bg-[#F8FAFC]">
+      <div className="max-w-7xl mx-auto py-12 px-6 lg:px-8">
+          
+          <AnimatePresence>
+            {toast && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }} exit={{ opacity: 0, y: -20, x: '-50%' }}
+                className={`fixed top-12 left-1/2 z-[100] px-8 py-4 rounded-2xl font-black shadow-2xl border flex items-center gap-3 ${
+                  toast.type === 'error' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                }`}
               >
-                {starting ? <Loader2 className="animate-spin" /> : 'Initialize Assessment'}
-              </button>
-            </section>
-          )}
+                {toast.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
+                {toast.msg}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {/* Teacher View — Questions */}
-          {isOwner && (
-            <section className="space-y-6">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">Question Bank</h2>
-                  <p className="text-slate-500 font-medium">{questions.length} Active Items</p>
-                </div>
-                <button
-                  onClick={() => setShowQForm(p => !p)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-xs transition-all uppercase tracking-widest ${
-                    showQForm ? 'bg-slate-100 text-slate-600' : 'bg-blue-600 text-white shadow-lg'
-                  }`}
-                >
-                  {showQForm ? 'Cancel' : <><Plus size={16} /> Add Question</>}
-                </button>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+            
+            <div className="lg:col-span-8 space-y-12">
+              {/* Header section */}
+              <section className="bg-white rounded-[48px] border border-slate-100 p-12 shadow-sm relative overflow-hidden group">
+                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-700" />
+                 <div className="relative z-10">
+                    <div className="flex items-center gap-3 text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] mb-6">
+                      <Sparkles size={14} /> Academic Assessment
+                    </div>
+                    <h1 className="text-5xl font-black text-slate-900 tracking-tighter leading-none mb-6">{quiz?.title}</h1>
+                    <p className="text-xl text-slate-500 font-medium leading-relaxed max-w-2xl mb-10">
+                      {quiz?.description || 'Strategic academic evaluation module designed to measure core competency proficiency.'}
+                    </p>
+                    <div className="flex flex-wrap gap-4">
+                      <MetaBadge icon={<Star size={14} />} label={`${quiz?.totalMarks} Marks Available`} />
+                      <MetaBadge icon={<Clock size={14} />} label={`${quiz?.duration} Minutes Duration`} />
+                    </div>
+                 </div>
+              </section>
 
-              {/* Add Question Form */}
-              <AnimatePresence>
-                {showQForm && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                    className="bg-white rounded-[32px] border-2 border-blue-100 p-8 shadow-xl shadow-blue-900/5"
-                  >
-                    <form onSubmit={handleAddQuestion}>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        <div className="md:col-span-2">
-                          <label htmlFor="q-text" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Question Text *</label>
-                          <textarea 
-                            id="q-text"
-                            rows={3} 
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-medium resize-none shadow-inner" 
-                            placeholder="Enter academic inquiry..." 
-                            value={qForm.text} 
-                            onChange={e => setQForm({...qForm, text: e.target.value})} 
-                            required 
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="q-type" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Item Type *</label>
-                          <select 
-                            id="q-type"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 font-bold focus:bg-white focus:border-blue-500 outline-none cursor-pointer" 
-                            value={qForm.type} 
-                            onChange={e => setQForm({...qForm, type: e.target.value, correctAnswer: ''})}
+              {/* Student View: Launchpad or Results */}
+              {isStudent && (
+                <>
+                  {!attempt ? (
+                    <section className="bg-slate-900 rounded-[48px] p-16 text-center text-white shadow-2xl shadow-slate-900/40 relative overflow-hidden">
+                       <div className="absolute inset-0 bg-blue-600/10" />
+                       <div className="relative z-10 max-w-md mx-auto">
+                          <div className="w-24 h-24 bg-white/10 rounded-[32px] flex items-center justify-center mx-auto mb-10 backdrop-blur-xl border border-white/10">
+                             <Play size={40} className="text-white fill-white ml-2" />
+                          </div>
+                          <h2 className="text-3xl font-black tracking-tight mb-4">Initialize Arena.</h2>
+                          <p className="text-slate-400 font-medium mb-12">
+                            The environment is ready. Once initialized, the timer will begin. Ensure your academic workspace is prepared.
+                          </p>
+                          <button
+                            onClick={handleStart}
+                            disabled={starting}
+                            className="w-full h-18 bg-blue-600 text-white rounded-3xl font-black text-lg shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-4 uppercase tracking-[0.2em]"
                           >
-                            <option value="multiple_choice">Multiple Choice</option>
-                            <option value="true_false">True / False</option>
-                            <option value="short_answer">Short Answer</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label htmlFor="q-marks" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Marks Allocation *</label>
-                          <input 
-                            id="q-marks"
-                            type="number" 
-                            min="1" 
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 font-bold focus:bg-white focus:border-blue-500 outline-none" 
-                            value={qForm.marks} 
-                            onChange={e => setQForm({...qForm, marks: parseInt(e.target.value)})} 
-                            required 
-                          />
-                        </div>
+                            {starting ? <Loader2 className="animate-spin" /> : 'Start Assessment'}
+                          </button>
+                       </div>
+                    </section>
+                  ) : (
+                    <section className="bg-white rounded-[48px] border border-slate-100 p-12 shadow-sm text-center">
+                       <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[28px] flex items-center justify-center mx-auto mb-8">
+                          <CheckCircle2 size={40} />
+                       </div>
+                       <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-4">Evaluation Archived.</h2>
+                       <p className="text-slate-500 font-medium mb-12">Your responses have been successfully submitted for final review.</p>
+                       <div className="bg-slate-50 rounded-[40px] p-10 max-w-sm mx-auto">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Final Score</p>
+                          <p className="text-6xl font-black text-slate-900 tracking-tighter">
+                            {attempt.score !== undefined ? attempt.score : '--'}
+                            <span className="text-2xl text-slate-400 ml-2">/ {quiz?.totalMarks}</span>
+                          </p>
+                          {attempt.score !== undefined && (
+                            <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest">
+                               {Math.round((attempt.score / quiz?.totalMarks) * 100)}% Proficiency Reached
+                            </div>
+                          )}
+                       </div>
+                    </section>
+                  )}
+                </>
+              )}
 
-                        {qForm.type === 'multiple_choice' && (
-                          <div className="md:col-span-2 space-y-4">
-                            <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Options & Correct Key</label>
-                            {qForm.options.map((opt, i) => (
-                              <div key={i} className="flex gap-4">
-                                <input 
-                                  aria-label={`Option ${i + 1}`}
-                                  className="flex-1 bg-white border border-slate-200 rounded-xl px-4 h-12 text-slate-900 font-medium focus:border-blue-500 outline-none" 
-                                  placeholder={`Option ${i + 1}`} 
-                                  value={opt} 
-                                  onChange={e => { const o = [...qForm.options]; o[i] = e.target.value; setQForm({...qForm, options: o}); }} 
-                                />
-                                <button type="button" onClick={() => setQForm({...qForm, correctAnswer: String(i)})} className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center transition-all ${qForm.correctAnswer === String(i) ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-blue-200'}`}>
-                                  {qForm.correctAnswer === String(i) ? <CheckCircle2 size={20} /> : <div className="w-5 h-5 rounded-full border-2 border-current" />}
-                                </button>
+              {/* Teacher View: Question Management */}
+              {isTeacher && (
+                <section className="space-y-12">
+                   <div className="flex items-center justify-between">
+                      <div>
+                         <h2 className="text-3xl font-black text-slate-900 tracking-tight">Intelligence Bank.</h2>
+                         <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mt-1">{questions.length} Items Indexed</p>
+                      </div>
+                      <button 
+                        onClick={() => setShowQForm(!showQForm)}
+                        className="px-8 h-14 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all flex items-center gap-3"
+                      >
+                         <Plus size={18} /> Add Requirement
+                      </button>
+                   </div>
+
+                   {showQForm && (
+                      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[40px] border-2 border-blue-100 p-10 shadow-2xl shadow-blue-900/5">
+                         <form onSubmit={handleAddQuestion} className="space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                               <div className="md:col-span-2">
+                                  <label htmlFor="q-text" className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Instruction Text</label>
+                                  <textarea 
+                                    id="q-text"
+                                    title="Question Text"
+                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-6 text-slate-900 font-medium focus:border-blue-600 outline-none transition-all resize-none" 
+                                    rows={4} placeholder="What is the primary academic objective..."
+                                    value={qForm.text} onChange={e => setQForm({...qForm, text: e.target.value})}
+                                  />
+                               </div>
+                               <div>
+                                  <label htmlFor="q-type" className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Item Type</label>
+                                  <select 
+                                    id="q-type"
+                                    title="Question Type"
+                                    aria-label="Select the type of question"
+                                    className="w-full h-14 bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 font-bold outline-none focus:border-blue-600" 
+                                    value={qForm.type} onChange={e => setQForm({...qForm, type: e.target.value as any})}
+                                  >
+                                     <option value="multiple_choice">Multiple Choice</option>
+                                     <option value="true_false">True / False</option>
+                                     <option value="short_answer">Short Answer</option>
+                                  </select>
+                               </div>
+                               <div>
+                                  <label htmlFor="q-marks" className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Marks Allocation</label>
+                                  <input 
+                                    id="q-marks"
+                                    title="Marks for this question"
+                                    type="number" className="w-full h-14 bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 font-bold outline-none focus:border-blue-600" 
+                                    value={qForm.marks} onChange={e => setQForm({...qForm, marks: parseInt(e.target.value)})} 
+                                  />
+                               </div>
+                            </div>
+                            <button type="submit" className="w-full h-16 rounded-2xl bg-blue-600 text-white font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all">
+                               {addingQ ? <Loader2 className="animate-spin mx-auto" /> : 'Integrate Question'}
+                            </button>
+                         </form>
+                      </motion.div>
+                   )}
+
+                   <div className="space-y-4">
+                      {questions.map((q, idx) => (
+                        <div key={q._id} className="bg-white rounded-[32px] border border-slate-100 p-8 flex items-start gap-6 hover:border-blue-200 transition-all group">
+                           <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 font-black flex items-center justify-center text-sm group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">
+                              {idx + 1}
+                           </div>
+                           <div className="flex-1">
+                              <h4 className="text-lg font-bold text-slate-900 leading-snug mb-3">{q.text}</h4>
+                              <div className="flex gap-4">
+                                 <span className="px-3 py-1 rounded-lg bg-slate-50 text-[9px] font-black uppercase tracking-widest text-slate-500">{q.type.replace('_', ' ')}</span>
+                                 <span className="px-3 py-1 rounded-lg bg-blue-50 text-[9px] font-black uppercase tracking-widest text-blue-600">{q.marks} Marks</span>
                               </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {qForm.type === 'true_false' && (
-                          <div className="md:col-span-2">
-                             <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Correct Key *</label>
-                             <div className="flex gap-4">
-                               {['true', 'false'].map(v => (
-                                 <button key={v} type="button" onClick={() => setQForm({...qForm, correctAnswer: v})} className={`flex-1 h-14 rounded-2xl border-2 font-black uppercase tracking-widest text-xs transition-all ${qForm.correctAnswer === v ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                                   {v}
-                                 </button>
-                               ))}
-                             </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-4">
-                        <button type="submit" disabled={addingQ} className="flex-1 h-14 rounded-2xl bg-blue-600 text-white font-black hover:bg-blue-700 shadow-xl shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
-                          {addingQ ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                          Save Question
-                        </button>
-                        <button type="button" onClick={() => setShowQForm(false)} className="px-10 h-14 rounded-2xl bg-slate-100 text-slate-600 font-black hover:bg-slate-200 transition-all uppercase tracking-widest text-xs">
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div className="space-y-4">
-                {questions.map((q, idx) => (
-                  <div key={q._id} className="bg-white rounded-[24px] border border-slate-200 p-6 flex items-start gap-4 hover:border-blue-200 transition-colors group">
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 font-black text-xs group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-100 transition-all">
-                      {idx + 1}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-bold text-slate-900 leading-relaxed mb-2">{q.text}</p>
-                      <div className="flex gap-4">
-                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          {q.type === 'multiple_choice' ? <List size={12} /> : q.type === 'true_false' ? <CheckSquare size={12} /> : <MessageSquare size={12} />}
-                          {q.type.replace('_', ' ')}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          <Star size={12} /> {q.marks} Marks
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                       <button aria-label="Delete question" className="w-9 h-9 rounded-lg bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors flex items-center justify-center">
-                         <Trash2 size={16} />
-                       </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <aside className="space-y-8">
-          <div className="bg-white rounded-[32px] border border-slate-200 p-8 shadow-sm">
-            <h3 className="text-lg font-black text-slate-900 mb-6 tracking-tight">Technical Spec</h3>
-            <div className="space-y-4">
-              {[
-                { label: 'Total Questions', value: questions.length, icon: List },
-                { label: 'Time Limit', value: `${quiz?.duration} Mins`, icon: Clock },
-                { label: 'Max Potential', value: `${quiz?.totalMarks} Pts`, icon: Star },
-                { label: 'Status', value: quiz?.isPublished ? 'Live' : 'Draft', icon: Globe },
-                isTeacher ? { label: 'Enrollment', value: allAttempts.length, icon: User } : null
-              ].filter(Boolean).map((row: any) => (
-                <div key={row.label} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
-                  <div className="flex items-center gap-3 text-slate-400">
-                    <row.icon size={16} />
-                    <span className="text-xs font-black uppercase tracking-widest">{row.label}</span>
-                  </div>
-                  <span className="text-sm font-black text-slate-900">{row.value}</span>
-                </div>
-              ))}
+                           </div>
+                           <button 
+                             title="Delete Question"
+                             aria-label="Delete question"
+                             className="w-10 h-10 rounded-xl bg-slate-50 text-slate-300 flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 transition-all"
+                           >
+                              <Trash2 size={18} />
+                           </button>
+                        </div>
+                      ))}
+                   </div>
+                </section>
+              )}
             </div>
+
+            {/* Sidebar Controls */}
+            <aside className="lg:col-span-4 space-y-8">
+               <div className="bg-white rounded-[40px] border border-slate-100 p-10 shadow-sm">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-8">Technical Parameters</h3>
+                  <div className="space-y-6">
+                     <TechnicalRow icon={<List size={16} />} label="Total Items" value={questions.length} />
+                     <TechnicalRow icon={<Clock size={16} />} label="Time Limit" value={`${quiz?.duration}m`} />
+                     <TechnicalRow icon={<Star size={16} />} label="Max Score" value={quiz?.totalMarks} />
+                     <TechnicalRow icon={<CheckCircle2 size={16} />} label="Status" value={quiz?.isPublished ? 'Live' : 'Draft'} color="text-emerald-500" />
+                  </div>
+               </div>
+
+               {isTeacher && allAttempts.length > 0 && (
+                  <div className="bg-slate-900 rounded-[40px] p-10 text-white shadow-2xl relative overflow-hidden">
+                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                     <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-8 relative z-10">Live Performance</h3>
+                     <div className="space-y-6 relative z-10">
+                        {allAttempts.slice(0, 4).map(a => (
+                           <div key={a._id} className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                 <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-xs font-black">
+                                    {a.student?.name?.charAt(0)}
+                                 </div>
+                                 <div className="min-w-0">
+                                    <p className="text-sm font-bold truncate">{a.student?.name}</p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase">{a.status}</p>
+                                 </div>
+                              </div>
+                              <div className="text-right">
+                                 <p className="text-sm font-black text-blue-400">{a.score ?? '--'}</p>
+                                 <p className="text-[9px] font-black text-slate-600 tracking-tighter">/ {quiz?.totalMarks}</p>
+                              </div>
+                           </div>
+                        ))}
+                     </div>
+                     <button className="w-full mt-10 py-4 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
+                        Audit Gradebook
+                     </button>
+                  </div>
+               )}
+            </aside>
+
           </div>
-
-          {isOwner && allAttempts.length > 0 && (
-            <div className="bg-white rounded-[32px] border border-slate-200 p-8 shadow-sm">
-              <h3 className="text-lg font-black text-slate-900 mb-6 tracking-tight">Recent Engagement</h3>
-              <div className="space-y-5">
-                {allAttempts.slice(0, 5).map(a => (
-                  <div key={a._id} className="flex items-center justify-between gap-4 group cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-black text-xs group-hover:scale-110 transition-transform">
-                        {a.student?.name?.charAt(0) || '?'}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-900 truncate">{a.student?.name || 'Student'}</p>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{a.status}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-black text-blue-600">{a.score ?? '--'}</p>
-                      <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">/ {quiz?.totalMarks}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button className="w-full mt-8 py-4 rounded-2xl bg-slate-50 text-slate-500 font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-100 hover:text-slate-900 transition-all">
-                View Full Gradebook
-              </button>
-            </div>
-          )}
-        </aside>
-
-      </div>
+          </div>
     </div>
   );
 }
+
+function MetaBadge({ icon, label }: any) {
+  return (
+    <div className="px-5 py-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-slate-600 text-[11px] font-black uppercase tracking-widest shadow-sm flex items-center gap-3">
+      <div className="text-blue-600">{icon}</div>
+      {label}
+    </div>
+  );
+}
+
+function TechnicalRow({ icon, label, value, color }: any) {
+  return (
+    <div className="flex items-center justify-between py-2">
+       <div className="flex items-center gap-3 text-slate-400">
+          {icon}
+          <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+       </div>
+       <span className={`text-sm font-black ${color || 'text-slate-900'}`}>{value}</span>
+    </div>
+  );
+}
+

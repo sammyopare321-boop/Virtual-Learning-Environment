@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
@@ -15,7 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- EDITOR TOOLBAR ---
-const MenuBar = ({ editor }: { editor: any }) => {
+const MenuBar = ({ editor }: { editor: Editor | null }) => {
   if (!editor) return null;
 
   return (
@@ -24,52 +24,63 @@ const MenuBar = ({ editor }: { editor: any }) => {
         onClick={() => editor.chain().focus().toggleBold().run()} 
         isActive={editor.isActive('bold')} 
         icon={<Bold size={16} />} 
+        title="Toggle Bold"
       />
       <ToolbarButton 
         onClick={() => editor.chain().focus().toggleItalic().run()} 
         isActive={editor.isActive('italic')} 
         icon={<Italic size={16} />} 
+        title="Toggle Italic"
       />
       <div className="w-px h-6 bg-slate-200 mx-1" />
       <ToolbarButton 
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} 
         isActive={editor.isActive('heading', { level: 1 })} 
         icon={<Heading1 size={16} />} 
+        title="Heading 1"
       />
       <ToolbarButton 
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} 
         isActive={editor.isActive('heading', { level: 2 })} 
         icon={<Heading2 size={16} />} 
+        title="Heading 2"
       />
       <div className="w-px h-6 bg-slate-200 mx-1" />
       <ToolbarButton 
         onClick={() => editor.chain().focus().toggleBulletList().run()} 
         isActive={editor.isActive('bulletList')} 
         icon={<List size={16} />} 
+        title="Bullet List"
       />
       <ToolbarButton 
         onClick={() => editor.chain().focus().toggleOrderedList().run()} 
         isActive={editor.isActive('orderedList')} 
         icon={<ListOrdered size={16} />} 
+        title="Ordered List"
       />
       <div className="w-px h-6 bg-slate-200 mx-1" />
       <ToolbarButton 
         onClick={() => editor.chain().focus().toggleCodeBlock().run()} 
         isActive={editor.isActive('codeBlock')} 
         icon={<Code size={16} />} 
+        title="Code Block"
       />
       <ToolbarButton 
         onClick={() => editor.chain().focus().toggleBlockquote().run()} 
         isActive={editor.isActive('blockquote')} 
         icon={<Quote size={16} />} 
+        title="Blockquote"
       />
     </div>
   );
 };
 
-const ToolbarButton = ({ onClick, isActive, icon }: { onClick: () => void, isActive: boolean, icon: any }) => (
+const ToolbarButton = ({ onClick, isActive, icon, title }: { onClick: () => void, isActive: boolean, icon: React.ReactNode, title: string }) => (
   <button 
+    type="button"
     onClick={onClick}
+    title={title}
+    aria-label={title}
     className={`p-2 rounded-lg transition-all ${isActive ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
   >
     {icon}
@@ -109,6 +120,9 @@ export default function AssignmentBuilder() {
                 Strategic Assignment Builder
              </div>
              <input 
+               id="assign-title"
+               title="Assignment Title"
+               aria-label="Enter the title of the assignment"
                className="w-full bg-transparent border-none text-5xl lg:text-6xl font-black text-slate-900 tracking-tighter outline-none placeholder:text-slate-200"
                placeholder="Assignment Title..."
                value={title}
@@ -160,6 +174,9 @@ export default function AssignmentBuilder() {
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Maximum Points</label>
                     <div className="relative">
                        <input 
+                         id="assign-points"
+                         title="Maximum Points"
+                         aria-label="Set maximum marks for this assignment"
                          type="number" 
                          className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 h-16 text-slate-900 font-black focus:bg-white focus:border-blue-600 transition-all outline-none"
                          value={points}
@@ -173,6 +190,9 @@ export default function AssignmentBuilder() {
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Strategic Deadline</label>
                     <div className="relative">
                        <input 
+                         id="assign-deadline"
+                         title="Assignment Deadline"
+                         aria-label="Select the submission deadline"
                          type="datetime-local" 
                          className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 h-16 text-slate-900 font-black focus:bg-white focus:border-blue-600 transition-all outline-none"
                          value={dueDate}
@@ -191,7 +211,7 @@ export default function AssignmentBuilder() {
                     <h3 className="text-sm font-black uppercase tracking-widest">Rubric Architect</h3>
                  </div>
                  <p className="text-sm font-bold opacity-80 mb-8 leading-relaxed italic">
-                    "Define intelligent grading criteria to ensure transparent and objective evaluation."
+                    &quot;Define intelligent grading criteria to ensure transparent and objective evaluation.&quot;
                  </p>
                  <button className="w-full py-4 rounded-2xl bg-white text-blue-600 font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 transition-all shadow-lg active:scale-95">
                     Generate AI Rubric
@@ -226,6 +246,8 @@ function ProtocolToggle({ label, defaultChecked }: { label: string, defaultCheck
        <span className="text-xs font-black text-slate-900 uppercase tracking-widest group-hover:text-blue-600 transition-colors">{label}</span>
        <button 
          onClick={() => setChecked(!checked)}
+         title={`Toggle ${label}`}
+         aria-label={`Toggle the ${label} submission protocol`}
          className={`w-12 h-6 rounded-full transition-all relative ${checked ? 'bg-blue-600 shadow-inner' : 'bg-slate-200'}`}
        >
           <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${checked ? 'left-7' : 'left-1'}`} />

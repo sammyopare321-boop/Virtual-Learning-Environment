@@ -177,9 +177,13 @@ export default function CourseIntelligence() {
                            <span className="text-[9px] font-bold text-slate-400 uppercase">Last seen 4d ago</span>
                         </div>
                      </div>
-                     <button className="p-2 rounded-lg text-slate-300 hover:text-blue-600 hover:bg-blue-50 transition-all opacity-0 group-hover:opacity-100">
-                        <MessageSquare size={16} />
-                     </button>
+                      <button 
+                        title="Message Student"
+                        aria-label="Send a direct message to this student"
+                        className="p-2 rounded-lg text-slate-300 hover:text-blue-600 hover:bg-blue-50 transition-all opacity-0 group-hover:opacity-100"
+                      >
+                         <MessageSquare size={16} />
+                      </button>
                   </div>
                ))}
             </div>
@@ -217,8 +221,15 @@ export default function CourseIntelligence() {
   );
 }
 
-function StatCard({ icon, label, value, trend, trendUp, color }: any) {
-  const colorMap: any = {
+function StatCard({ icon, label, value, trend, trendUp, color }: { 
+  icon: React.ReactNode, 
+  label: string, 
+  value: string, 
+  trend: string, 
+  trendUp: boolean, 
+  color: 'blue' | 'emerald' | 'indigo' | 'rose'
+}) {
+  const colorMap: Record<string, string> = {
     blue: 'text-blue-600 bg-blue-50',
     emerald: 'text-emerald-600 bg-emerald-50',
     indigo: 'text-indigo-600 bg-indigo-50',
@@ -244,7 +255,7 @@ function StatCard({ icon, label, value, trend, trendUp, color }: any) {
   );
 }
 
-function ActionBtn({ icon, label }: any) {
+function ActionBtn({ icon, label }: { icon: React.ReactNode, label: string }) {
   return (
     <button className="w-full flex items-center justify-between p-4 rounded-2xl bg-white/10 border border-white/10 hover:bg-white/20 transition-all group">
        <div className="flex items-center gap-3">
@@ -256,8 +267,14 @@ function ActionBtn({ icon, label }: any) {
   );
 }
 
-function ActivityItem({ icon, label, time, detail, color }: any) {
-  const colors: any = {
+function ActivityItem({ icon, label, time, detail, color }: { 
+  icon: React.ReactNode, 
+  label: string, 
+  time: string, 
+  detail: string, 
+  color: 'blue' | 'emerald' | 'indigo'
+}) {
+  const colors: Record<string, string> = {
     blue: 'bg-blue-600 shadow-blue-600/20',
     emerald: 'bg-emerald-600 shadow-emerald-600/20',
     indigo: 'bg-indigo-600 shadow-indigo-600/20',

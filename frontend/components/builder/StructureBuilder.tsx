@@ -84,10 +84,20 @@ function SortableModule({ module, onAddItem, onDeleteModule, onToggle, onUpdateM
            </div>
 
            <div className="flex items-center gap-2">
-              <button onClick={onDeleteModule} className="p-3 rounded-2xl bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100">
+              <button 
+                onClick={onDeleteModule} 
+                title="Delete Module"
+                aria-label={`Delete the module titled ${module.title}`}
+                className="p-3 rounded-2xl bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100"
+              >
                 <Trash2 size={18} />
               </button>
-              <button onClick={onToggle} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${module.isExpanded ? 'bg-blue-600 text-white rotate-180' : 'bg-slate-50 text-slate-400'}`}>
+              <button 
+                onClick={onToggle} 
+                title={module.isExpanded ? "Collapse Module" : "Expand Module"}
+                aria-label={module.isExpanded ? "Collapse module details" : "Expand module details"}
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${module.isExpanded ? 'bg-blue-600 text-white rotate-180' : 'bg-slate-50 text-slate-400'}`}
+              >
                 <ChevronDown size={20} strokeWidth={3} />
               </button>
            </div>
@@ -114,7 +124,11 @@ function SortableModule({ module, onAddItem, onDeleteModule, onToggle, onUpdateM
                             <h5 className="font-bold text-slate-900 text-sm">{item.title}</h5>
                             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{item.type}</span>
                          </div>
-                         <button className="p-2 rounded-lg text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover/item:opacity-100">
+                         <button 
+                           title="Remove Item"
+                           aria-label={`Delete the ${item.type}: ${item.title}`}
+                           className="p-2 rounded-lg text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover/item:opacity-100"
+                         >
                             <Trash2 size={14} />
                          </button>
                       </div>
@@ -122,7 +136,7 @@ function SortableModule({ module, onAddItem, onDeleteModule, onToggle, onUpdateM
                     {module.items.length === 0 && (
                       <div className="py-12 text-center border-2 border-dashed border-slate-100 rounded-[32px] flex flex-col items-center">
                          <Sparkles size={32} className="text-slate-200 mb-4" />
-                         <p className="text-slate-400 font-bold text-sm italic">"The canvas is empty. Start building your legacy."</p>
+                         <p className="text-slate-400 font-bold text-sm italic">&quot;The canvas is empty. Start building your legacy.&quot;</p>
                       </div>
                     )}
                  </div>
@@ -143,7 +157,7 @@ function SortableModule({ module, onAddItem, onDeleteModule, onToggle, onUpdateM
   );
 }
 
-function AddButton({ icon, label, onClick }: { icon: any, label: string, onClick: () => void }) {
+function AddButton({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) {
   return (
     <button onClick={onClick} className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white border border-slate-200 text-slate-500 font-black text-[10px] uppercase tracking-widest hover:border-blue-300 hover:text-blue-600 transition-all active:scale-95">
       {icon} {label}

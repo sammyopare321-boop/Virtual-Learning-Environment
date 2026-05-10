@@ -7,7 +7,7 @@ import {
   ChevronRight, Save, HelpCircle, CheckSquare, 
   Type, FileText, Code, Upload, AlignLeft, 
   Clock, Shield, Target, Sparkles, Loader2,
-  Layout, Smartphone, Monitor
+  Layout, Smartphone, Monitor, Layers
 } from 'lucide-react';
 import { 
   DndContext, 
@@ -35,7 +35,7 @@ interface Question {
   points: number;
   required: boolean;
   options?: string[];
-  correctAnswer?: any;
+  correctAnswer?: string | string[] | number | number[] | boolean;
 }
 
 // --- SORTABLE QUESTION ITEM ---
@@ -154,8 +154,22 @@ export default function QuizBuilder() {
             </div>
             <div className="flex items-center gap-3">
                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 mr-4">
-                  <button onClick={() => setPreviewMode(false)} className={`p-2 rounded-lg transition-all ${!previewMode ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}><Monitor size={16}/></button>
-                  <button onClick={() => setPreviewMode(true)} className={`p-2 rounded-lg transition-all ${previewMode ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}><Smartphone size={16}/></button>
+                  <button 
+                    onClick={() => setPreviewMode(false)} 
+                    title="Desktop Preview"
+                    aria-label="Switch to desktop preview mode"
+                    className={`p-2 rounded-lg transition-all ${!previewMode ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                  >
+                    <Monitor size={16}/>
+                  </button>
+                  <button 
+                    onClick={() => setPreviewMode(true)} 
+                    title="Mobile Preview"
+                    aria-label="Switch to mobile preview mode"
+                    className={`p-2 rounded-lg transition-all ${previewMode ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                  >
+                    <Smartphone size={16}/>
+                  </button>
                </div>
                <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm">
                   <Eye size={16} /> Preview
@@ -225,9 +239,11 @@ export default function QuizBuilder() {
 
             <section className="space-y-6 pt-10 border-t border-slate-200">
                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Point Allocation</label>
+                  <label htmlFor="points" className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Point Allocation</label>
                   <input 
+                    id="points"
                     type="number" 
+                    placeholder="e.g. 10"
                     className="w-full bg-white border-2 border-slate-100 rounded-xl px-4 h-12 text-slate-900 font-black focus:border-blue-600 outline-none transition-all"
                     value={activeQuestion.points}
                     onChange={(e) => updateQuestion(activeId, { points: parseInt(e.target.value) })}
@@ -237,6 +253,8 @@ export default function QuizBuilder() {
                   <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Required</span>
                   <button 
                     onClick={() => updateQuestion(activeId, { required: !activeQuestion.required })}
+                    title={activeQuestion.required ? "Make Optional" : "Make Required"}
+                    aria-label={activeQuestion.required ? "Currently required, click to make optional" : "Currently optional, click to make required"}
                     className={`w-12 h-6 rounded-full transition-all relative ${activeQuestion.required ? 'bg-blue-600 shadow-inner' : 'bg-slate-200'}`}
                   >
                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${activeQuestion.required ? 'left-7' : 'left-1'}`} />
@@ -277,6 +295,8 @@ function renderQuestionCanvas(q: Question, update: (id: string, u: Partial<Quest
                     {String.fromCharCode(65 + i)}
                  </div>
                  <input 
+                   title={`Option ${String.fromCharCode(65 + i)}`}
+                   placeholder="Enter answer option..."
                    className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 h-16 text-slate-900 font-bold focus:bg-white focus:border-blue-600 transition-all outline-none"
                    value={opt}
                    onChange={(e) => {
@@ -285,9 +305,13 @@ function renderQuestionCanvas(q: Question, update: (id: string, u: Partial<Quest
                      update(q.id, { options: next });
                    }}
                  />
-                 <button className="p-3 rounded-xl bg-slate-50 text-slate-300 hover:bg-rose-50 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100">
-                    <Trash2 size={18} />
-                 </button>
+                  <button 
+                    title="Remove Option"
+                    aria-label="Remove this answer option"
+                    className="p-3 rounded-xl bg-slate-50 text-slate-300 hover:bg-rose-50 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
+                  >
+                     <Trash2 size={18} />
+                  </button>
               </motion.div>
            ))}
            <button 

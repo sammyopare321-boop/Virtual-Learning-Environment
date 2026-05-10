@@ -15,4 +15,7 @@ router.get('/me/grades/:courseId/final', protect, authorize('student'), getMyCou
 const { getMyAttendance } = require('../controllers/attendanceController');
 router.get('/me/attendance/:courseId', protect, authorize('student'), getMyAttendance);
 
+const { getMyMilestones } = require('../controllers/studentController');
+router.get('/me/milestones', protect, authorize('student'), getMyMilestones);
+
 module.exports = router;

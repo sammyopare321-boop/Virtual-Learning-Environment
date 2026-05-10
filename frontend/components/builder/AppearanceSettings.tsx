@@ -47,7 +47,12 @@ export default function AppearanceSettings() {
                  <>
                     <img src={banner} className="w-full h-full object-cover" alt="Course Banner" />
                     <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-4">
-                       <button onClick={() => setBanner(null)} className="p-4 rounded-full bg-white text-rose-600 shadow-xl hover:scale-110 transition-transform">
+                       <button 
+                          onClick={() => setBanner(null)} 
+                          title="Remove Banner"
+                          aria-label="Remove course banner image"
+                          className="p-4 rounded-full bg-white text-rose-600 shadow-xl hover:scale-110 transition-transform"
+                        >
                           <Trash2 size={24} />
                        </button>
                     </div>
@@ -73,6 +78,8 @@ export default function AppearanceSettings() {
                  <button 
                    key={accent.color}
                    onClick={() => setSelectedAccent(accent.color)}
+                   title={`Select ${accent.name} Accent`}
+                   aria-label={`Set ${accent.name} as course accent color`}
                    className={`h-20 rounded-3xl border-4 transition-all flex flex-col items-center justify-center relative group ${selectedAccent === accent.color ? 'border-blue-100 scale-105 shadow-xl shadow-blue-900/5' : 'border-transparent hover:border-slate-100'}`}
                  >
                     <div className="w-8 h-8 rounded-full mb-1 flex items-center justify-center transition-transform group-hover:scale-110" style={{ backgroundColor: accent.color }}>

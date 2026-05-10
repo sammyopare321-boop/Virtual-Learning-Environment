@@ -6,7 +6,7 @@ import {
   Sparkles, Shield, Layout, Palette, CheckCircle2, 
   ArrowRight, ArrowLeft, Save, Loader2, Info
 } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, UseFormRegister, FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
@@ -21,9 +21,9 @@ const courseSchema = z.object({
   code: z.string().min(3, "Course code is required"),
   description: z.string().min(20, "Please provide a more detailed description"),
   department: z.string().min(2, "Department is required"),
-  semester: z.string().default('Semester 1'),
-  level: z.string().default('Level 100'),
-  accentColor: z.string().default('#2563EB'),
+  semester: z.string().min(1, "Semester is required"),
+  level: z.string().min(1, "Level is required"),
+  accentColor: z.string().min(1, "Accent color is required"),
 });
 
 type CourseFormData = z.infer<typeof courseSchema>;
@@ -43,6 +43,15 @@ export default function CourseWizard() {
   const { register, handleSubmit, formState: { errors, isValid }, watch } = useForm<CourseFormData>({
     resolver: zodResolver(courseSchema),
     mode: 'onChange',
+    defaultValues: {
+      title: '',
+      code: '',
+      description: '',
+      department: '',
+      semester: 'Semester 1',
+      level: 'Level 100',
+      accentColor: '#2563EB',
+    }
   });
 
   const formValues = watch();
@@ -104,6 +113,8 @@ export default function CourseWizard() {
                       }
                     }}
                     disabled={i > currentStep}
+                    title={`Go to ${step.title} step`}
+                    aria-label={`Navigate to the ${step.title} stage of course creation`}
                     className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 border-4 ${
                       isCurrent 
                         ? 'bg-blue-600 border-blue-100 text-white shadow-xl shadow-blue-600/20 scale-110' 
@@ -184,7 +195,7 @@ export default function CourseWizard() {
                          </div>
                       </div>
                       {/* Course Accent Color Visual */}
-                      <div className="absolute top-0 right-0 w-32 h-32 opacity-20 -translate-y-1/2 translate-x-1/2 rounded-full" style={{ backgroundColor: '#2563EB' }} />
+                      <div className="absolute top-0 right-0 w-32 h-32 opacity-20 -translate-y-1/2 translate-x-1/2 rounded-full" style={{ backgroundColor: formValues.accentColor }} />
                    </div>
                    <div className="p-8">
                       <div className="flex items-center gap-2 text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-3">
@@ -241,7 +252,12 @@ function getInsight(step: number) {
   return insights[step] || insights[0];
 }
 
-function renderStepContent(step: number, register: any, errors: any, values: any) {
+function renderStepContent(
+  step: number, 
+  register: UseFormRegister<CourseFormData>, 
+  errors: FieldErrors<CourseFormData>, 
+  values: CourseFormData
+) {
   switch(step) {
     case 0:
       return (
@@ -310,7 +326,7 @@ function renderStepContent(step: number, register: any, errors: any, values: any
             <Layout size={40} />
          </div>
          <h3 className="text-2xl font-black text-slate-900 mb-2">{STEPS[step].title} Hub</h3>
-         <p className="text-slate-500 font-medium italic italic">"This intelligence unit is being calibrated. Please proceed with the syllabus."</p>
+         <p className="text-slate-500 font-medium italic">&quot;This intelligence unit is being calibrated. Please proceed with the syllabus.&quot;</p>
       </div>;
   }
 }

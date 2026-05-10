@@ -76,7 +76,7 @@ export default function AccessSettings() {
            </div>
            
            <div className="relative group">
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Assign Primary Instructor</label>
+              <label htmlFor="faculty-select" className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Assign Primary Instructor</label>
               {loading ? (
                  <div className="h-16 w-full bg-slate-50 animate-pulse rounded-2xl flex items-center px-6">
                     <Loader2 size={18} className="animate-spin text-blue-600 mr-3" />
@@ -85,6 +85,9 @@ export default function AccessSettings() {
               ) : (
                 <div className="relative">
                    <select 
+                     id="faculty-select"
+                     title="Select Primary Instructor"
+                     aria-label="Assign a primary instructor to this course"
                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 h-16 text-slate-900 font-black focus:bg-white focus:border-blue-600 transition-all outline-none appearance-none cursor-pointer"
                      value={selectedTeacher}
                      onChange={(e) => setSelectedTeacher(e.target.value)}
@@ -116,6 +119,9 @@ export default function AccessSettings() {
                  <h3 className="font-black text-slate-900 text-sm uppercase tracking-widest">Class Capacity</h3>
               </div>
               <input 
+                id="class-capacity"
+                title="Maximum Class Capacity"
+                aria-label="Set maximum student enrollment capacity"
                 type="number" 
                 placeholder="Unlimited"
                 className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 h-16 text-slate-900 font-black focus:bg-white focus:border-blue-600 transition-all outline-none"
@@ -130,7 +136,12 @@ export default function AccessSettings() {
                  <Target size={18} className="text-blue-600" />
                  <h3 className="font-black text-slate-900 text-sm uppercase tracking-widest">Grading Scheme</h3>
               </div>
-              <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 h-16 text-slate-900 font-black focus:bg-white focus:border-blue-600 transition-all outline-none appearance-none">
+              <select 
+                id="grading-scheme"
+                title="Course Grading Scheme"
+                aria-label="Select the primary evaluation logic for this course"
+                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 h-16 text-slate-900 font-black focus:bg-white focus:border-blue-600 transition-all outline-none appearance-none"
+              >
                  <option>Standard Academic (A-F)</option>
                  <option>Pass / Fail</option>
                  <option>Percentage Based</option>

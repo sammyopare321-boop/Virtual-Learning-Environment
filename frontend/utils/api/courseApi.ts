@@ -44,4 +44,5 @@ export const courseApi = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   gradeSubmission: (subId: string, data: { grade: number, feedback: string }) => api.patch(`/api/submissions/${subId}/grade`, data),
+  getGlobalMilestones: () => api.get('/api/students/me/milestones'),
 };

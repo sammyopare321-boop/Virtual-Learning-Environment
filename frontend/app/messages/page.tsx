@@ -142,7 +142,11 @@ export default function MessagesPage() {
                    <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Messages.</h1>
                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">Social Pulse Active</p>
                 </div>
-                <button className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-90">
+                <button 
+                  title="New Conversation"
+                  aria-label="Start a new conversation"
+                  className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-90"
+                >
                   <Plus size={24} />
                 </button>
               </div>
@@ -261,13 +265,25 @@ export default function MessagesPage() {
                   </div>
                   
                   <div className="flex gap-3">
-                    <button className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-all active:scale-95">
+                    <button 
+                      title="Voice Call"
+                      aria-label="Start voice call"
+                      className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-all active:scale-95"
+                    >
                       <Phone size={20} />
                     </button>
-                    <button className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-all active:scale-95">
+                    <button 
+                      title="Video Call"
+                      aria-label="Start video call"
+                      className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-all active:scale-95"
+                    >
                       <Video size={20} />
                     </button>
-                    <button className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-100 transition-all">
+                    <button 
+                      title="More Options"
+                      aria-label="More conversation options"
+                      className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-100 transition-all"
+                    >
                       <MoreVertical size={20} />
                     </button>
                   </div>
@@ -316,7 +332,12 @@ export default function MessagesPage() {
                 {/* Chat Input */}
                 <div className="p-8 bg-white border-t border-slate-100 shrink-0">
                   <form onSubmit={handleSend} className="flex gap-4 relative">
-                    <button type="button" className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-100 hover:text-slate-600 transition-all shrink-0">
+                    <button 
+                      type="button" 
+                      title="Attach File"
+                      aria-label="Attach academic material"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-100 hover:text-slate-600 transition-all shrink-0"
+                    >
                       <Plus size={24} />
                     </button>
                     <input
@@ -328,6 +349,8 @@ export default function MessagesPage() {
                     />
                     <button 
                       type="submit" 
+                      title="Send Message"
+                      aria-label="Transmit message"
                       disabled={!messageText.trim()} 
                       className="w-16 h-16 rounded-[24px] bg-blue-600 text-white cursor-pointer flex items-center justify-center shadow-2xl shadow-blue-600/30 disabled:opacity-50 disabled:shadow-none hover:bg-blue-700 transition-all active:scale-90 shrink-0"
                     >
