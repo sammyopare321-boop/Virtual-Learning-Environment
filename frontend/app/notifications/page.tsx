@@ -29,7 +29,7 @@ const FILTERS: { id: FilterType; label: string }[] = [
   { id: 'announcements', label: 'Announcements' },
 ];
 
-const S = {
+const S: Record<string, React.CSSProperties> = {
   wrap:       { display:'flex', minHeight:'100vh', backgroundColor:'#f8fafc', fontFamily:"'Sora','Inter',sans-serif" },
   sidebar:    { width:240, backgroundColor:'#fff', borderRight:'1px solid #e2e8f0', display:'flex', flexDirection:'column', flexShrink:0, position:'sticky' as const, top:0, height:'100vh' },
   logoBox:    { padding:'20px 16px 16px', borderBottom:'1px solid #f1f5f9' },

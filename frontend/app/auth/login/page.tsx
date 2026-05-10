@@ -12,7 +12,9 @@ import {
   CheckCircle2, Globe
 } from 'lucide-react';
 
-export default function LoginPage() {
+import { Suspense } from 'react';
+
+function LoginContent() {
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -260,5 +262,13 @@ export default function LoginPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-surface-900 flex items-center justify-center"><Loader2 className="animate-spin text-primary-500" size={32} /></div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -33,7 +33,7 @@ const linksByRole: Record<string, any> = { student: studentLinks, teacher: teach
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const links = linksByRole[user?.role] || studentLinks;
+  const links = (user?.role && linksByRole[user.role as keyof typeof linksByRole]) || studentLinks;
 
   return (
     <aside className="w-60 bg-white border-r border-surface-200 flex flex-col h-full">

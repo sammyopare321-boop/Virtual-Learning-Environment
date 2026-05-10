@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth, User } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { 
   LayoutDashboard, BookOpen, Users, Settings, 
   LogOut, Bell, MessageSquare, Menu, X, 
@@ -42,7 +42,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (pathname?.startsWith('/auth')) return <>{children}</>;
 
   const filteredNav = navItems.filter(item => 
-    item.roles.includes(user?.role) || (item.href === '/dashboard' && user)
+    (user?.role && item.roles.includes(user.role)) || (item.href === '/dashboard' && user)
   );
 
   const NavContent = () => (

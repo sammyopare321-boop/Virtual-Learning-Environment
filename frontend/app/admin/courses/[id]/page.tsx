@@ -175,7 +175,7 @@ export default function AdminCourseDetailPage() {
                   </div>
                   <div>
                     <p style={{ fontSize:14, fontWeight:600, color:'#0f172a', margin:0 }}>{typeof course?.teacher === 'object' ? course.teacher?.name : 'TBA'}</p>
-                    <p style={{ fontSize:12, color:'#64748b', margin:0 }}>{typeof course?.teacher === 'object' ? course.teacher?.email : ''}</p>
+                    <p style={{ fontSize:12, color:'#64748b', margin:0 }}>{typeof course?.teacher === 'object' ? (course.teacher as any)?.email : ''}</p>
                   </div>
                 </div>
               </div>
