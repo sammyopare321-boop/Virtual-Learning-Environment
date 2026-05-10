@@ -16,6 +16,25 @@ interface AuthContextType {
   updateUser: (updatedData: Partial<User>) => void;
 }
 
+// ─── Cross-domain relay cookie ────────────────────────────────────────────────
+// The backend's HttpOnly cookie lives on *.onrender.com, which Vercel's Edge
+// middleware cannot see. We store the JWT in a regular cookie on the Vercel
+// domain as a "session signal" so middleware can guard protected routes.
+// The real Bearer token is always used for actual API calls.
+const RELAY_COOKIE = 'token';
+
+function setRelayCookie(token: string) {
+  if (typeof document === 'undefined') return;
+  const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `${RELAY_COOKIE}=${token}; path=/; expires=${expires}; SameSite=Lax`;
+}
+
+function clearRelayCookie() {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${RELAY_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -44,10 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await authApi.login({ email, password });
     const { data, token } = res.data;
     
-    // 1. Set the token in Axios headers for immediate subsequent requests
+    // 1. Set Bearer token for API calls
     setAuthToken(token);
     
-    // 2. Update local state
+    // 2. Set relay cookie so Next.js middleware can detect session on Vercel domain
+    setRelayCookie(token);
+    
+    // 3. Update local state
     setUser(data);
     
     return data;
@@ -58,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await authApi.logout();
     } finally {
       setAuthToken(null);
+      clearRelayCookie();
       setUser(null);
       router.push('/auth/login');
     }

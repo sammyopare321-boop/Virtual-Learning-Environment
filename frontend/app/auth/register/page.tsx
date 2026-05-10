@@ -3,10 +3,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { authApi } from '@/utils/api/authApi';
-import { setAuthToken } from '@/utils/api/axiosInstance';
+import { useAuth } from '@/context/AuthContext';
 import { 
   GraduationCap, User, BookOpen, Building2, Mail, Lock, 
   Check, Loader2, ArrowRight, ShieldCheck, Zap, 
@@ -52,7 +52,7 @@ export default function RegisterPage() {
     });
   }, [form.password]);
 
-  const { updateUser } = useAuth();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,19 +62,15 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      const res = await authApi.register(form);
-      const { data, token } = res.data;
-      
-      // 1. Set global token for Axios
-      setAuthToken(token);
-      
-      // 2. Update global user state
-      updateUser(data);
-      
+      // Step 1: Create the account
+      await authApi.register(form);
       toast.success('Account created! Welcome to UniLearn.');
       
-      // 3. Navigate to appropriate dashboard
-      router.push(`/dashboard/${data.role}`);
+      // Step 2: Login immediately (this sets relay cookie + Bearer token)
+      const loggedInUser = await login(form.email, form.password);
+      
+      // Step 3: Redirect to role-specific dashboard
+      router.push(`/dashboard/${loggedInUser.role}`);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Registration failed';
       toast.error(msg);
