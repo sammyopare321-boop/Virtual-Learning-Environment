@@ -52,7 +52,7 @@ app.use(cors({
       // Allow dynamic process.env.CLIENT_URL as well
       process.env.CLIENT_URL,
       // Add your Vercel/Netlify/Render frontend URL here once deployed:
-      // 'https://your-frontend.vercel.app',
+      'https://virtual-learning-environment.vercel.app',
       'https://virtual-learning-environment-th7m.onrender.com', // Added the render backend itself just in case
       'https://unilearn-frontend.onrender.com', // Expected Render frontend URL
     ].filter(Boolean);
