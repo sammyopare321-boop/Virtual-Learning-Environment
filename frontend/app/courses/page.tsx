@@ -1,63 +1,49 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { courseApi } from '@/utils/api/courseApi';
 import { Course } from '@/types';
 import { AxiosError } from 'axios';
-import styles from './courses.module.css';
+import Sidebar from '@/components/shared/Sidebar';
+import { 
+  Search, Filter, Plus, BookOpen, User, 
+  ChevronRight, Sparkles, AlertCircle, CheckCircle2 
+} from 'lucide-react';
 
-const statusColor: Record<string, { bg: string, color: string }> = {
-  active:   { bg:'#d1fae5', color:'#065f46' },
-  draft:    { bg:'#fef3c7', color:'#92400e' },
-  archived: { bg:'#f1f5f9', color:'#475569' },
+const statusColor: Record<string, { bg: string, text: string, border: string }> = {
+  active:   { bg: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-100' },
+  draft:    { bg: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-100' },
+  archived: { bg: 'bg-slate-100',   text: 'text-slate-600',   border: 'border-slate-200' },
 };
 
-const cardAccent = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#3b82f6','#14b8a6','#f97316'];
+const cardAccents = [
+  'from-blue-600 to-indigo-700',
+  'from-emerald-600 to-teal-700',
+  'from-violet-600 to-purple-700',
+  'from-rose-600 to-pink-700',
+  'from-amber-600 to-orange-700',
+  'from-sky-600 to-blue-700',
+];
 
 export default function CoursesPage() {
-  const { user, logout }        = useAuth();
-  const [courses, setCourses]   = useState<Course[]>([]);
+  const { user } = useAuth();
+  const [courses, setCourses] = useState<Course[]>([]);
   const [enrolled, setEnrolled] = useState<Set<string>>(new Set());
-  const [loading, setLoading]   = useState(true);
-  const [search, setSearch]     = useState('');
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [enrolling, setEnrolling] = useState<string | null>(null);
-  const [hovered, setHovered]   = useState<string | null>(null);
-  const [toast, setToast]       = useState<{ msg: string, type: string } | null>(null);
+  const [toast, setToast] = useState<{ msg: string, type: string } | null>(null);
 
-  const showToast = (msg: string, type='success') => {
+  const showToast = (msg: string, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
 
   const isStudent = user?.role === 'student';
   const isTeacher = user?.role === 'teacher';
-
-  const navItems = user?.role === 'admin' ? [
-    { href:'/dashboard/admin', label:'Dashboard',    icon:'📊' },
-    { href:'/admin/users',     label:'Users',         icon:'👥' },
-    { href:'/admin/courses',   label:'Courses',       icon:'📚', active:true },
-    { href:'/admin/analytics', label:'Analytics',     icon:'📈' },
-    { href:'/admin/logs',      label:'Activity Logs', icon:'📋' },
-    { href:'/profile',         label:'Profile',       icon:'👤' },
-  ] : user?.role === 'teacher' ? [
-    { href:'/dashboard/teacher', label:'Dashboard',     icon:'📊' },
-    { href:'/courses',           label:'My Courses',    icon:'📚', active:true },
-    { href:'/messages',          label:'Messages',      icon:'💬' },
-    { href:'/notifications',     label:'Notifications', icon:'🔔' },
-    { href:'/profile',           label:'Profile',       icon:'👤' },
-  ] : [
-    { href:'/dashboard/student', label:'Dashboard',     icon:'📊' },
-    { href:'/courses',           label:'My Courses',    icon:'📚', active:true },
-    { href:'/messages',          label:'Messages',      icon:'💬' },
-    { href:'/notifications',     label:'Notifications', icon:'🔔' },
-    { href:'/profile',           label:'Profile',       icon:'👤' },
-  ];
-
-  const avatarBg = user?.role === 'teacher' ? '#faf5ff' : user?.role === 'admin' ? '#e0e7ff' : '#d1fae5';
-  const avatarColor = user?.role === 'teacher' ? '#7c3aed' : user?.role === 'admin' ? '#4338ca' : '#065f46';
-  const roleBadgeBg = user?.role === 'teacher' ? '#faf5ff' : user?.role === 'admin' ? '#e0e7ff' : '#d1fae5';
 
   useEffect(() => {
     if (isStudent) {
@@ -72,7 +58,7 @@ export default function CoursesPage() {
 
   const fetchCourses = useCallback(() => {
     const params: { search?: string; status?: string } = {};
-    if (search)               params.search = search;
+    if (search) params.search = search;
     if (statusFilter !== 'all') params.status = statusFilter;
     
     courseApi.getAll(params)
@@ -94,16 +80,6 @@ export default function CoursesPage() {
     fetchCourses();
   }, [fetchCourses]);
 
-  const handleSearch = (val: string) => {
-    setSearch(val);
-    setLoading(true);
-  };
-
-  const handleStatusFilter = (val: string) => {
-    setStatusFilter(val);
-    setLoading(true);
-  };
-
   const handleEnroll = async (courseId: string) => {
     setEnrolling(courseId);
     try {
@@ -120,143 +96,189 @@ export default function CoursesPage() {
   };
 
   return (
-    <div className={styles.wrap}>
-      {toast && (
-        <div className={styles.toast} style={{ backgroundColor: toast.type==='error'?'#fee2e2':'#d1fae5', color: toast.type==='error'?'#991b1b':'#065f46' }}>
-          {toast.msg}
-        </div>
-      )}
+    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
+      <Sidebar />
 
-      {/* Sidebar */}
-      <aside className={styles.sidebar}>
-        <div className={styles.logoBox}>
-          <div className={styles.logoInner}>
-            <div className={styles.logoIcon}>
-              <svg width="18" height="18" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-              </svg>
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }} exit={{ opacity: 0, y: -20, x: '-50%' }}
+            className={`fixed top-8 left-1/2 z-50 px-6 py-3 rounded-full font-bold shadow-xl border flex items-center gap-2 ${
+              toast.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            }`}
+          >
+            {toast.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+            {toast.msg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <main className="flex-1 overflow-y-auto p-8 lg:p-12 scroll-smooth">
+        <div className="max-w-7xl mx-auto">
+          
+          {/* Header Section */}
+          <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
+            <div className="flex-1">
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-3 text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] mb-4"
+              >
+                <Sparkles size={14} />
+                Knowledge Ecosystem
+              </motion.div>
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter leading-none mb-6"
+              >
+                {isTeacher ? 'My Teaching' : 'Explore'} <span className="text-blue-600">Courses.</span>
+              </motion.h1>
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                className="text-slate-500 text-lg font-medium max-w-xl leading-relaxed"
+              >
+                {isTeacher 
+                  ? 'Manage your academic curriculum, track student progress, and organize your teaching materials.' 
+                  : 'Expand your horizons with our curated selection of professional and academic courses.'}
+              </motion.p>
             </div>
-            <span style={{ fontWeight:700, fontSize:16, color:'#0f172a' }}>UniLearn</span>
-          </div>
-        </div>
-        <div style={{ padding:'12px 16px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:36, height:36, borderRadius:10, backgroundColor: avatarBg, display:'flex', alignItems:'center', justifyContent:'center', color: avatarColor, fontWeight:700, fontSize:14, flexShrink:0 }}>
-            {user?.name?.charAt(0)?.toUpperCase() || '?'}
-          </div>
-          <div style={{ minWidth:0 }}>
-            <p style={{ fontSize:13, fontWeight:600, color:'#0f172a', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.name}</p>
-            <span style={{ fontSize:11, fontWeight:500, backgroundColor: roleBadgeBg, color: avatarColor, padding:'1px 8px', borderRadius:9999 }}>{user?.role}</span>
-          </div>
-        </div>
-        <nav className={styles.nav}>
-          {navItems.map(item => (
-            <Link key={item.href} href={item.href} className={item.active ? styles.linkActive : styles.link}>
-              <span style={{ fontSize:16 }}>{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
-        </nav>
-        <div style={{ padding:'10px', borderTop:'1px solid #f1f5f9' }}>
-          <button onClick={logout} className={styles.link} style={{ color: '#ef4444' }}>
-            <span>🚪</span><span>Sign out</span>
-          </button>
-        </div>
-      </aside>
 
-      {/* Main Content */}
-      <main className={styles.main}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:32 }}>
-          <div>
-            <h1 style={{ fontSize:28, fontWeight:700, color:'#0f172a', margin:0 }}>{isTeacher ? 'My Teaching Courses' : 'Browse Courses'}</h1>
-            <p style={{ fontSize:14, color:'#64748b', marginTop:4 }}>{isTeacher ? 'Manage your active courses and modules.' : 'Enroll in new subjects to start learning.'}</p>
-          </div>
-          <div style={{ display:'flex', gap:12 }}>
-            <input 
-              className={styles.input}
-              style={{ width:260 }}
-              placeholder="🔍 Search courses..."
-              value={search}
-              onChange={e => handleSearch(e.target.value)}
-            />
-            {user?.role === 'admin' && (
-              <Link href="/admin/courses/new" style={{ padding:'10px 20px', borderRadius:12, backgroundColor:'#4f46e5', color:'#fff', fontSize:14, fontWeight:600, textDecoration:'none' }}>
-                + Create Course
-              </Link>
-            )}
-          </div>
-        </div>
+            <div className="flex items-center gap-4">
+              <div className="relative group">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                <input 
+                  type="text" 
+                  placeholder="Search courses..."
+                  className="bg-white border border-slate-200 text-slate-900 pl-14 pr-6 h-16 rounded-2xl focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none font-bold shadow-sm w-full md:w-80"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+              {user?.role === 'admin' && (
+                <Link href="/admin/courses/new" className="h-16 px-8 rounded-2xl bg-blue-600 text-white font-black flex items-center gap-3 hover:bg-blue-700 shadow-xl shadow-blue-600/20 transition-all hover:-translate-y-1 active:scale-95 uppercase tracking-widest text-sm">
+                  <Plus size={20} strokeWidth={3} /> Create
+                </Link>
+              )}
+            </div>
+          </header>
 
-        {loading ? (
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:300, color:'#64748b' }}>
-            Loading courses...
+          {/* Filter Bar */}
+          <div className="flex items-center gap-4 mb-10 overflow-x-auto pb-4 no-scrollbar">
+            {['all', 'active', 'draft', 'archived'].map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${
+                  statusFilter === status 
+                    ? 'bg-slate-900 text-white shadow-lg' 
+                    : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {status}
+              </button>
+            ))}
           </div>
-        ) : courses.length === 0 ? (
-          <div style={{ textAlign:'center', padding:'80px 20px', backgroundColor:'#fff', borderRadius:24, border:'1px solid #e2e8f0' }}>
-            <div style={{ fontSize:48, marginBottom:16 }}>📚</div>
-            <h3 style={{ fontSize:18, fontWeight:700, color:'#0f172a' }}>No courses found</h3>
-            <p style={{ fontSize:14, color:'#64748b' }}>Try adjusting your search or filters.</p>
-          </div>
-        ) : (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(320px, 1fr))', gap:24 }}>
-            {courses.map((course, idx) => {
-              const accent = cardAccent[idx % cardAccent.length];
-              const isEnrolled = enrolled.has(course._id);
-              const status = statusColor[course.status] || statusColor.active;
-              const teacherName = typeof course.teacher === 'object' ? course.teacher?.name : 'TBA';
 
-              return (
-                <div 
-                  key={course._id} 
-                  className={styles.card}
-                  onMouseEnter={() => setHovered(course._id)}
-                  onMouseLeave={() => setHovered(null)}
-                >
-                  <div style={{ height:8, backgroundColor: accent }} />
-                  <div style={{ padding:24, flex:1 }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
-                      <span style={{ fontSize:12, fontWeight:700, color: accent, textTransform:'uppercase', letterSpacing:'0.05em' }}>{course.code}</span>
-                      <span className={styles.badge} style={{ backgroundColor: status.bg, color: status.color }}>{course.status}</span>
-                    </div>
-                    <h3 style={{ fontSize:18, fontWeight:700, color:'#0f172a', margin:'0 0 8px', lineHeight:1.4 }}>{course.title}</h3>
-                    <p style={{ fontSize:14, color:'#64748b', margin:'0 0 20px', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden', minHeight:40 }}>
-                      {course.description || 'No description provided.'}
-                    </p>
-                    
-                    <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 0', borderTop:'1px solid #f1f5f9' }}>
-                      <div style={{ width:32, height:32, borderRadius:8, backgroundColor:'#f8fafc', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>👤</div>
-                      <div>
-                        <p style={{ fontSize:11, color:'#94a3b8', margin:0, textTransform:'uppercase', fontWeight:700 }}>Instructor</p>
-                        <p style={{ fontSize:13, fontWeight:600, color:'#475569', margin:0 }}>{teacherName}</p>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="h-[400px] rounded-[40px] bg-white border border-slate-100 animate-pulse" />
+              ))}
+            </div>
+          ) : courses.length === 0 ? (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-[40px] border border-slate-200 p-20 text-center shadow-sm"
+            >
+              <div className="w-24 h-24 bg-blue-50 rounded-[32px] flex items-center justify-center mx-auto mb-8 shadow-inner">
+                <BookOpen size={48} className="text-blue-600/20" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">No courses found.</h3>
+              <p className="text-slate-500 font-medium max-w-sm mx-auto leading-relaxed">
+                We couldn't find any courses matching your current search or filters.
+              </p>
+            </motion.div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+              {courses.map((course, idx) => {
+                const accent = cardAccents[idx % cardAccents.length];
+                const isEnrolled = enrolled.has(course._id);
+                const status = statusColor[course.status] || statusColor.active;
+                const teacherName = typeof course.teacher === 'object' ? course.teacher?.name : 'TBA';
+
+                return (
+                  <motion.div
+                    key={course._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="group relative bg-white rounded-[40px] border border-slate-200 hover:border-blue-500 transition-all duration-500 overflow-hidden hover:shadow-2xl hover:shadow-blue-900/5 hover:-translate-y-1"
+                  >
+                    {/* Course Banner */}
+                    <div className={`h-32 bg-gradient-to-br ${accent} p-8 relative overflow-hidden`}>
+                      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20" />
+                      <div className="relative z-10 flex justify-between items-start">
+                        <span className="px-3 py-1 rounded-lg bg-white/20 backdrop-blur-md text-[10px] font-black text-white uppercase tracking-widest border border-white/20">
+                          {course.code}
+                        </span>
+                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${status.bg} ${status.text} ${status.border}`}>
+                          {course.status}
+                        </span>
                       </div>
                     </div>
-                  </div>
 
-                  <div style={{ padding:'16px 24px', backgroundColor:'#f8fafc', borderTop:'1px solid #f1f5f9', display:'flex', gap:12 }}>
-                    {isStudent ? (
-                      isEnrolled ? (
-                        <Link href={`/courses/${course._id}`} style={{ flex:1, textAlign:'center', padding:'10px', borderRadius:10, backgroundColor: accent, color:'#fff', fontSize:14, fontWeight:600, textDecoration:'none' }}>
-                          Continue Learning
-                        </Link>
-                      ) : (
-                        <button 
-                          onClick={() => handleEnroll(course._id)}
-                          disabled={enrolling === course._id}
-                          style={{ flex:1, padding:'10px', borderRadius:10, border:`1px solid ${accent}`, color: accent, fontSize:14, fontWeight:600, background:'transparent', cursor:'pointer' }}
-                        >
-                          {enrolling === course._id ? 'Enrolling...' : 'Enroll Now'}
-                        </button>
-                      )
-                    ) : (
-                      <Link href={`/courses/${course._id}`} style={{ flex:1, textAlign:'center', padding:'10px', borderRadius:10, backgroundColor:'#f1f5f9', color:'#475569', fontSize:14, fontWeight:600, textDecoration:'none' }}>
-                        View Details
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                    <div className="p-8 flex flex-col h-[calc(100%-128px)]">
+                      <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight leading-tight group-hover:text-blue-600 transition-colors">
+                        {course.title}
+                      </h3>
+                      <p className="text-slate-500 font-medium line-clamp-2 mb-8 text-sm leading-relaxed">
+                        {course.description || 'No description provided for this academic program.'}
+                      </p>
+
+                      <div className="mt-auto">
+                        <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 mb-8">
+                          <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400">
+                            <User size={18} />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Instructor</p>
+                            <p className="text-sm font-black text-slate-700 leading-none">{teacherName}</p>
+                          </div>
+                        </div>
+
+                        {isStudent ? (
+                          isEnrolled ? (
+                            <Link 
+                              href={`/courses/${course._id}`}
+                              className="flex items-center justify-center gap-2 w-full h-14 rounded-2xl bg-slate-900 text-white font-black text-sm hover:bg-blue-600 transition-all uppercase tracking-widest shadow-xl shadow-slate-900/10 group/btn"
+                            >
+                              Continue Learning <ChevronRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
+                            </Link>
+                          ) : (
+                            <button 
+                              onClick={() => handleEnroll(course._id)}
+                              disabled={enrolling === course._id}
+                              className="w-full h-14 rounded-2xl border-2 border-slate-200 text-slate-900 font-black text-sm hover:border-blue-500 hover:text-blue-600 transition-all uppercase tracking-widest disabled:opacity-50"
+                            >
+                              {enrolling === course._id ? 'Enrolling...' : 'Enroll in Course'}
+                            </button>
+                          )
+                        ) : (
+                          <Link 
+                            href={`/courses/${course._id}`}
+                            className="flex items-center justify-center gap-2 w-full h-14 rounded-2xl bg-slate-100 text-slate-600 font-black text-sm hover:bg-slate-200 transition-all uppercase tracking-widest"
+                          >
+                            View Course Hub <ChevronRight size={18} />
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
