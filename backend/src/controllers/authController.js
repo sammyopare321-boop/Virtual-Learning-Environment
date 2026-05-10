@@ -94,8 +94,8 @@ exports.updateMe = asyncHandler(async (req, res, next) => {
 exports.logout = asyncHandler(async (req, res) => {
   res.cookie('token', 'none', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: true,
+    sameSite: 'none',
     maxAge: 0, // Immediately expire
   });
   res.status(200).json({ success: true, message: 'Logged out successfully' });
@@ -107,8 +107,8 @@ const sendTokenResponse = (user, statusCode, res) => {
 
   const cookieOptions = {
     httpOnly: true,                                      // Not accessible via document.cookie — XSS safe
-    secure: process.env.NODE_ENV === 'production',       // HTTPS only in production
-    sameSite: 'lax',                                     // CSRF protection
+    secure: true,                                        // MUST be true for SameSite: 'none'
+    sameSite: 'none',                                    // Required for cross-domain (Vercel -> Render)
     maxAge: 7 * 24 * 60 * 60 * 1000,                    // 7 days in ms
   };
 

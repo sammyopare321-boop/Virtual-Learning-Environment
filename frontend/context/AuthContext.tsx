@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { useRouter } from 'next/navigation';
 import { jwtDecode } from 'jwt-decode';
 import { authApi } from '@/utils/api/authApi';
+import { setAuthToken, getAuthToken } from '@/utils/api/axiosInstance';
 
 import { User } from '@/types';
 
@@ -22,27 +23,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router                = useRouter();
 
-  // Rehydrate session on mount — the HttpOnly cookie is sent automatically via withCredentials
   useEffect(() => {
+    // On load, always try to fetch the current user.
+    // The browser will automatically send the HttpOnly 'token' cookie if it exists.
     authApi.getMe()
-      .then(res => setUser(res.data.data))
-      .catch(() => setUser(null)) // No valid session — stay logged out
+      .then(res => {
+        const { data } = res.data;
+        setUser(data);
+        // If the backend returned a new token in the body (fallback), set it in headers
+        if (res.data.token) setAuthToken(res.data.token);
+      })
+      .catch(() => {
+        setAuthToken(null);
+        setUser(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await authApi.login({ email, password });
-    const { data } = res.data;
-    // Cookie is set server-side as HttpOnly — we just store the user state
+    const { data, token } = res.data;
+    
+    // 1. Set the token in Axios headers for immediate subsequent requests
+    setAuthToken(token);
+    
+    // 2. Update local state
     setUser(data);
+    
+    // 3. Navigate to dashboard
     router.push(`/dashboard/${data.role}`);
     return data;
   }, [router]);
 
   const logout = useCallback(async () => {
     try {
-      await authApi.logout(); // Clears the HttpOnly cookie on the server
+      await authApi.logout();
     } finally {
+      setAuthToken(null);
       setUser(null);
       router.push('/auth/login');
     }

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { authApi } from '@/utils/api/authApi';
+import { setAuthToken } from '@/utils/api/axiosInstance';
 import { 
   GraduationCap, User, BookOpen, Building2, Mail, Lock, 
   Check, Loader2, ArrowRight, ShieldCheck, Zap, 
@@ -51,6 +52,12 @@ export default function RegisterPage() {
     });
   }, [form.password]);
 
+  function setFrontendCookie(token: string, days = 7) {
+    if (typeof document === 'undefined') return;
+    const secure = location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `token=${token}; path=/; max-age=${days * 24 * 60 * 60}; SameSite=Lax${secure}`;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!passChecks.length || !passChecks.upper || !passChecks.number) {
@@ -59,9 +66,12 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      await authApi.register(form);
+      const res = await authApi.register(form);
+      const { data, token } = res.data;
+      setAuthToken(token);
+      setFrontendCookie(token);
       toast.success('Account created! Welcome to UniLearn.');
-      router.push('/auth/login');
+      router.push(`/dashboard/${data.role}`);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Registration failed';
       toast.error(msg);
