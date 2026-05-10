@@ -38,6 +38,9 @@ connectDB();
 
 const app = express();
 
+// Trust Render's proxy (MANDATORY for rate limiting to work on Render/Vercel)
+app.set('trust proxy', 1);
+
 // ─── GLOBAL MIDDLEWARE ────────────────────────────────────────────────────────
 
 // Security headers
@@ -94,7 +97,7 @@ app.use(timeoutHandler(30000));
 // Protects every endpoint on the API
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,  // 15 minutes
-  max: 100,                   // max 100 requests per window per IP
+  max: 300,                   // Increase to 300 requests per window
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -106,7 +109,7 @@ const globalLimiter = rateLimit({
 // Stricter limiter specifically for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,                    // only 20 login/register attempts per window
+  max: 50,                    // Increase to 50 login/register attempts per window
   standardHeaders: true,
   legacyHeaders: false,
   message: {
