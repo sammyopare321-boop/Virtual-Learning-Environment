@@ -436,20 +436,41 @@ export default function QuizDetailPage() {
                     <form onSubmit={handleAddQuestion}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                         <div className="md:col-span-2">
-                          <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Question Text *</label>
-                          <textarea rows={3} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-medium resize-none shadow-inner" placeholder="Enter academic inquiry..." value={qForm.text} onChange={e => setQForm({...qForm, text: e.target.value})} required />
+                          <label htmlFor="q-text" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Question Text *</label>
+                          <textarea 
+                            id="q-text"
+                            rows={3} 
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-medium resize-none shadow-inner" 
+                            placeholder="Enter academic inquiry..." 
+                            value={qForm.text} 
+                            onChange={e => setQForm({...qForm, text: e.target.value})} 
+                            required 
+                          />
                         </div>
                         <div>
-                          <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Item Type *</label>
-                          <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 font-bold focus:bg-white focus:border-blue-500 outline-none cursor-pointer" value={qForm.type} onChange={e => setQForm({...qForm, type: e.target.value, correctAnswer: ''})}>
+                          <label htmlFor="q-type" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Item Type *</label>
+                          <select 
+                            id="q-type"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 font-bold focus:bg-white focus:border-blue-500 outline-none cursor-pointer" 
+                            value={qForm.type} 
+                            onChange={e => setQForm({...qForm, type: e.target.value, correctAnswer: ''})}
+                          >
                             <option value="multiple_choice">Multiple Choice</option>
                             <option value="true_false">True / False</option>
                             <option value="short_answer">Short Answer</option>
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Marks Allocation *</label>
-                          <input type="number" min="1" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 font-bold focus:bg-white focus:border-blue-500 outline-none" value={qForm.marks} onChange={e => setQForm({...qForm, marks: parseInt(e.target.value)})} required />
+                          <label htmlFor="q-marks" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Marks Allocation *</label>
+                          <input 
+                            id="q-marks"
+                            type="number" 
+                            min="1" 
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 font-bold focus:bg-white focus:border-blue-500 outline-none" 
+                            value={qForm.marks} 
+                            onChange={e => setQForm({...qForm, marks: parseInt(e.target.value)})} 
+                            required 
+                          />
                         </div>
 
                         {qForm.type === 'multiple_choice' && (
@@ -457,7 +478,13 @@ export default function QuizDetailPage() {
                             <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Options & Correct Key</label>
                             {qForm.options.map((opt, i) => (
                               <div key={i} className="flex gap-4">
-                                <input className="flex-1 bg-white border border-slate-200 rounded-xl px-4 h-12 text-slate-900 font-medium focus:border-blue-500 outline-none" placeholder={`Option ${i + 1}`} value={opt} onChange={e => { const o = [...qForm.options]; o[i] = e.target.value; setQForm({...qForm, options: o}); }} />
+                                <input 
+                                  aria-label={`Option ${i + 1}`}
+                                  className="flex-1 bg-white border border-slate-200 rounded-xl px-4 h-12 text-slate-900 font-medium focus:border-blue-500 outline-none" 
+                                  placeholder={`Option ${i + 1}`} 
+                                  value={opt} 
+                                  onChange={e => { const o = [...qForm.options]; o[i] = e.target.value; setQForm({...qForm, options: o}); }} 
+                                />
                                 <button type="button" onClick={() => setQForm({...qForm, correctAnswer: String(i)})} className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center transition-all ${qForm.correctAnswer === String(i) ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-blue-200'}`}>
                                   {qForm.correctAnswer === String(i) ? <CheckCircle2 size={20} /> : <div className="w-5 h-5 rounded-full border-2 border-current" />}
                                 </button>
