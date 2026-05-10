@@ -2,10 +2,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
-import { authApi } from '@/utils/api/adminApi'; // Fallback to a valid api if necessary, wait, it should be authApi
-// Actually, let me check where authApi is imported from
-// Wait, in the original code, it was imported from '@/utils/api/authApi'
-import { authApi as realAuthApi } from '@/utils/api/authApi';
+import { authApi } from '@/utils/api/authApi';
 import { AxiosError } from 'axios';
 import { User } from '@/types';
 import Sidebar from '@/components/shared/Sidebar';
@@ -38,7 +35,7 @@ function PersonalInfoTab({ user, updateUser, showToast }: PersonalInfoProps) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await realAuthApi.updateMe(form);
+      const res = await authApi.updateMe(form);
       updateUser(res.data.data);
       showToast('Profile updated successfully!');
     } catch (err: any) {

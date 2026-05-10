@@ -7,7 +7,7 @@ import { AuthProvider } from "@/context/AuthContext";
 const sora = Sora({
   subsets: ["latin"],
   variable: "--font-sora",
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 const jetbrainsMono = JetBrains_Mono({

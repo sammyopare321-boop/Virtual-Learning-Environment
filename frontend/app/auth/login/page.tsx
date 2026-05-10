@@ -9,7 +9,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   GraduationCap, Mail, Lock, ArrowRight, Loader2, 
   ShieldCheck, Search, Users, Sparkles, Star,
-  CheckCircle2, Globe, Github, Terminal
+  CheckCircle2, Globe, Terminal
 } from 'lucide-react';
 
 import { Suspense } from 'react';
@@ -280,11 +280,11 @@ function LoginContent() {
             </div>
 
             <div className="grid grid-cols-2 gap-5">
-              <button className="flex items-center justify-center gap-3 h-14 rounded-2xl bg-white border border-slate-200 text-slate-700 text-sm font-black hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all hover:-translate-y-0.5 active:scale-95 uppercase tracking-widest">
+              <button aria-label="Login with Google" title="Google" className="flex items-center justify-center gap-3 h-14 rounded-2xl bg-white border border-slate-200 text-slate-700 text-sm font-black hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all hover:-translate-y-0.5 active:scale-95 uppercase tracking-widest">
                 <Search size={20} className="text-slate-400" /> Google
               </button>
-              <button className="flex items-center justify-center gap-3 h-14 rounded-2xl bg-white border border-slate-200 text-slate-700 text-sm font-black hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all hover:-translate-y-0.5 active:scale-95 uppercase tracking-widest">
-                <Github size={20} className="text-slate-400" /> Github
+              <button aria-label="Login with Github" title="Github" className="flex items-center justify-center gap-3 h-14 rounded-2xl bg-white border border-slate-200 text-slate-700 text-sm font-black hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all hover:-translate-y-0.5 active:scale-95 uppercase tracking-widest">
+                <Globe size={20} className="text-slate-400" /> Github
               </button>
             </div>
           </div>

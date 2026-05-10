@@ -8,7 +8,7 @@ import {
   FileText, Clock, ChevronRight, Plus, 
   Search, Filter, Sparkles, HelpCircle,
   AlertCircle, CheckCircle2, Calendar, 
-  BarChart3, Loader2, Play
+  BarChart3, Loader2, Play, Star, ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
 
