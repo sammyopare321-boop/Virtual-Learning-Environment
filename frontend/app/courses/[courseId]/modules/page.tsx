@@ -4,10 +4,13 @@ import { useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { courseApi } from '@/utils/api/courseApi';
+import CourseShell from '@/components/shared/CourseShell';
 import { Course } from '@/types';
 import { 
   FileText, Video, Presentation, FileCode2, Image as ImageIcon, 
-  ChevronDown, Plus, ExternalLink, Trash2, Paperclip, Loader2, BookOpen
+  ChevronDown, Plus, ExternalLink, Trash2, Paperclip, Loader2, BookOpen,
+  Layout, Calendar, Layers, Sparkles, Filter, Search, Info, AlertCircle,
+  ArrowRight, Download, CheckCircle2
 } from 'lucide-react';
 import { AxiosError } from 'axios';
 
@@ -26,17 +29,17 @@ interface ContentItem {
 }
 
 const contentMeta = {
-  pdf:   { icon: FileText,     bg: 'bg-rose-50',    text: 'text-rose-600',    border: 'border-rose-100' },
-  video: { icon: Video,        bg: 'bg-blue-50',    text: 'text-blue-600',    border: 'border-blue-100' },
-  slide: { icon: Presentation, bg: 'bg-amber-50',   text: 'text-amber-600',   border: 'border-amber-100' },
-  note:  { icon: FileCode2,    bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100' },
-  image: { icon: ImageIcon,    bg: 'bg-purple-50',  text: 'text-purple-600',  border: 'border-purple-100' }
+  pdf:   { icon: FileText,     bg: 'bg-rose-50',    text: 'text-rose-600',    border: 'border-rose-100',    label: 'Document' },
+  video: { icon: Video,        bg: 'bg-blue-50',    text: 'text-blue-600',    border: 'border-blue-100',    label: 'Video Lecture' },
+  slide: { icon: Presentation, bg: 'bg-amber-50',   text: 'text-amber-600',   border: 'border-amber-100',   label: 'Presentation' },
+  note:  { icon: FileCode2,    bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100', label: 'Reading Note' },
+  image: { icon: ImageIcon,    bg: 'bg-purple-50',  text: 'text-purple-600',  border: 'border-purple-100',  label: 'Diagram' }
 };
 
 export default function ModulesPage() {
   const params = useParams();
   const courseId = params.courseId as string;
-  const { user }               = useAuth();
+  const { user, logout }       = useAuth();
   
   const [course, setCourse]    = useState<Course | null>(null);
   const [modules, setModules]  = useState<Module[]>([]);
@@ -48,12 +51,18 @@ export default function ModulesPage() {
   const [modForm, setModForm]  = useState({ title:'', weekNumber:'', order:'' });
   const [creating, setCreating]= useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [toast, setToast]      = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   const isTeacher = user?.role === 'teacher';
   const isOwner = isTeacher && (
     (typeof course?.teacher === 'object' && course.teacher?._id === user?._id) ||
     (course?.teacher === user?._id)
   );
+
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const loadContent = useCallback(async (moduleId: string) => {
     if (content[moduleId]) return;
@@ -112,9 +121,10 @@ export default function ModulesPage() {
       setModules(p => [...p, res.data.data]);
       setModForm({ title:'', weekNumber:'', order:'' });
       setShowModForm(false);
+      showToast('Module created successfully');
     } catch (err) {
       const error = err as AxiosError<{message: string}>;
-      alert(error.response?.data?.message || 'Failed to create module.');
+      showToast(error.response?.data?.message || 'Failed to create module', 'error');
     } finally { setCreating(false); }
   };
 
@@ -138,216 +148,350 @@ export default function ModulesPage() {
       fd.append('order', String((content[moduleId]?.length || 0) + 1));
       const res = await courseApi.uploadContent(moduleId, fd);
       setContent(p => ({ ...p, [moduleId]: [...(p[moduleId] || []), res.data.data] }));
+      showToast('Material uploaded successfully');
     } catch (err) {
       const error = err as AxiosError<{message: string}>;
-      alert(error.response?.data?.message || 'Upload failed.');
+      showToast(error.response?.data?.message || 'Upload failed', 'error');
     } finally { setUploading(null); if (e.target) e.target.value = ''; }
   };
 
   const handleDeleteContent = async (moduleId: string, contentId: string) => {
+    if (!window.confirm('Delete this material?')) return;
     try {
       await courseApi.deleteContent(contentId);
       setContent(p => ({ ...p, [moduleId]: p[moduleId].filter(c => c._id !== contentId) }));
+      showToast('Material deleted');
     } catch { 
-      alert('Delete failed.'); 
+      showToast('Delete failed', 'error'); 
     }
   };
 
   return (
-    <div className="max-w-[1000px] mx-auto p-8 lg:p-12">
-      
-      {/* Header Area */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
-        <div className="flex-1">
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-3 text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] mb-4"
-          >
-            <BookOpen size={14} />
-            Syllabus Structure
-          </motion.div>
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter leading-none mb-6"
-          >
-            Course <span className="text-blue-600">Modules.</span>
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="text-slate-500 text-lg font-medium max-w-xl leading-relaxed"
-          >
-            Access your lecture materials, resources, and weekly learning paths in a structured workspace.
-          </motion.p>
-        </div>
+    <CourseShell course={course} courseId={courseId} user={user} logout={logout}>
+      <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
+        
+        {/* Toast Notification */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+              className={`fixed top-12 left-1/2 -translate-x-1/2 z-[100] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-black text-sm uppercase tracking-widest border-2 ${
+                toast.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-rose-50 border-rose-100 text-rose-600'
+              }`}
+            >
+              {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+              {toast.msg}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {isOwner && (
-          <motion.button 
-            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-            onClick={() => setShowModForm(p => !p)}
-            className={`flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black text-lg shadow-xl transition-all hover:-translate-y-1 active:scale-95 uppercase tracking-widest ${
-              showModForm 
-                ? 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' 
-                : 'bg-blue-600 text-white shadow-blue-600/20 hover:bg-blue-700'
-            }`}
-          >
-            {showModForm ? 'Cancel' : <><Plus size={20} strokeWidth={3} /> Add Module</>}
-          </motion.button>
-        )}
-      </header>
-
-      {/* Create Module Form */}
-      <AnimatePresence>
-        {showModForm && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-            animate={{ opacity: 1, height: 'auto', marginBottom: 32 }}
-            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-white rounded-[24px] border border-slate-200 p-8 shadow-sm">
-              <h3 className="text-lg font-extrabold text-slate-900 mb-6">Create New Module</h3>
-              <form onSubmit={handleCreateModule}>
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 mb-8">
-                  <div className="sm:col-span-6">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Module Title *</label>
-                    <input className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-4 h-12 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium" placeholder="e.g. Week 1 — Introduction" value={modForm.title} onChange={e => setModForm(p=>({...p,title:e.target.value}))} required />
-                  </div>
-                  <div className="sm:col-span-3">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Week Number *</label>
-                    <input type="number" min="1" className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-4 h-12 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium" placeholder="1" value={modForm.weekNumber} onChange={e => setModForm(p=>({...p,weekNumber:e.target.value}))} required />
-                  </div>
-                  <div className="sm:col-span-3">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Order</label>
-                    <input type="number" min="1" className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-4 h-12 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium" placeholder={String(modules.length + 1)} value={modForm.order} onChange={e => setModForm(p=>({...p,order:e.target.value}))} />
-                  </div>
-                </div>
-                <div className="flex gap-4">
-                  <button type="submit" disabled={creating} className="h-12 px-8 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-md shadow-blue-600/20 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center gap-2">
-                    {creating ? <Loader2 size={18} className="animate-spin" /> : 'Create Module'}
-                  </button>
-                  <button type="button" onClick={() => setShowModForm(false)} className="h-12 px-8 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-bold hover:bg-slate-100 transition-all">
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Module List */}
-      {loading ? (
-        <div className="space-y-4">
-          {[1,2,3].map(i => <div key={i} className="h-20 bg-slate-200/50 rounded-2xl animate-pulse" />)}
-        </div>
-      ) : modules.length === 0 ? (
-        <div className="bg-white rounded-[32px] border border-slate-200 p-16 text-center shadow-sm">
-          <div className="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-100">
-            <BookOpen size={32} className="text-blue-600" />
+        {/* Header Area */}
+        <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-16">
+          <div className="flex-1">
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3 text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] mb-4"
+            >
+              <BookOpen size={14} />
+              Curriculum Hub
+            </motion.div>
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+              className="text-5xl lg:text-6xl font-black text-slate-900 tracking-tighter leading-none mb-6"
+            >
+              Course <span className="text-blue-600">Modules.</span>
+            </motion.h1>
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              className="text-slate-500 text-lg font-medium max-w-xl leading-relaxed"
+            >
+              Master the curriculum through our structured learning paths, premium lecture materials, and interactive weekly resources.
+            </motion.p>
           </div>
-          <h3 className="text-2xl font-extrabold text-slate-900 mb-3 tracking-tight">No modules yet</h3>
-          <p className="text-slate-500 font-medium">
-            {isOwner ? 'Create your first module to start adding course materials.' : 'No modules have been published for this course yet.'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {modules.sort((a,b) => a.weekNumber - b.weekNumber).map(mod => {
-            const isOpen = expanded[mod._id];
-            const items  = content[mod._id] || [];
-            return (
-              <div key={mod._id} className={`bg-white rounded-[24px] border transition-all duration-300 ${isOpen ? 'border-blue-300 shadow-xl shadow-blue-900/5' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
-                
-                {/* Module Header */}
-                <button onClick={() => toggleModule(mod._id)} className="w-full flex items-center gap-4 p-5 text-left">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-extrabold text-lg transition-colors shrink-0 ${isOpen ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
-                    W{mod.weekNumber}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className={`font-extrabold text-lg truncate transition-colors ${isOpen ? 'text-blue-700' : 'text-slate-900'}`}>{mod.title}</h4>
-                    <p className="text-sm font-medium text-slate-500">Week {mod.weekNumber} · {items.length} items</p>
-                  </div>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isOpen ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400'}`}>
-                    <ChevronDown size={20} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
-                  </div>
-                </button>
 
-                {/* Content Items */}
-                <AnimatePresence>
-                  {isOpen && (
-                    <motion.div 
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-5 pb-5 pt-2 border-t border-slate-100">
-                        {items.length === 0 ? (
-                          <div className="py-6 text-center rounded-2xl bg-slate-50 border border-slate-100 border-dashed">
-                            <p className="text-slate-500 font-medium">No content has been added to this module yet.</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-3 mb-6">
-                            {items.map((item, idx) => {
-                              const meta = contentMeta[item.type] || contentMeta.note;
-                              const MetaIcon = meta.icon;
-                              return (
-                                <motion.div 
-                                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
-                                  key={item._id} 
-                                  className="group flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-200 hover:border-blue-200 hover:shadow-md transition-all"
-                                >
-                                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${meta.bg} ${meta.text} ${meta.border}`}>
-                                    <MetaIcon size={20} />
-                                  </div>
-                                  
-                                  <div className="flex-1 min-w-0">
-                                    <h5 className="font-bold text-slate-900 truncate mb-1">{item.title}</h5>
-                                    <span className={`inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${meta.bg} ${meta.text} ${meta.border}`}>
-                                      {item.type}
-                                    </span>
-                                  </div>
+          {isOwner && (
+            <motion.button 
+              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+              onClick={() => setShowModForm(p => !p)}
+              className={`flex items-center justify-center gap-3 px-10 py-5 rounded-[24px] font-black text-lg shadow-2xl transition-all hover:-translate-y-1 active:scale-95 uppercase tracking-widest ${
+                showModForm 
+                  ? 'bg-white border-2 border-slate-200 text-slate-600 hover:bg-slate-50' 
+                  : 'bg-blue-600 text-white shadow-blue-600/20 hover:bg-blue-700'
+              }`}
+            >
+              {showModForm ? 'Dismiss' : <><Plus size={20} strokeWidth={3} /> Create Module</>}
+            </motion.button>
+          )}
+        </header>
 
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    <a aria-label={`Open ${item.title}`} title={`Open ${item.title}`} href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-50 text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors">
-                                      <ExternalLink size={18} />
-                                    </a>
-                                    {isOwner && (
-                                      <button aria-label={`Delete ${item.title}`} title={`Delete ${item.title}`} onClick={() => handleDeleteContent(mod._id, item._id)} className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors">
-                                        <Trash2 size={18} />
-                                      </button>
-                                    )}
-                                  </div>
-                                </motion.div>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {/* Upload Button */}
-                        {isOwner && (
-                          <label className={`flex items-center justify-center gap-2 w-full h-14 rounded-xl border-2 border-dashed font-bold transition-all cursor-pointer ${
-                            uploading === mod._id 
-                              ? 'border-blue-300 bg-blue-50 text-blue-600' 
-                              : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600'
-                          }`}>
-                            {uploading === mod._id ? (
-                              <><Loader2 size={18} className="animate-spin" /> Uploading...</>
-                            ) : (
-                              <><Paperclip size={18} /> Upload Material</>
-                            )}
-                            <input type="file" className="hidden" disabled={uploading === mod._id} accept=".pdf,.ppt,.pptx,.mp4,.mov,.txt,.md,.png,.jpg,.jpeg" onChange={e => handleUploadContent(mod._id, e)} />
-                          </label>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+        {/* Create Module Form */}
+        <AnimatePresence>
+          {showModForm && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+              animate={{ opacity: 1, height: 'auto', marginBottom: 48 }}
+              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-white rounded-[32px] border-2 border-blue-100 p-8 lg:p-10 shadow-xl shadow-blue-900/5">
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <Layers size={24} />
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">New Curriculum Block</h3>
+                </div>
+                <form onSubmit={handleCreateModule}>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-10">
+                    <div className="md:col-span-6">
+                      <label htmlFor="mod-title" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Module Title *</label>
+                      <input 
+                        id="mod-title"
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-5 h-14 rounded-2xl focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" 
+                        placeholder="e.g. Fundamental Principles" 
+                        value={modForm.title} 
+                        onChange={e => setModForm(p=>({...p,title:e.target.value}))} 
+                        required 
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label htmlFor="mod-week" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Week Number *</label>
+                      <input 
+                        id="mod-week"
+                        type="number" 
+                        min="1" 
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-5 h-14 rounded-2xl focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" 
+                        placeholder="1" 
+                        value={modForm.weekNumber} 
+                        onChange={e => setModForm(p=>({...p,weekNumber:e.target.value}))} 
+                        required 
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label htmlFor="mod-order" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Sequence Order</label>
+                      <input 
+                        id="mod-order"
+                        type="number" 
+                        min="1" 
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-5 h-14 rounded-2xl focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" 
+                        placeholder={String(modules.length + 1)} 
+                        value={modForm.order} 
+                        onChange={e => setModForm(p=>({...p,order:e.target.value}))} 
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    <button type="submit" disabled={creating} className="flex-1 h-16 rounded-2xl bg-blue-600 text-white font-black hover:bg-blue-700 shadow-xl shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
+                      {creating ? <Loader2 size={20} className="animate-spin" /> : <><Sparkles size={18} /> Initialize Module</>}
+                    </button>
+                    <button type="button" onClick={() => setShowModForm(false)} className="px-10 h-16 rounded-2xl bg-slate-100 text-slate-600 font-black hover:bg-slate-200 transition-all uppercase tracking-widest text-xs">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               </div>
-            );
-          })}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Search and Filters */}
+        <div className="flex flex-col md:flex-row gap-4 mb-12">
+          <div className="relative flex-1 group">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+            <input 
+              aria-label="Filter modules"
+              type="text" 
+              placeholder="Search curriculum materials..."
+              className="w-full bg-white border border-slate-200 text-slate-900 pl-14 pr-6 h-16 rounded-3xl focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none font-bold shadow-sm"
+            />
+          </div>
+          <button className="h-16 px-10 rounded-3xl bg-white border border-slate-200 text-slate-600 font-black flex items-center gap-3 hover:bg-slate-50 transition-all active:scale-95 uppercase tracking-widest text-xs shadow-sm">
+            <Filter size={18} /> Expand All
+          </button>
         </div>
-      )}
-    </div>
+
+        {/* Module List */}
+        {loading ? (
+          <div className="space-y-6">
+            {[1,2,3,4].map(i => <div key={i} className="h-24 bg-white border border-slate-100 rounded-[32px] animate-pulse shadow-sm" />)}
+          </div>
+        ) : modules.length === 0 ? (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-[48px] border-2 border-dashed border-slate-200 p-20 text-center shadow-sm"
+          >
+            <div className="w-24 h-24 bg-blue-50 rounded-[32px] flex items-center justify-center mx-auto mb-8 border border-blue-100 shadow-inner">
+              <BookOpen size={40} className="text-blue-600/30" />
+            </div>
+            <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Curriculum Pending</h3>
+            <p className="text-slate-500 text-lg font-medium max-w-sm mx-auto mb-10 leading-relaxed">
+              {isOwner 
+                ? 'Your syllabus is currently empty. Start building your course by adding the first module block.' 
+                : 'The instructor has not published any curriculum materials for this course yet.'}
+            </p>
+            {isOwner && (
+              <button onClick={() => setShowModForm(true)} className="px-10 py-5 rounded-2xl bg-blue-600 text-white font-black hover:bg-blue-700 transition-all active:scale-95 uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20">
+                Create First Module
+              </button>
+            )}
+          </motion.div>
+        ) : (
+          <div className="space-y-6">
+            {modules.sort((a,b) => a.weekNumber - b.weekNumber).map((mod, modIdx) => {
+              const isOpen = expanded[mod._id];
+              const items  = content[mod._id] || [];
+              return (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: modIdx * 0.1 }}
+                  key={mod._id} 
+                  className={`bg-white rounded-[40px] border-2 transition-all duration-500 overflow-hidden ${isOpen ? 'border-blue-500 shadow-2xl shadow-blue-900/10' : 'border-slate-100 shadow-sm hover:border-slate-200'}`}
+                >
+                  
+                  {/* Module Header */}
+                  <button 
+                    onClick={() => toggleModule(mod._id)} 
+                    className={`w-full flex items-center gap-6 p-6 lg:p-8 text-left transition-colors ${isOpen ? 'bg-blue-50/30' : 'hover:bg-slate-50/50'}`}
+                  >
+                    <div className={`w-16 h-16 rounded-[24px] flex flex-col items-center justify-center font-black transition-all duration-500 shrink-0 border-2 ${isOpen ? 'bg-blue-600 border-blue-400 text-white shadow-xl shadow-blue-600/20 -translate-y-1' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
+                      <span className="text-[10px] uppercase tracking-tighter opacity-70">Week</span>
+                      <span className="text-xl leading-none">{mod.weekNumber}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1.5">
+                        <h4 className={`font-black text-xl lg:text-2xl tracking-tight truncate transition-colors ${isOpen ? 'text-blue-700' : 'text-slate-900'}`}>{mod.title}</h4>
+                        {isOpen && <Sparkles size={16} className="text-blue-500 animate-pulse" />}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="flex items-center gap-1.5 text-xs font-black text-slate-400 uppercase tracking-widest">
+                          <Layers size={14} /> {items.length} Materials
+                        </span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                        <span className="text-xs font-black text-blue-600/60 uppercase tracking-widest">In Progress</span>
+                      </div>
+                    </div>
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${isOpen ? 'bg-blue-600 text-white rotate-180' : 'bg-slate-100 text-slate-400'}`}>
+                      <ChevronDown size={24} strokeWidth={3} />
+                    </div>
+                  </button>
+
+                  {/* Content Items */}
+                  <AnimatePresence>
+                    {isOpen && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-6 lg:px-8 pb-8 pt-2">
+                          <div className="h-px bg-slate-100 mb-8" />
+                          
+                          {items.length === 0 ? (
+                            <div className="py-12 text-center rounded-[32px] bg-slate-50/50 border-2 border-dashed border-slate-100 flex flex-col items-center">
+                              <Info size={32} className="text-slate-300 mb-4" />
+                              <p className="text-slate-500 font-bold">No academic materials have been cataloged for this week.</p>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-10">
+                              {items.map((item, idx) => {
+                                const meta = contentMeta[item.type] || contentMeta.note;
+                                const MetaIcon = meta.icon;
+                                return (
+                                  <motion.div 
+                                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.05 }}
+                                    key={item._id} 
+                                    className="group flex items-center gap-5 p-5 rounded-[28px] bg-white border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-900/5 transition-all duration-300"
+                                  >
+                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border-2 ${meta.bg} ${meta.text} ${meta.border} transition-transform group-hover:scale-110 duration-500`}>
+                                      <MetaIcon size={24} />
+                                    </div>
+                                    
+                                    <div className="flex-1 min-w-0">
+                                      <h5 className="font-black text-slate-900 truncate mb-1.5 group-hover:text-blue-600 transition-colors">{item.title}</h5>
+                                      <div className="flex items-center gap-2">
+                                        <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest border ${meta.bg} ${meta.text} ${meta.border}`}>
+                                          {meta.label}
+                                        </span>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                          {item.type.toUpperCase()}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 shrink-0 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                                      <a 
+                                        aria-label={`Download ${item.title}`} 
+                                        title={`Download ${item.title}`} 
+                                        href={item.fileUrl} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        className="flex items-center justify-center w-11 h-11 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all active:scale-90"
+                                      >
+                                        <Download size={18} />
+                                      </a>
+                                      {isOwner && (
+                                        <button 
+                                          aria-label={`Delete ${item.title}`} 
+                                          title={`Delete ${item.title}`} 
+                                          onClick={() => handleDeleteContent(mod._id, item._id)} 
+                                          className="flex items-center justify-center w-11 h-11 rounded-2xl bg-rose-50 text-rose-500 hover:bg-rose-600 hover:text-white transition-all active:scale-90"
+                                        >
+                                          <Trash2 size={18} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </motion.div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Upload Section */}
+                          {isOwner && (
+                            <div className="mt-4">
+                              <label htmlFor={`upload-${mod._id}`} className={`flex flex-col items-center justify-center gap-4 w-full py-10 rounded-[32px] border-2 border-dashed font-black transition-all duration-500 cursor-pointer ${
+                                uploading === mod._id 
+                                  ? 'border-blue-400 bg-blue-50 text-blue-600' 
+                                  : 'border-slate-200 bg-slate-50 text-slate-400 hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-600'
+                              }`}>
+                                {uploading === mod._id ? (
+                                  <>
+                                    <div className="w-12 h-12 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin" />
+                                    <span className="uppercase tracking-[0.2em] text-xs">Cataloging material...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                      <Paperclip size={24} />
+                                    </div>
+                                    <div className="text-center">
+                                      <span className="block uppercase tracking-[0.2em] text-xs mb-1">Append Syllabus Material</span>
+                                      <span className="text-[10px] font-bold opacity-60">PDF, VIDEO, SLIDES (MAX 50MB)</span>
+                                    </div>
+                                  </>
+                                )}
+                                <input 
+                                  id={`upload-${mod._id}`}
+                                  type="file" 
+                                  className="hidden" 
+                                  disabled={uploading === mod._id} 
+                                  accept=".pdf,.ppt,.pptx,.mp4,.mov,.txt,.md,.png,.jpg,.jpeg" 
+                                  onChange={e => handleUploadContent(mod._id, e)} 
+                                />
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </CourseShell>
   );
 }
