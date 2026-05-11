@@ -3,7 +3,7 @@ const Quiz = require('../models/Quiz');
 const LiveSession = require('../models/LiveSession');
 const Enrollment = require('../models/Enrollment');
 const Course = require('../models/Course');
-const asyncHandler = require('../middleware/async');
+const asyncHandler = require('express-async-handler');
 
 // @desc    Get all upcoming milestones for the student
 // @route   GET /api/students/me/milestones
