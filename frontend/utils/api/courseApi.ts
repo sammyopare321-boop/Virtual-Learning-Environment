@@ -46,4 +46,7 @@ export const courseApi = {
   }),
   gradeSubmission: (subId: string, data: { grade: number, feedback: string }) => api.patch(`/api/submissions/${subId}/grade`, data),
   getGlobalMilestones: () => api.get('/api/students/me/milestones'),
+  startLiveSession: (id: string) => api.patch(`/api/live-sessions/${id}/start`),
+  endLiveSession: (id: string) => api.patch(`/api/live-sessions/${id}/end`),
+  joinLiveSession: (id: string) => api.get(`/api/live-sessions/${id}/join`),
 };
