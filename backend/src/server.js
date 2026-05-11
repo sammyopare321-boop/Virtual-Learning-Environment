@@ -47,34 +47,38 @@ app.set('trust proxy', 1);
 app.use(helmet());
 
 // CORS
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  process.env.CLIENT_URL,
+  'https://virtual-learning-environment.vercel.app',
+  'https://virtual-learning-environment-th7m.onrender.com',
+  'https://unilearn-frontend.onrender.com',
+  'https://virtual-learning-environment-nicvgjzhp-kofiy3853-dots-projects.vercel.app',
+].filter(Boolean);
+
 app.use(cors({
   origin: function (origin, callback) {
-    const allowed = [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      // Allow dynamic process.env.CLIENT_URL as well
-      process.env.CLIENT_URL,
-      // Add your Vercel/Netlify/Render frontend URL here once deployed:
-      'https://virtual-learning-environment.vercel.app',
-      'https://virtual-learning-environment.vercel.app/',
-      'https://virtual-learning-environment-th7m.onrender.com', 
-      'https://unilearn-frontend.onrender.com',
-      'https://virtual-learning-environment-nicvgjzhp-kofiy3853-dots-projects.vercel.app'
-    ].filter(Boolean);
-
-    // Allow requests with no origin (mobile apps, Postman, curl)
+    // Allow requests with no origin (Postman, curl, mobile apps)
     if (!origin) return callback(null, true);
 
-    if (allowed.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS blocked: ${origin} not in allowed list`));
+    // Allow any Vercel preview deployment or explicitly listed origin
+    if (
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app') ||
+      origin.endsWith('.onrender.com')
+    ) {
+      return callback(null, true);
     }
+
+    // Reject — but do NOT throw an Error (that causes a 500 with no CORS headers)
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
 
 
 // Body parsing
