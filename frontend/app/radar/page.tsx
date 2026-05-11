@@ -9,16 +9,31 @@ import {
   ArrowRight, BookOpen, GraduationCap, Timer
 } from 'lucide-react';
 import { courseApi } from '@/utils/api/courseApi';
-import DashboardShell from '@/components/layout/DashboardShell';
+import DashboardLayout from '@/layouts/DashboardLayout';
 import { useAuth } from '@/context/AuthContext';
 import { format, isToday, isTomorrow, isWithinInterval, addDays } from 'date-fns';
 import Link from 'next/link';
 
+interface Milestone {
+  id: string;
+  type: 'assignment' | 'quiz' | 'live_session';
+  title: string;
+  deadline: string;
+  priority?: 'high' | 'normal' | 'low';
+  course: {
+    _id: string;
+    title: string;
+  };
+}
+
+type MilestoneType = 'assignment' | 'quiz' | 'live_session';
+type FilterType = 'all' | MilestoneType;
+
 export default function AcademicRadarPage() {
   const { user } = useAuth();
-  const [milestones, setMilestones] = useState<any[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState<FilterType>('all');
 
   useEffect(() => {
     courseApi.getGlobalMilestones()
@@ -32,7 +47,7 @@ export default function AcademicRadarPage() {
     return m.type === filter;
   });
 
-  const getStatusColor = (type: string) => {
+  const getStatusColor = (type: MilestoneType) => {
     switch (type) {
       case 'quiz': return 'text-amber-600 bg-amber-50 border-amber-100';
       case 'assignment': return 'text-blue-600 bg-blue-50 border-blue-100';
@@ -41,7 +56,7 @@ export default function AcademicRadarPage() {
     }
   };
 
-  const getIcon = (type: string) => {
+  const getIcon = (type: MilestoneType) => {
     switch (type) {
       case 'quiz': return <Timer size={18} />;
       case 'assignment': return <BookOpen size={18} />;
@@ -51,7 +66,7 @@ export default function AcademicRadarPage() {
   };
 
   return (
-    <DashboardShell>
+    <DashboardLayout>
        <div className="max-w-6xl mx-auto py-12 px-6 lg:px-8">
           
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
@@ -66,7 +81,7 @@ export default function AcademicRadarPage() {
              </div>
 
              <div className="flex bg-white rounded-2xl p-1.5 border border-slate-200 shadow-sm self-start md:self-end">
-                {['all', 'assignment', 'quiz', 'live_session'].map((f) => (
+                {(['all', 'assignment', 'quiz', 'live_session'] as const).map((f) => (
                    <button
                      key={f}
                      onClick={() => setFilter(f)}
@@ -177,6 +192,6 @@ export default function AcademicRadarPage() {
              </div>
           )}
        </div>
-    </DashboardShell>
+    </DashboardLayout>
   );
 }

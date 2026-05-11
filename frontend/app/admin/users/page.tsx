@@ -11,14 +11,7 @@ import {
   Trash2, Ban, CheckCircle2, UserCheck, UserPlus, Eye, X, AlertTriangle
 } from 'lucide-react';
 
-interface User {
-  _id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: string;
-  createdAt: string;
-}
+import { User } from '@/types';
 
 interface StatsData {
   totalUsers?: number;
@@ -122,7 +115,7 @@ export default function AdminUsersPage() {
     } finally { setActionLoading(null); setConfirm(null); }
   };
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
+  const handleRoleChange = async (userId: string, newRole: User['role']) => {
     setActionLoading(userId + '_role');
     try {
       await adminApi.changeRole(userId, newRole);
@@ -355,7 +348,7 @@ export default function AdminUsersPage() {
                               title={`Change role for ${u.name}`}
                               value={u.role}
                               disabled={isMe || actionLoading === u._id+'_role'}
-                              onChange={e => handleRoleChange(u._id, e.target.value)}
+                              onChange={e => handleRoleChange(u._id, e.target.value as User['role'])}
                               className={`appearance-none px-3 py-1.5 rounded-lg border text-xs font-bold uppercase tracking-wider outline-none transition-all w-28 ${
                                 isMe ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-sm'
                               } ${rb.bg} ${rb.text} ${rb.border}`}

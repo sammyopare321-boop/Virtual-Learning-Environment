@@ -9,6 +9,22 @@ export interface User {
   createdAt?: string;
 }
 
+export interface ContentItem {
+  _id: string;
+  title: string;
+  type: 'pdf' | 'video' | 'slide' | 'note' | 'image';
+  fileUrl: string;
+  order: number;
+}
+
+export interface Module {
+  _id: string;
+  title: string;
+  weekNumber: number;
+  order: number;
+  content?: ContentItem[];
+}
+
 export interface Course {
   _id: string;
   title: string;
@@ -21,6 +37,6 @@ export interface Course {
     _id: string;
     name?: string;
   } | string;
-  students?: string[] | any[];
-  modules?: any[];
+  students?: string[] | User[];
+  modules?: Module[];
 }
