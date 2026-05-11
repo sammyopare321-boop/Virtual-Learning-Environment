@@ -31,22 +31,18 @@ export default function TeacherDashboard() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ title:'', code:'', description:'', semester:'Semester 1', academicYear:'2025/2026' });
 
-  // Mock analytics data
-  const [mockStats, setMockStats] = useState({ students: 0, attendance: 0 });
-  const engagementData = [40, 65, 45, 80, 55, 90, 75];
+  const [stats, setStats] = useState({ students: 0, attendance: 0, engagementData: [0,0,0,0,0,0,0], upcomingClasses: [] as any[] });
 
   useEffect(() => {
-    if (courses.length > 0) {
-      Promise.resolve().then(() => {
-        const s = courses.reduce((acc, c) => acc + (c.studentCount || Math.floor(Math.random() * 40) + 10), 0);
-        const a = 85 + Math.floor(Math.random() * 10);
-        setMockStats({ students: s, attendance: a });
-      });
-    }
-  }, [courses]);
+    import('@/utils/axiosInstance')
+      .then(m => m.default.get('/api/teachers/me/stats'))
+      .then(res => setStats(res.data.data || { students: 0, attendance: 0, engagementData: [0,0,0,0,0,0,0], upcomingClasses: [] }))
+      .catch(console.error);
+  }, []);
 
-  const mockStudents = mockStats.students;
-  const mockAttendance = mockStats.attendance;
+  const mockStudents = stats.students;
+  const mockAttendance = stats.attendance;
+  const engagementData = stats.engagementData;
 
   useEffect(() => {
     courseApi.getAll()
@@ -106,7 +102,7 @@ export default function TeacherDashboard() {
                 {greeting}, {user?.name?.split(' ')[0]} 👋
               </motion.h1>
               <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-slate-500 font-medium text-lg max-w-xl leading-relaxed">
-                You have <strong className="text-slate-900 font-bold">12 student submissions</strong> to review and <strong className="text-slate-900 font-bold">2 upcoming classes</strong> today.
+                You have <strong className="text-slate-900 font-bold">{mockStudents} active students</strong> to review and <strong className="text-slate-900 font-bold">{stats.upcomingClasses?.length || 0} upcoming classes</strong> today.
               </motion.p>
             </div>
             
@@ -260,19 +256,21 @@ export default function TeacherDashboard() {
                   <Clock size={16} className="text-amber-500" /> Upcoming Schedule
                 </h3>
                 <div className="space-y-4">
-                  {[
-                    { title: 'CS101 Intro Lecture', time: '10:00 AM', type: 'Live Class', color: 'bg-blue-500' },
-                    { title: 'Project Proposals Due', time: '11:59 PM', type: 'Assignment', color: 'bg-amber-500' },
-                    { title: 'Faculty Meeting', time: 'Tomorrow', type: 'Event', color: 'bg-emerald-500' }
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-start gap-4 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                      <div className={`w-2.5 h-2.5 rounded-full ${item.color} mt-1.5`} />
-                      <div>
-                        <p className="text-sm font-extrabold text-slate-900 mb-0.5">{item.title}</p>
-                        <p className="text-xs font-bold text-slate-500">{item.time} <span className="mx-1">•</span> {item.type}</p>
+                  {!stats.upcomingClasses || stats.upcomingClasses.length === 0 ? (
+                    <p className="text-sm font-medium text-slate-500">No upcoming schedule.</p>
+                  ) : (
+                    stats.upcomingClasses.map((item, i) => (
+                      <div key={i} className="flex items-start gap-4 p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                        <div className={`w-2.5 h-2.5 rounded-full ${item.color} mt-1.5`} />
+                        <div>
+                          <p className="text-sm font-extrabold text-slate-900 mb-0.5">{item.title}</p>
+                          <p className="text-xs font-bold text-slate-500">
+                            {new Date(item.time).toLocaleDateString()} {new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} <span className="mx-1">•</span> {item.type}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
                 <button className="w-full mt-6 py-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 uppercase tracking-widest transition-colors">
                   View Full Calendar

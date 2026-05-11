@@ -24,10 +24,20 @@ export default function StudentDashboard() {
   const { user, logout } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ overallCompletion: 0, assignmentsSubmitted: 0 });
+  const [milestones, setMilestones] = useState<any[]>([]);
 
   useEffect(() => {
-    courseApi.getMyCourses()
-      .then(res => setCourses(res.data.data || []))
+    Promise.all([
+      courseApi.getMyCourses(),
+      courseApi.getGlobalMilestones(),
+      import('@/utils/axiosInstance').then(m => m.default.get('/api/students/me/stats'))
+    ])
+      .then(([coursesRes, milestonesRes, statsRes]) => {
+        setCourses(coursesRes.data.data || []);
+        setMilestones(milestonesRes.data.data || []);
+        setStats(statsRes.data.data || { overallCompletion: 0, assignmentsSubmitted: 0 });
+      })
       .catch(() => setCourses([]))
       .finally(() => setLoading(false));
   }, []);
@@ -67,7 +77,7 @@ export default function StudentDashboard() {
                 {greeting}, {user?.name?.split(' ')[0]} 👋
               </motion.h1>
               <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-slate-500 text-lg max-w-xl leading-relaxed font-medium">
-                You have <strong className="text-slate-900 font-bold">2 assignments due soon</strong> and <strong className="text-slate-900 font-bold">1 upcoming lecture</strong> today.
+                You have <strong className="text-slate-900 font-bold">{milestones.filter(m => m.type==='assignment').length} assignments</strong> due soon and <strong className="text-slate-900 font-bold">{milestones.filter(m => m.type==='live_session').length} upcoming lectures</strong>.
               </motion.p>
             </div>
             
@@ -183,16 +193,16 @@ export default function StudentDashboard() {
                 
                 <div className="space-y-5">
                   {[
-                    { label: 'Overall Completion', val: 68, color: 'bg-blue-600' },
-                    { label: 'Assignments Submitted', val: 85, color: 'bg-emerald-500' },
+                    { label: 'Overall Completion', val: stats.overallCompletion, color: 'bg-blue-600' },
+                    { label: 'Assignments Submitted', val: stats.assignmentsSubmitted, color: 'bg-emerald-500' },
                   ].map((item, i) => (
                     <div key={i}>
                       <div className="flex justify-between text-xs font-bold text-slate-600 mb-2">
                         <span>{item.label}</span>
-                        <span>{item.val}%</span>
+                        <span>{item.val}{i === 0 ? '%' : ''}</span>
                       </div>
                       <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                        <div className={`h-full rounded-full ${item.color}`} style={{ width: `${item.val}%` }} />
+                        <div className={`h-full rounded-full ${item.color}`} style={{ width: `${i === 0 ? item.val : Math.min(item.val * 10, 100)}%` }} />
                       </div>
                     </div>
                   ))}
@@ -206,25 +216,21 @@ export default function StudentDashboard() {
                 </h3>
                 
                 <div className="space-y-4">
-                  <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                    <div className="w-2 h-2 rounded-full bg-rose-500 mt-1.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-bold text-slate-900 mb-1">Advanced AI Midterm</p>
-                      <p className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                        <Clock size={12} /> Due in 2 days
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-bold text-slate-900 mb-1">Database Project Proposal</p>
-                      <p className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                        <Clock size={12} /> Due this Friday
-                      </p>
-                    </div>
-                  </div>
+                  {milestones.length === 0 ? (
+                    <p className="text-sm font-medium text-slate-500">No action required at the moment.</p>
+                  ) : (
+                    milestones.slice(0, 3).map((item, i) => (
+                      <div key={i} className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                        <div className={`w-2 h-2 rounded-full ${item.priority === 'high' ? 'bg-rose-500' : 'bg-amber-500'} mt-1.5 shrink-0`} />
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 mb-1">{item.title}</p>
+                          <p className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                            <Clock size={12} /> {new Date(item.deadline).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 

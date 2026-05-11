@@ -1,15 +1,18 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { courseApi } from '@/utils/api/courseApi';
+import { communicationApi } from '@/utils/api/communicationApi';
 import { useAuth } from '@/context/AuthContext';
 import { 
   MessageSquare, MessageCircle, Plus, Search, Filter, 
   ChevronRight, Calendar, User, Clock, 
   Sparkles, Pin, MoreVertical, Trash2, 
-  Edit3, ThumbsUp, Reply, Hash, Loader2
+  Edit3, ThumbsUp, Reply, Hash, Loader2, X, Send
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface Discussion {
   _id: string;
@@ -33,6 +36,9 @@ export default function DiscussionsPage() {
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [posting, setPosting] = useState(false);
+  const [form, setForm] = useState({ title: '', content: '' });
 
   useEffect(() => {
     courseApi.getDiscussions(courseId)
@@ -40,6 +46,26 @@ export default function DiscussionsPage() {
       .catch(() => setDiscussions([]))
       .finally(() => setLoading(false));
   }, [courseId]);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title.trim() || !form.content.trim()) {
+      toast.error('Title and content are required.');
+      return;
+    }
+    setPosting(true);
+    try {
+      const res = await communicationApi.startDiscussion(courseId, form);
+      setDiscussions(prev => [res.data.data, ...prev]);
+      setShowForm(false);
+      setForm({ title: '', content: '' });
+      toast.success('Thread started!');
+    } catch {
+      toast.error('Failed to start thread.');
+    } finally {
+      setPosting(false);
+    }
+  };
 
   const filteredDiscussions = discussions.filter(d => 
     d.title.toLowerCase().includes(search.toLowerCase()) || 
@@ -74,6 +100,7 @@ export default function DiscussionsPage() {
 
         <motion.button 
           initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+          onClick={() => setShowForm(true)}
           className="flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all hover:-translate-y-1 active:scale-95 uppercase tracking-widest"
         >
           <Plus size={20} strokeWidth={3} /> Start Thread
@@ -163,14 +190,79 @@ export default function DiscussionsPage() {
                     <span className="text-xs font-bold">{disc.replies.length}</span>
                   </div>
                 </div>
-                <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white font-black text-[10px] hover:bg-blue-600 transition-all uppercase tracking-[0.2em] group/btn">
+                <Link href={`/courses/${courseId}/discussions/${disc._id}`} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white font-black text-[10px] hover:bg-blue-600 transition-all uppercase tracking-[0.2em] group/btn">
                   Join Thread <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
-                </button>
+                </Link>
               </div>
             </motion.div>
           ))}
         </div>
       )}
+
+      {/* ── Create Thread Modal ───────────────────────────────── */}
+      <AnimatePresence>
+        {showForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              onClick={() => setShowForm(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-[32px] shadow-2xl p-8 sm:p-10"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-slate-900 mb-1">Start a Thread</h2>
+                  <p className="text-slate-500 font-medium text-sm">Ask a question or share knowledge with your classmates.</p>
+                </div>
+                <button aria-label="Close" onClick={() => setShowForm(false)}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-900 transition-all">
+                  <X size={18} />
+                </button>
+              </div>
+              <form onSubmit={handleCreate} className="space-y-5">
+                <div>
+                  <label htmlFor="disc-title" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Thread Title</label>
+                  <input
+                    id="disc-title"
+                    required
+                    placeholder="e.g. How does backpropagation work?"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 h-12 text-slate-900 font-bold text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none"
+                    value={form.title}
+                    onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="disc-body" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Content</label>
+                  <textarea
+                    id="disc-body"
+                    required
+                    rows={5}
+                    placeholder="Share the details of your question or topic..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-medium text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none resize-none leading-relaxed"
+                    value={form.content}
+                    onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button type="button" onClick={() => setShowForm(false)}
+                    className="px-6 h-11 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={posting}
+                    className="flex items-center gap-2 px-7 h-11 rounded-xl bg-blue-600 text-white text-sm font-bold shadow-md shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-50 transition-all">
+                    {posting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                    {posting ? 'Posting...' : 'Start Thread'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

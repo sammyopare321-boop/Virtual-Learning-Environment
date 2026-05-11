@@ -67,3 +67,38 @@ exports.getMyMilestones = asyncHandler(async (req, res, next) => {
     data: milestones
   });
 });
+
+// @desc    Get student overall stats
+// @route   GET /api/students/me/stats
+// @access  Private/Student
+exports.getMyStats = asyncHandler(async (req, res, next) => {
+  const enrollments = await Enrollment.find({ student: req.user.id }).select('course');
+  const courseIds = enrollments.map(e => e.course);
+
+  if (!courseIds.length) {
+    return res.status(200).json({
+      success: true,
+      data: { overallCompletion: 0, assignmentsSubmitted: 0 }
+    });
+  }
+
+  const { Submission } = require('../models/Submission');
+  const GradeItem = require('../models/GradeItem');
+
+  const assignmentsSubmitted = await Submission.countDocuments({ student: req.user.id });
+  const grades = await GradeItem.find({ student: req.user.id });
+  
+  let overallCompletion = 0;
+  if (grades.length > 0) {
+     const sum = grades.reduce((acc, g) => acc + g.percentage, 0);
+     overallCompletion = sum / grades.length;
+  }
+  
+  res.status(200).json({
+    success: true,
+    data: {
+      overallCompletion: Math.round(overallCompletion),
+      assignmentsSubmitted
+    }
+  });
+});
