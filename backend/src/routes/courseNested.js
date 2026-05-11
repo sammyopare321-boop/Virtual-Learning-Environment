@@ -10,7 +10,7 @@ const { getModules, createModule } = require('../controllers/moduleController');
 const { addContent } = require('../controllers/contentController');
 const { setGradeWeights, getGradeWeights, getGradeBook } = require('../controllers/gradeController');
 const { getCourseAnalytics, getAtRiskStudents } = require('../controllers/analyticsController');
-const { createSession, getCourseAttendanceSummary } = require('../controllers/attendanceController');
+const { createSession, getCourseSessions, getCourseAttendanceSummary } = require('../controllers/attendanceController');
 const { createAnnouncement, getAnnouncements, startDiscussion, getDiscussions } = require('../controllers/communicationController');
 const { createLiveSession, getLiveSessions } = require('../controllers/liveSessionController');
 const { enrollCourse, dropCourse } = require('../controllers/enrollmentController');
@@ -62,7 +62,8 @@ router.post(
   authorize('teacher', 'admin'),
   createSession
 );
-router.get('/attendance', protect, getCourseAttendanceSummary);
+router.get('/attendance', protect, getCourseSessions);
+router.get('/attendance/summary', protect, getCourseAttendanceSummary);
 
 // ─── ANNOUNCEMENTS ──────────────────────────────────────────────────────────
 router.post(

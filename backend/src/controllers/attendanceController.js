@@ -56,6 +56,14 @@ exports.getMyAttendance = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, data: records });
 });
 
+// @desc    Get all attendance sessions for a course
+// @route   GET /api/courses/:id/attendance
+// @access  Private (Teacher/Admin)
+exports.getCourseSessions = asyncHandler(async (req, res, next) => {
+  const sessions = await AttendanceSession.find({ course: req.params.id }).sort('-date');
+  res.status(200).json({ success: true, count: sessions.length, data: sessions });
+});
+
 // @desc    Get attendance summary for course
 // @route   GET /api/courses/:id/attendance/summary
 // @access  Private (Teacher)
