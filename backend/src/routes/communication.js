@@ -11,6 +11,8 @@ const {
   markRead,
 } = require('../controllers/communicationController');
 
+const express = require('express');
+
 const router = express.Router({ mergeParams: true });
 
 const { protect } = require('../middleware/auth');
