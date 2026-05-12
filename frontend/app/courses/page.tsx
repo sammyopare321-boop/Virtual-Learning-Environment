@@ -14,9 +14,9 @@ import {
 import DashboardLayout from '@/layouts/DashboardLayout';
 
 const statusColor: Record<string, { bg: string, text: string, border: string }> = {
-  active:   { bg: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-100' },
-  draft:    { bg: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-100' },
-  archived: { bg: 'bg-slate-100',   text: 'text-slate-600',   border: 'border-slate-200' },
+  active:   { bg: 'bg-emerald-50',  text: 'text-emerald-600', border: 'border-emerald-100' },
+  draft:    { bg: 'bg-violet-50',    text: 'text-violet-600',   border: 'border-violet-100' },
+  archived: { bg: 'bg-gray-100',   text: 'text-gray-500',   border: 'border-gray-200' },
 };
 
 export default function CoursesPage() {
