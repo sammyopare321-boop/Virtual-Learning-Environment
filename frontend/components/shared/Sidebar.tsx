@@ -119,5 +119,3 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
     </aside>
   );
 }
-
-}
