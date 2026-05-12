@@ -1,4 +1,5 @@
 'use client';
+
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -8,9 +9,12 @@ import { communicationApi } from '@/utils/api/communicationApi';
 import { courseApi } from '@/utils/api/courseApi';
 import {
   MessageSquare, ArrowLeft, Send, ThumbsUp,
-  Pin, Hash, Loader2, Reply, User as UserIcon, Clock
+  Pin, Hash, Loader2, Reply, User as UserIcon, Clock,
+  Shield, Brain, Target, ChevronLeft, ArrowRight, Sparkles,
+  TrendingUp, Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import DashboardLayout from '@/layouts/DashboardLayout';
 
 interface Reply {
   _id: string;
@@ -45,7 +49,7 @@ export default function DiscussionThreadPage() {
   useEffect(() => {
     communicationApi.getDiscussion(discussionId)
       .then(res => setThread(res.data.data))
-      .catch(() => toast.error('Failed to load thread.'))
+      .catch(() => toast.error('Failed to synchronize intelligence.'))
       .finally(() => setLoading(false));
   }, [discussionId]);
 
@@ -62,9 +66,9 @@ export default function DiscussionThreadPage() {
       const res = await communicationApi.replyDiscussion(discussionId, { content: replyText });
       setThread(res.data.data);
       setReplyText('');
-      toast.success('Reply posted!');
+      toast.success('Transmission stored.');
     } catch {
-      toast.error('Failed to post reply.');
+      toast.error('Transmission failed.');
     } finally {
       setPosting(false);
     }
@@ -76,180 +80,201 @@ export default function DiscussionThreadPage() {
 
   if (loading) {
     return (
-      <div className="max-w-[860px] mx-auto p-8 lg:p-12 space-y-6">
-        <div className="h-10 w-40 bg-slate-100 animate-pulse rounded-xl" />
-        <div className="h-60 bg-slate-100 animate-pulse rounded-[32px]" />
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-28 bg-slate-100 animate-pulse rounded-[24px]" />
-        ))}
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+        <Loader2 className="w-10 h-10 animate-spin text-primary-500" />
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Syncing Dialogue Node...</p>
       </div>
     );
   }
 
   if (!thread) {
     return (
-      <div className="max-w-[860px] mx-auto p-12 text-center">
-        <div className="w-20 h-20 rounded-3xl bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto mb-6">
-          <MessageSquare size={32} className="text-rose-400" />
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto py-32 text-center space-y-8">
+          <div className="w-24 h-24 rounded-[32px] bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto shadow-inner">
+            <MessageSquare size={40} className="text-rose-400" />
+          </div>
+          <div className="space-y-3">
+            <h2 className="text-3xl font-display font-extrabold text-slate-900 tracking-tight">Intelligence Node Severed.</h2>
+            <p className="text-slate-500 font-medium text-lg leading-relaxed">The requested dialogue thread is unreachable or has been archived.</p>
+          </div>
+          <Link href={`/courses/${courseId}/discussions`}
+            className="btn btn-primary h-14 px-10 gap-3 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary-500/10">
+            <ChevronLeft size={16} /> Re-establish Link
+          </Link>
         </div>
-        <h2 className="text-2xl font-extrabold text-slate-900 mb-3">Thread not found</h2>
-        <p className="text-slate-500 mb-8">This discussion may have been deleted or you may not have access.</p>
-        <Link href={`/courses/${courseId}/discussions`}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition-colors">
-          <ArrowLeft size={16} /> Back to Discussions
-        </Link>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="max-w-[860px] mx-auto p-8 lg:p-12">
-      {/* Back nav */}
-      <Link
-        href={`/courses/${courseId}/discussions`}
-        className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors mb-8 group"
-      >
-        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-        Back to Discussions
-      </Link>
+    <DashboardLayout>
+      <div className="max-w-[1000px] mx-auto space-y-12 pb-20">
+        {/* Header / Back nav */}
+        <Link
+          href={`/courses/${courseId}/discussions`}
+          className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-primary-500 uppercase tracking-[0.3em] group transition-colors"
+        >
+          <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          Dialogue Terminal
+        </Link>
 
-      {/* ── Original Post ─────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-white border border-slate-200 rounded-[32px] p-8 mb-8 shadow-sm"
-      >
-        {/* Meta row */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-11 h-11 rounded-2xl bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700 font-black text-sm shrink-0">
-            {avatarLetter(thread.author.name)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-extrabold text-slate-900 leading-none mb-1">{thread.author.name}</p>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-              <Clock size={10} /> {formatTime(thread.createdAt)}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {thread.isPinned && (
-              <span className="flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 uppercase tracking-wider">
-                <Pin size={10} fill="currentColor" /> Pinned
-              </span>
-            )}
-            <span className="text-[10px] font-black px-2.5 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-500 uppercase tracking-wider">
-              {thread.author.role}
-            </span>
-          </div>
-        </div>
-
-        {/* Title + body */}
-        <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight leading-tight mb-5">
-          {thread.title}
-        </h1>
-        <p className="text-slate-600 leading-relaxed font-medium text-base mb-7 whitespace-pre-wrap">
-          {thread.content}
-        </p>
-
-        {/* Tags + stats */}
-        <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-100">
-          {(thread.tags || ['General']).map(tag => (
-            <span key={tag} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest">
-              <Hash size={10} /> {tag}
-            </span>
-          ))}
-          <div className="ml-auto flex items-center gap-4 text-slate-400">
-            <span className="flex items-center gap-1.5 text-xs font-bold">
-              <ThumbsUp size={14} /> {thread.likes.length}
-            </span>
-            <span className="flex items-center gap-1.5 text-xs font-bold">
-              <Reply size={14} /> {thread.replies.length} replies
-            </span>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* ── Replies ───────────────────────────────────────────── */}
-      <div className="space-y-4 mb-8">
-        <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-          <Reply size={14} /> {thread.replies.length} {thread.replies.length === 1 ? 'Reply' : 'Replies'}
-        </h2>
-
-        {thread.replies.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="bg-white border border-dashed border-slate-200 rounded-[24px] p-10 text-center"
-          >
-            <MessageSquare size={28} className="text-slate-300 mx-auto mb-3" />
-            <p className="text-sm font-bold text-slate-400">No replies yet — be the first to respond!</p>
-          </motion.div>
-        ) : (
-          <AnimatePresence>
-            {thread.replies.map((reply, idx) => (
-              <motion.div
-                key={reply._id ?? idx}
-                initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.04 }}
-                className={`flex gap-4 p-6 rounded-[24px] border transition-colors ${
-                  reply.author._id === thread.author._id
-                    ? 'bg-indigo-50 border-indigo-100'
-                    : 'bg-white border-slate-200'
-                }`}
-              >
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
-                  reply.author._id === thread.author._id
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-100 border border-slate-200 text-slate-600'
-                }`}>
-                  {avatarLetter(reply.author.name)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 mb-2 flex-wrap">
-                    <span className="text-sm font-extrabold text-slate-900">{reply.author.name}</span>
-                    {reply.author._id === thread.author._id && (
-                      <span className="text-[9px] font-black px-2 py-0.5 rounded bg-indigo-600 text-white uppercase tracking-widest">OP</span>
-                    )}
-                    <span className="text-[10px] font-bold text-slate-400 ml-auto">{formatTime(reply.createdAt)}</span>
-                  </div>
-                  <p className="text-slate-700 font-medium leading-relaxed text-sm whitespace-pre-wrap">{reply.body}</p>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        )}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* ── Reply Composer ────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-        className="bg-white border border-slate-200 rounded-[28px] p-6 shadow-sm"
-      >
-        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-          <Send size={14} /> Post a Reply
-        </h3>
-        <div className="flex gap-4">
-          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xs shrink-0">
-            {avatarLetter(user?.name ?? 'U')}
-          </div>
-          <form onSubmit={handleReply} className="flex-1 flex flex-col gap-3">
-            <textarea
-              rows={4}
-              value={replyText}
-              onChange={e => setReplyText(e.target.value)}
-              placeholder="Share your thoughts, answer a question, or ask for clarification..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 font-medium text-sm focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none resize-none leading-relaxed placeholder:text-slate-400"
-            />
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={posting || !replyText.trim()}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-600/20 hover:-translate-y-0.5 active:scale-95 transition-all"
-              >
-                {posting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                {posting ? 'Posting...' : 'Post Reply'}
-              </button>
+        {/* ── Original Post ─────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-white border border-slate-100 rounded-[40px] p-12 shadow-sm relative overflow-hidden group"
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-1000" />
+          
+          <div className="flex items-center justify-between mb-10 relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-[20px] bg-slate-900 flex items-center justify-center text-white font-display font-black text-lg shadow-xl shadow-slate-900/10 group-hover:bg-primary-500 transition-colors duration-700">
+                {avatarLetter(thread.author.name)}
+              </div>
+              <div>
+                <p className="text-lg font-display font-extrabold text-slate-900 leading-none mb-1.5">{thread.author.name}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <Clock size={12} className="text-primary-500" /> {formatTime(thread.createdAt)}
+                </p>
+              </div>
             </div>
-          </form>
+            <div className="flex items-center gap-3">
+              {thread.isPinned && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary-500 text-white text-[9px] font-black uppercase tracking-widest shadow-lg shadow-primary-500/20">
+                  <Pin size={12} fill="currentColor" /> Pinned
+                </div>
+              )}
+              <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100 text-slate-400 text-[9px] font-black uppercase tracking-widest">
+                {thread.author.role}
+              </div>
+            </div>
+          </div>
+
+          <h1 className="text-4xl font-display font-extrabold text-slate-900 tracking-tight leading-tight mb-8 relative z-10">
+            {thread.title}
+          </h1>
+          <p className="text-slate-600 leading-relaxed font-medium text-lg mb-10 whitespace-pre-wrap relative z-10">
+            {thread.content}
+          </p>
+
+          <div className="flex flex-wrap items-center gap-4 pt-8 border-t border-slate-50 relative z-10">
+            {(thread.tags || ['General']).map(tag => (
+              <span key={tag} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest group-hover:bg-primary-50 group-hover:text-primary-500 transition-colors">
+                <Hash size={12} /> {tag}
+              </span>
+            ))}
+            <div className="ml-auto flex items-center gap-8">
+              <div className="flex items-center gap-2.5 text-slate-400 group-hover:text-primary-500 transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center group-hover:bg-primary-50 transition-all border border-slate-100">
+                  <ThumbsUp size={16} />
+                </div>
+                <span className="text-sm font-black">{thread.likes.length}</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-slate-400 group-hover:text-primary-500 transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center group-hover:bg-primary-50 transition-all border border-slate-100">
+                  <Reply size={16} />
+                </div>
+                <span className="text-sm font-black">{thread.replies.length} Intelligence Units</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ── Replies ───────────────────────────────────────────── */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
+              <Users size={16} className="text-primary-500" /> Synchronization Feed <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            </h2>
+          </div>
+
+          {thread.replies.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="bg-white border border-slate-100 rounded-[32px] p-20 text-center space-y-6"
+            >
+              <div className="w-20 h-20 bg-slate-50 rounded-[28px] flex items-center justify-center mx-auto shadow-inner">
+                <MessageSquare size={32} className="text-slate-200" />
+              </div>
+              <p className="text-slate-400 font-bold tracking-tight">Zero replies detected. Initialize first response sequence.</p>
+            </motion.div>
+          ) : (
+            <div className="space-y-4">
+              {thread.replies.map((reply, idx) => (
+                <motion.div
+                  key={reply._id ?? idx}
+                  initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }}
+                  className={`flex gap-6 p-8 rounded-[32px] border transition-all group ${
+                    reply.author._id === thread.author._id
+                      ? 'bg-primary-50/30 border-primary-100/50 shadow-sm'
+                      : 'bg-white border-slate-100 shadow-sm hover:border-primary-100'
+                  }`}
+                >
+                  <div className={`w-12 h-12 rounded-[18px] flex items-center justify-center text-xs font-black shrink-0 shadow-inner group-hover:scale-110 transition-transform duration-500 ${
+                    reply.author._id === thread.author._id
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-slate-50 text-slate-400 border border-slate-100'
+                  }`}>
+                    {avatarLetter(reply.author.name)}
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-base font-display font-extrabold text-slate-900">{reply.author.name}</span>
+                        {reply.author._id === thread.author._id && (
+                          <span className="text-[8px] font-black px-2 py-0.5 rounded-lg bg-primary-500 text-white uppercase tracking-widest shadow-md shadow-primary-500/20">OP Intelligence</span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{formatTime(reply.createdAt)}</span>
+                    </div>
+                    <p className="text-slate-600 font-medium leading-relaxed text-base whitespace-pre-wrap">{reply.body}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+          <div ref={bottomRef} />
         </div>
-      </motion.div>
-    </div>
+
+        {/* ── Reply Composer ────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="bg-white border border-slate-100 rounded-[40px] p-8 shadow-xl relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-500 to-blue-600" />
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center text-primary-500">
+              <Send size={16} />
+            </div>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Synchronization Sequence</h3>
+          </div>
+          
+          <div className="flex gap-6">
+            <div className="w-12 h-12 rounded-[18px] bg-slate-900 flex items-center justify-center text-white font-display font-black text-sm shrink-0 shadow-xl shadow-slate-900/10">
+              {avatarLetter(user?.name ?? 'U')}
+            </div>
+            <form onSubmit={handleReply} className="flex-1 space-y-6">
+              <textarea
+                rows={4}
+                value={replyText}
+                onChange={e => setReplyText(e.target.value)}
+                placeholder="Synchronize your academic insights with the cohort..."
+                className="input-premium py-6 min-h-[140px] resize-none text-lg"
+              />
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={posting || !replyText.trim()}
+                  className="btn btn-primary h-14 px-10 gap-3 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary-500/20"
+                >
+                  {posting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                  {posting ? 'Transmitting...' : 'Broadcast Transmission'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </motion.div>
+      </div>
+    </DashboardLayout>
   );
 }

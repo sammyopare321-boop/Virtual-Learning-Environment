@@ -5,11 +5,11 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { courseApi } from '@/utils/api/courseApi';
 import { 
-  LayoutDashboard, BookOpen, MessageSquare, Bell, User as UserIcon, 
-  LogOut, GraduationCap, Calendar, Clock, ChevronRight, Activity, 
-  Sparkles, TrendingUp, CheckCircle2, AlertCircle
+  BookOpen, Calendar, Clock, ChevronRight, Activity, 
+  Sparkles, TrendingUp, CheckCircle2, AlertCircle,
+  Play, Timer, Star, Award
 } from 'lucide-react';
-import Sidebar from '@/components/shared/Sidebar';
+import DashboardLayout from '@/layouts/DashboardLayout';
 
 interface Course {
   _id: string;
@@ -18,13 +18,14 @@ interface Course {
   status: string;
   semester: string;
   academicYear: string;
+  coverImage?: string;
 }
 
 export default function StudentDashboard() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ overallCompletion: 0, assignmentsSubmitted: 0 });
+  const [stats, setStats] = useState({ overallCompletion: 0, assignmentsSubmitted: 0, studyHours: 24 });
   const [milestones, setMilestones] = useState<any[]>([]);
 
   useEffect(() => {
@@ -36,210 +37,227 @@ export default function StudentDashboard() {
       .then(([coursesRes, milestonesRes, statsRes]) => {
         setCourses(coursesRes.data.data || []);
         setMilestones(milestonesRes.data.data || []);
-        setStats(statsRes.data.data || { overallCompletion: 0, assignmentsSubmitted: 0 });
+        setStats(prev => ({ ...prev, ...(statsRes.data.data || {}) }));
       })
       .catch(() => setCourses([]))
       .finally(() => setLoading(false));
   }, []);
 
   const activeCourses = courses.filter(c => c.status === 'active');
-  const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  
   const greeting = (() => {
     const h = new Date().getHours();
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
   })();
 
   return (
-    <div className="min-h-screen bg-slate-50 flex overflow-hidden font-sans selection:bg-blue-100 selection:text-blue-900 relative">
-      {/* Background Ambience */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-100/50 rounded-full blur-[140px]" />
-        <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-indigo-50/60 rounded-full blur-[120px]" />
-      </div>
-
-      <Sidebar />
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto relative z-10 scroll-smooth">
-        <div className="max-w-[1400px] mx-auto p-8 lg:p-12">
-          
-          {/* Header */}
-          <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-            <div>
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider mb-3">
-                <Calendar size={14} />
-                <span>{currentDate}</span>
-              </motion.div>
-              <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter mb-4 leading-none">
-                {greeting}, {user?.name?.split(' ')[0]} 👋
-              </motion.h1>
-              <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-slate-500 text-lg max-w-xl leading-relaxed font-medium">
-                You have <strong className="text-slate-900 font-bold">{milestones.filter(m => m.type==='assignment').length} assignments</strong> due soon and <strong className="text-slate-900 font-bold">{milestones.filter(m => m.type==='live_session').length} upcoming lectures</strong>.
-              </motion.p>
-            </div>
-            
+    <DashboardLayout>
+      <div className="space-y-12 pb-12">
+        {/* Welcome Hero */}
+        <section className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+          <div className="space-y-2">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
+              initial={{ opacity: 0, x: -10 }} 
+              animate={{ opacity: 1, x: 0 }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-50 text-primary-600 text-[10px] font-black uppercase tracking-widest"
             >
-              <Link href="/courses" className="group flex items-center gap-2 px-6 py-3.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5">
-                <BookOpen size={18} />
-                Browse Catalog
-              </Link>
+              <Sparkles size={12} />
+              Personalized Learning Intelligence
             </motion.div>
-          </header>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            {[
-              { label: 'Enrolled Courses', value: courses.length, icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
-              { label: 'Active Courses', value: activeCourses.length, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-              { label: 'Department', value: user?.department || 'N/A', icon: GraduationCap, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' }
-            ].map((stat, i) => (
-              <motion.div 
-                key={i} 
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}
-                className="relative overflow-hidden rounded-[24px] bg-white border border-slate-200 p-6 group hover:border-slate-300 transition-colors shadow-sm hover:shadow-xl hover:shadow-slate-200/50"
-              >
-                <div className="relative z-10 flex items-center gap-5">
-                  <div className={`w-14 h-14 rounded-2xl ${stat.bg} ${stat.border} border flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-500`}>
-                    <stat.icon size={24} className={stat.color} />
-                  </div>
-                  <div>
-                    <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-1">{loading ? '-' : stat.value}</h3>
-                    <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">{stat.label}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-extrabold text-slate-900 tracking-tight leading-[1.1]">
+              {greeting},<br />
+              <span className="text-gradient">{user?.name?.split(' ')[0]}</span>
+            </h1>
+            <p className="text-slate-500 text-lg max-w-xl font-medium leading-relaxed">
+              You're making great progress. You have <span className="text-slate-900 font-bold">{milestones.length} important tasks</span> synced to your schedule this week.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            {/* Main Content Area (Courses) */}
-            <div className="xl:col-span-2 space-y-8">
-              
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                  My Learning Workspace <Sparkles size={18} className="text-blue-600" />
-                </h2>
-                <Link href="/courses" className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 group">
-                  View all <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </div>
+          <div className="flex gap-4">
+             <Link href="/courses" className="btn btn-primary h-14 px-8 text-base shadow-xl shadow-primary-500/20">
+               <Play size={18} fill="currentColor" /> Resume Last Lesson
+             </Link>
+          </div>
+        </section>
 
-              {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  {[1,2,3,4].map(i => <div key={i} className="h-32 rounded-[24px] bg-slate-100 animate-pulse border border-slate-200" />)}
+        {/* Intelligence Grid */}
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { label: 'Academic Standing', value: '4.0 GPA', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50', trend: '+0.2 from last term' },
+            { label: 'Study Hours', value: `${stats.studyHours}h`, icon: Timer, color: 'text-primary-500', bg: 'bg-primary-50', trend: 'Focus: High' },
+            { label: 'Assignments', value: stats.assignmentsSubmitted, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50', trend: '98% On-time rate' },
+            { label: 'Active Courses', value: activeCourses.length, icon: BookOpen, color: 'text-indigo-500', bg: 'bg-indigo-50', trend: 'Full enrollment' },
+          ].map((stat, i) => (
+            <motion.div 
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * i }}
+              className="card-premium card-premium-hover p-6 flex flex-col gap-4"
+            >
+              <div className="flex items-start justify-between">
+                <div className={`w-12 h-12 rounded-2xl ${stat.bg} flex items-center justify-center ${stat.color}`}>
+                  <stat.icon size={22} strokeWidth={2.5} />
                 </div>
-              ) : courses.length === 0 ? (
-                /* Premium Empty State */
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
-                  className="rounded-[32px] bg-white border border-slate-200 p-12 text-center shadow-sm"
-                >
-                  <div className="w-24 h-24 mx-auto bg-blue-50 rounded-3xl border border-blue-100 flex items-center justify-center mb-8 shadow-sm">
-                    <BookOpen size={40} className="text-blue-600" />
-                  </div>
-                  <h3 className="text-2xl font-extrabold text-slate-900 mb-3 tracking-tight">No courses enrolled yet</h3>
-                  <p className="text-slate-500 text-lg max-w-md mx-auto mb-8 font-medium">
-                    Browse the catalog and enroll in courses to start your academic journey.
-                  </p>
-                  <Link href="/courses" className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/10">
-                    Browse Catalog
-                  </Link>
-                </motion.div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  {courses.map((course, idx) => (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
-                      key={course._id} 
-                    >
-                      <Link href={`/courses/${course._id}`} className="group block p-6 rounded-[24px] bg-white border border-slate-200 hover:border-blue-300 transition-all shadow-sm hover:shadow-xl hover:shadow-blue-900/5 relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        
-                        <div className="flex items-start justify-between mb-4">
-                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 uppercase tracking-wider">
-                            {course.code}
-                          </span>
-                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider ${
-                            course.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-600 border border-slate-200'
-                          }`}>{course.status}</span>
-                        </div>
-                        
-                        <h3 className="text-lg font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors mb-2 leading-tight pr-4">
-                          {course.title}
-                        </h3>
-                        <p className="text-sm text-slate-500 font-medium">
-                          {course.semester} • {course.academicYear}
-                        </p>
-                      </Link>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stat.trend}</div>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-1">{stat.label}</p>
+                <h3 className="text-3xl font-display font-extrabold text-slate-900">{stat.value}</h3>
+              </div>
+            </motion.div>
+          ))}
+        </section>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          {/* Main Workspace */}
+          <div className="lg:col-span-2 space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-display font-extrabold text-slate-900 tracking-tight">Current Workspace</h2>
+              <Link href="/courses" className="text-xs font-bold text-primary-500 uppercase tracking-widest hover:text-primary-700 flex items-center gap-2 group transition-all">
+                Access All Modules <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
             </div>
 
-            {/* Sidebar Widgets */}
-            <div className="space-y-6">
-              
-              {/* Productivity Widget */}
-              <div className="rounded-[24px] bg-white border border-slate-200 p-7 shadow-sm">
-                <h3 className="text-xs font-bold text-slate-900 mb-6 uppercase tracking-widest flex items-center gap-2">
-                  <Activity size={16} className="text-blue-600" /> Academic Progress
-                </h3>
-                
-                <div className="space-y-5">
-                  {[
-                    { label: 'Overall Completion', val: stats.overallCompletion, color: 'bg-blue-600' },
-                    { label: 'Assignments Submitted', val: stats.assignmentsSubmitted, color: 'bg-emerald-500' },
-                  ].map((item, i) => (
-                    <div key={i}>
-                      <div className="flex justify-between text-xs font-bold text-slate-600 mb-2">
-                        <span>{item.label}</span>
-                        <span>{item.val}{i === 0 ? '%' : ''}</span>
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[1,2,3,4].map(i => <div key={i} className="h-48 rounded-[24px] bg-slate-50 animate-pulse border border-slate-100" />)}
+              </div>
+            ) : courses.length === 0 ? (
+              <div className="card-premium p-12 text-center bg-slate-50/50 border-dashed border-2 border-slate-200">
+                <div className="w-20 h-20 bg-white rounded-3xl shadow-sm mx-auto flex items-center justify-center mb-6 border border-slate-100">
+                  <BookOpen size={32} className="text-slate-300" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">No Active Courses</h3>
+                <p className="text-slate-500 text-sm max-w-xs mx-auto mb-8 font-medium">Your academic workspace is empty. Discover new courses in the catalog.</p>
+                <Link href="/courses" className="btn btn-primary">Browse Catalog</Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {courses.map((course, idx) => (
+                  <motion.div
+                    key={course._id}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 + idx * 0.05 }}
+                  >
+                    <Link href={`/courses/${course._id}`} className="card-premium card-premium-hover block p-0 overflow-hidden group">
+                       <div className="h-32 bg-slate-900 relative">
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-60 z-10" />
+                          <div className="absolute inset-0 bg-primary-500 opacity-20" />
+                          <div className="absolute top-4 left-4 z-20">
+                             <span className="px-2.5 py-1 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-black uppercase tracking-widest">
+                               {course.code}
+                             </span>
+                          </div>
+                          {course.coverImage && (
+                            <img src={course.coverImage} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" alt="" />
+                          )}
+                       </div>
+                       <div className="p-6">
+                          <h3 className="text-lg font-display font-extrabold text-slate-900 mb-2 group-hover:text-primary-500 transition-colors leading-snug">
+                            {course.title}
+                          </h3>
+                          <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-50">
+                             <div className="flex items-center gap-2">
+                                <Activity size={14} className="text-emerald-500" />
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">85% Processed</span>
+                             </div>
+                             <ChevronRight size={16} className="text-slate-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
+                          </div>
+                       </div>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Productivity Sidebar */}
+          <div className="space-y-8">
+            {/* Academic Health */}
+            <div className="card-premium p-8 bg-slate-900 text-white border-none shadow-2xl shadow-primary-900/20 overflow-hidden relative">
+               <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary-500 rounded-full blur-[80px] opacity-20" />
+               <div className="relative z-10">
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary-400 mb-6 flex items-center gap-2">
+                    <TrendingUp size={14} /> Performance Sync
+                  </h3>
+                  <div className="space-y-6">
+                    <div>
+                      <div className="flex justify-between items-end mb-2">
+                        <span className="text-sm font-bold">Knowledge Mastery</span>
+                        <span className="text-xl font-display font-black">74%</span>
                       </div>
-                      <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                        <div className={`h-full rounded-full ${item.color}`} style={{ width: `${i === 0 ? item.val : Math.min(item.val * 10, 100)}%` }} />
+                      <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: '74%' }}
+                          transition={{ duration: 1.5, ease: "easeOut" }}
+                          className="h-full bg-gradient-to-r from-primary-400 to-indigo-400 rounded-full" 
+                        />
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+                       <div className="w-10 h-10 rounded-xl bg-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
+                          <Award size={20} />
+                       </div>
+                       <div>
+                          <p className="text-[11px] font-bold text-primary-400 uppercase tracking-widest leading-none mb-1">Active Streak</p>
+                          <p className="text-lg font-display font-extrabold leading-none">12 Days Focus</p>
+                       </div>
+                    </div>
+                  </div>
+               </div>
+            </div>
 
-              {/* Reminders Widget */}
-              <div className="rounded-[24px] bg-white border border-slate-200 p-7 shadow-sm">
-                <h3 className="text-xs font-bold text-slate-900 mb-6 uppercase tracking-widest flex items-center gap-2">
-                  <AlertCircle size={16} className="text-rose-500" /> Action Required
+            {/* Smart Reminders */}
+            <div className="card-premium p-8">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                  <AlertCircle size={16} className="text-primary-500" /> Pulse Feed
                 </h3>
-                
-                <div className="space-y-4">
-                  {milestones.length === 0 ? (
-                    <p className="text-sm font-medium text-slate-500">No action required at the moment.</p>
-                  ) : (
-                    milestones.slice(0, 3).map((item, i) => (
-                      <Link key={i} href={item.type === 'live_session' ? `/courses/${item.course?._id}/live` : item.type === 'assignment' ? `/courses/${item.course?._id}/assignments` : `/courses/${item.course?._id}`} className="block">
-                        <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-blue-200 transition-all group">
-                          <div className={`w-2 h-2 rounded-full ${item.priority === 'high' ? 'bg-rose-500' : 'bg-amber-500'} mt-1.5 shrink-0`} />
-                          <div>
-                            <p className="text-sm font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">{item.title}</p>
-                            <p className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                              <Clock size={12} /> {new Date(item.deadline).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                      </Link>
-                    ))
-                  )}
-                </div>
+                <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
               </div>
 
+              <div className="space-y-6">
+                {milestones.length === 0 ? (
+                  <div className="text-center py-4">
+                    <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Workspace is clear</p>
+                  </div>
+                ) : (
+                  milestones.slice(0, 4).map((item, i) => (
+                    <Link 
+                      key={i} 
+                      href={item.type === 'live_session' ? `/courses/${item.course?._id}/live` : `/courses/${item.course?._id}`}
+                      className="flex items-start gap-4 group cursor-pointer"
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
+                        item.type === 'live_session' 
+                        ? 'bg-rose-50 border-rose-100 text-rose-500 group-hover:bg-rose-500 group-hover:text-white' 
+                        : 'bg-slate-50 border-slate-100 text-slate-400 group-hover:bg-primary-500 group-hover:text-white group-hover:border-primary-500'
+                      }`}>
+                         {item.type === 'live_session' ? <Activity size={18} /> : <Calendar size={18} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                         <h4 className="text-[13px] font-bold text-slate-900 truncate tracking-tight group-hover:text-primary-500 transition-colors">{item.title}</h4>
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mt-1">
+                            <Clock size={12} /> {new Date(item.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                         </p>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </div>
+
+              <Link href="/notifications" className="btn btn-secondary w-full mt-10 h-11 text-xs uppercase tracking-widest font-black">
+                View Full Timeline
+              </Link>
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

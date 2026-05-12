@@ -40,3 +40,49 @@ export interface Course {
   students?: string[] | User[];
   modules?: Module[];
 }
+
+export interface Quiz {
+  _id: string;
+  title: string;
+  description?: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  totalMarks: number;
+  course: string | Course;
+  isPublished: boolean;
+  questions?: Question[];
+}
+
+export interface Question {
+  _id: string;
+  text: string;
+  type: 'multiple_choice' | 'true_false' | 'short_answer';
+  options?: string[];
+  correctAnswer: string;
+  marks: number;
+  order: number;
+}
+
+export interface Attempt {
+  _id: string;
+  student: string | User;
+  quiz: string | Quiz;
+  startTime: string;
+  endTime?: string;
+  answers: Record<string, string>;
+  score?: number;
+  status: 'started' | 'submitted' | 'graded';
+  feedback?: string;
+}
+
+export interface LiveSession {
+  _id: string;
+  title: string;
+  description?: string;
+  course: string;
+  instructor: string | User;
+  scheduledAt: string;
+  status: 'scheduled' | 'live' | 'ended';
+  roomUrl?: string;
+}

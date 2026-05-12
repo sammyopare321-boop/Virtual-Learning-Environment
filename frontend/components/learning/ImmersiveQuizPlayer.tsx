@@ -51,7 +51,10 @@ export default function ImmersiveQuizPlayer({ quiz, questions, attempt, onSubmit
   const formatTime = (ms: number) => {
     const s = Math.floor(ms / 1000);
     const m = Math.floor(s / 60);
-    return `${m}:${String(s % 60).padStart(2, '0')}`;
+    const h = Math.floor(m / 60);
+    return h > 0 
+      ? `${h}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` 
+      : `${m}:${String(s % 60).padStart(2, '0')}`;
   };
 
   const handleNext = () => {
@@ -203,8 +206,11 @@ export default function ImmersiveQuizPlayer({ quiz, questions, attempt, onSubmit
 
                         {currentQ.type === 'short_answer' && (
                            <div className="space-y-4">
+                              <label htmlFor={`q-${currentQ._id}`} className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Your Academic Response</label>
                               <textarea
+                                id={`q-${currentQ._id}`}
                                 rows={8}
+                                title="Enter your short answer response here"
                                 className="w-full bg-white border-2 border-slate-100 rounded-[32px] p-8 text-xl font-medium text-slate-900 focus:border-blue-600 transition-all outline-none resize-none shadow-xl shadow-slate-900/5"
                                 placeholder="Begin typing your academic response..."
                                 value={answers[currentQ._id] || ''}
@@ -224,6 +230,8 @@ export default function ImmersiveQuizPlayer({ quiz, questions, attempt, onSubmit
                         <button 
                           onClick={handlePrev}
                           disabled={currentIdx === 0}
+                          aria-label="Previous Question"
+                          title="Previous Question"
                           className="flex items-center gap-3 px-8 h-16 rounded-2xl bg-white border-2 border-slate-100 text-slate-400 font-black text-xs uppercase tracking-widest hover:border-blue-100 hover:text-blue-600 transition-all disabled:opacity-0"
                         >
                            <ChevronLeft size={18} /> Previous Item
@@ -231,6 +239,8 @@ export default function ImmersiveQuizPlayer({ quiz, questions, attempt, onSubmit
                         
                         <button 
                           onClick={handleNext}
+                          aria-label={currentIdx === questions.length - 1 ? 'Review & Submit' : 'Next Question'}
+                          title={currentIdx === questions.length - 1 ? 'Review & Submit' : 'Next Question'}
                           className="flex items-center gap-3 px-10 h-16 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 group"
                         >
                            {currentIdx === questions.length - 1 ? 'Review & Submit' : 'Next Question'}
@@ -257,6 +267,8 @@ export default function ImmersiveQuizPlayer({ quiz, questions, attempt, onSubmit
                      <div className="grid grid-cols-2 gap-4">
                         <button 
                           onClick={() => setShowConfirm(false)}
+                          aria-label="Back to assessment items"
+                          title="Back to assessment items"
                           className="h-16 rounded-2xl bg-slate-100 text-slate-600 font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all"
                         >
                            Go Back to Review
@@ -264,6 +276,8 @@ export default function ImmersiveQuizPlayer({ quiz, questions, attempt, onSubmit
                         <button 
                           onClick={submitFinal}
                           disabled={isSubmitting}
+                          aria-label="Commit Final Submission"
+                          title="Commit Final Submission"
                           className="h-16 rounded-2xl bg-blue-600 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20 flex items-center justify-center gap-3"
                         >
                            {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}

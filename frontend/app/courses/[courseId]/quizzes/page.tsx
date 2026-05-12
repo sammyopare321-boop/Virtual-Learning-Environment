@@ -1,6 +1,7 @@
 'use client';
+
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { courseApi } from '@/utils/api/courseApi';
 import { useAuth } from '@/context/AuthContext';
@@ -10,10 +11,13 @@ import {
   Search, Filter, Sparkles, HelpCircle,
   AlertCircle, CheckCircle2, Calendar, 
   BarChart3, Loader2, Play, Star, ArrowRight,
-  X, Save, Trash2, Globe, Lock
+  X, Save, Trash2, Globe, Lock, Target, Zap,
+  Activity, ShieldCheck, Cpu, Brain, Timer
 } from 'lucide-react';
 import Link from 'next/link';
 import { AxiosError } from 'axios';
+import DashboardLayout from '@/layouts/DashboardLayout';
+import toast from 'react-hot-toast';
 
 interface Quiz {
   _id: string;
@@ -24,6 +28,7 @@ interface Quiz {
   startTime: string;
   endTime: string;
   isPublished: boolean;
+  questionCount?: number;
   status: 'draft' | 'published' | 'closed';
 }
 
@@ -31,15 +36,45 @@ const getStatusMeta = (quiz: Quiz) => {
   const now = new Date();
   const start = new Date(quiz.startTime);
   const end = new Date(quiz.endTime);
+  const noQuestions = quiz.questionCount === 0 || !quiz.questionCount;
   
-  if (!quiz.isPublished) return { label: 'Draft', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
-  if (now < start) return { label: 'Upcoming', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-100' };
-  if (now > end) return { label: 'Ended', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
-  return { label: 'Live 🔴', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-100' };
+  if (!quiz.isPublished) return { 
+    label: noQuestions ? 'Awaiting Architecture' : 'Protocol Draft', 
+    bg: noQuestions ? 'bg-amber-50' : 'bg-slate-50', 
+    text: noQuestions ? 'text-amber-600' : 'text-slate-400', 
+    border: noQuestions ? 'border-amber-100' : 'border-slate-100', 
+    dot: noQuestions ? 'bg-amber-400' : 'bg-slate-300',
+    icon: noQuestions ? <AlertCircle size={12} /> : <Lock size={12} />
+  };
+  if (now < start) return { 
+    label: 'Scheduled Transmission', 
+    bg: 'bg-primary-50', 
+    text: 'text-primary-600', 
+    border: 'border-primary-100', 
+    dot: 'bg-primary-400',
+    icon: <Calendar size={12} />
+  };
+  if (now > end) return { 
+    label: 'Archive State', 
+    bg: 'bg-slate-50', 
+    text: 'text-slate-500', 
+    border: 'border-slate-100', 
+    dot: 'bg-slate-400',
+    icon: <ShieldCheck size={12} />
+  };
+  return { 
+    label: 'Live Broadcast', 
+    bg: 'bg-rose-50', 
+    text: 'text-rose-600', 
+    border: 'border-rose-100', 
+    dot: 'bg-rose-500 animate-pulse',
+    icon: <Activity size={12} />
+  };
 };
 
 export default function QuizzesPage() {
   const { courseId } = useParams() as { courseId: string };
+  const router = useRouter();
   const { user } = useAuth();
   
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -56,16 +91,8 @@ export default function QuizzesPage() {
     endTime: '',
     totalMarks: 20
   });
-  
-  const [toast, setToast] = useState<{ msg: string, type: string } | null>(null);
-
-  const showToast = (msg: string, type: string = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
 
   const fetchQuizzes = useCallback(() => {
-    setLoading(true);
     courseApi.getQuizzes(courseId)
       .then(res => setQuizzes(res.data.data || []))
       .catch(() => setQuizzes([]))
@@ -80,26 +107,29 @@ export default function QuizzesPage() {
     e.preventDefault();
     setCreating(true);
     try {
-      await courseApi.createQuiz(courseId, form);
-      fetchQuizzes();
-      setShowForm(false);
-      setForm({ title: '', description: '', duration: 30, startTime: '', endTime: '', totalMarks: 20 });
-      showToast('Assessment created successfully!');
+      const res = await courseApi.createQuiz(courseId, form);
+      const newQuiz = res.data.data;
+      toast.success('Assessment initialized. Redirecting to Question Architect.');
+      router.push(`/courses/${courseId}/quizzes/${newQuiz._id}`);
     } catch (err) {
-      const error = err as AxiosError<{message: string}>;
-      showToast(error.response?.data?.message || 'Failed to create assessment.', 'error');
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || 'Configuration failed.');
     } finally {
       setCreating(false);
     }
   };
 
-  const handlePublish = async (quizId: string) => {
+  const handlePublish = async (quiz: Quiz) => {
+    if (!quiz.questionCount || quiz.questionCount === 0) {
+      toast.error('Add at least one question before broadcasting.');
+      return;
+    }
     try {
-      await api.patch(`/api/quizzes/${quizId}/publish`);
-      setQuizzes(p => p.map(q => q._id === quizId ? { ...q, isPublished: true } : q));
-      showToast('Quiz published to students!');
+      await api.patch(`/api/quizzes/${quiz._id}/publish`);
+      setQuizzes(p => p.map(q => q._id === quiz._id ? { ...q, isPublished: true } : q));
+      toast.success('Assessment broadcasted to cohort.');
     } catch (err) {
-      showToast('Failed to publish quiz.', 'error');
+      toast.error('Broadcast failed.');
     }
   };
 
@@ -108,283 +138,227 @@ export default function QuizzesPage() {
   );
 
   return (
-    <div className="max-w-[1200px] mx-auto p-4 lg:p-0">
-      
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }} exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className={`fixed top-8 left-1/2 z-50 px-6 py-3 rounded-full font-bold shadow-xl border flex items-center gap-2 ${
-              toast.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            }`}
-          >
-            {toast.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
-            {toast.msg}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Header Area */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
-        <div className="flex-1">
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-3 text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] mb-4"
-          >
-            <HelpCircle size={14} />
-            Academic Assessments
-          </motion.div>
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter leading-none mb-6"
-          >
-            Quizzes & <span className="text-blue-600">Exams.</span>
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="text-slate-500 text-lg font-medium max-w-xl leading-relaxed"
-          >
-            Manage and participate in course assessments. Track your progress and view detailed feedback.
-          </motion.p>
-        </div>
-
-        {user?.role === 'teacher' && (
-          <motion.button 
-            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-            onClick={() => setShowForm(p => !p)}
-            className={`flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black text-lg shadow-xl transition-all hover:-translate-y-1 active:scale-95 uppercase tracking-widest ${
-              showForm 
-                ? 'bg-white border border-slate-200 text-slate-600' 
-                : 'bg-blue-600 text-white shadow-blue-600/20 hover:bg-blue-700'
-            }`}
-          >
-            {showForm ? 'Cancel' : <><Plus size={20} strokeWidth={3} /> Create Quiz</>}
-          </motion.button>
-        )}
-      </header>
-
-      {/* Create Form */}
-      <AnimatePresence>
-        {showForm && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-            animate={{ opacity: 1, height: 'auto', marginBottom: 48 }}
-            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-white rounded-[32px] border-2 border-blue-100 p-8 lg:p-10 shadow-xl shadow-blue-900/5">
-              <h3 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">Configure Assessment</h3>
-              <form onSubmit={handleCreate}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  <div className="md:col-span-2">
-                    <label htmlFor="quiz-title" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Quiz Title *</label>
-                    <input 
-                      id="quiz-title"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none font-bold" 
-                      placeholder="e.g. Midterm Examination" 
-                      value={form.title} 
-                      onChange={e => setForm({...form, title: e.target.value})} 
-                      required 
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="quiz-marks" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Total Marks *</label>
-                    <input 
-                      id="quiz-marks"
-                      type="number" 
-                      min="1" 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" 
-                      value={form.totalMarks} 
-                      onChange={e => setForm({...form, totalMarks: parseInt(e.target.value)})} 
-                      required 
-                    />
-                  </div>
-                  <div className="md:col-span-3">
-                    <label htmlFor="quiz-desc" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Description</label>
-                    <textarea 
-                      id="quiz-desc"
-                      rows={3} 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-medium resize-none" 
-                      placeholder="Provide instructions or scope..." 
-                      value={form.description} 
-                      onChange={e => setForm({...form, description: e.target.value})} 
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="quiz-duration" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Duration (mins) *</label>
-                    <input 
-                      id="quiz-duration"
-                      type="number" 
-                      min="1" 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" 
-                      value={form.duration} 
-                      onChange={e => setForm({...form, duration: parseInt(e.target.value)})} 
-                      required 
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="quiz-start" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Start Time *</label>
-                    <input 
-                      id="quiz-start"
-                      type="datetime-local" 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" 
-                      value={form.startTime} 
-                      onChange={e => setForm({...form, startTime: e.target.value})} 
-                      required 
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="quiz-end" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">End Time *</label>
-                    <input 
-                      id="quiz-end"
-                      type="datetime-local" 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 h-14 text-slate-900 focus:bg-white focus:border-blue-500 transition-all outline-none font-bold" 
-                      value={form.endTime} 
-                      onChange={e => setForm({...form, endTime: e.target.value})} 
-                      required 
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-4">
-                  <button type="submit" disabled={creating} className="flex-1 h-14 rounded-2xl bg-blue-600 text-white font-black hover:bg-blue-700 shadow-xl shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-widest text-sm">
-                    {creating ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-                    Create Assessment
-                  </button>
-                  <button type="button" onClick={() => setShowForm(false)} className="px-10 h-14 rounded-2xl bg-slate-100 text-slate-600 font-black hover:bg-slate-200 transition-all uppercase tracking-widest text-sm">
-                    Cancel
-                  </button>
-                </div>
-              </form>
+    <DashboardLayout>
+      <div className="space-y-12 pb-20">
+        
+        {/* Immersive Header */}
+        <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-10">
+          <div className="space-y-4 flex-1">
+            <div className="flex items-center gap-2 text-primary-500 font-black text-[10px] uppercase tracking-[0.3em]">
+              <Brain size={14} />
+              Evaluation Portal
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Controls */}
-      <div className="flex flex-col md:flex-row gap-4 mb-10">
-        <div className="relative flex-1 group">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
-          <input 
-            aria-label="Search quizzes by title"
-            type="text" 
-            placeholder="Search by quiz title..."
-            className="w-full bg-white border border-slate-200 text-slate-900 pl-14 pr-6 h-16 rounded-2xl focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none font-bold shadow-sm"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-        <button className="h-16 px-8 rounded-2xl bg-white border border-slate-200 text-slate-600 font-black flex items-center gap-3 hover:bg-slate-50 transition-all active:scale-95 uppercase tracking-widest text-xs">
-          <Filter size={18} /> Filters
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="h-48 rounded-[32px] bg-slate-100 animate-pulse border border-slate-200" />
-          ))}
-        </div>
-      ) : filteredQuizzes.length === 0 ? (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[40px] border border-slate-200 p-20 text-center shadow-sm"
-        >
-          <div className="w-24 h-24 bg-blue-50 rounded-[32px] flex items-center justify-center mx-auto mb-8 shadow-inner">
-            <HelpCircle size={48} className="text-blue-600/20" />
+            <h1 className="text-5xl lg:text-6xl font-display font-extrabold text-slate-900 tracking-tight leading-none">
+              Academic <span className="text-primary-500">Assessments</span>
+            </h1>
+            <p className="text-slate-500 font-medium max-w-2xl text-lg leading-relaxed">
+              Synthesize knowledge through high-fidelity evaluations, track algorithmic performance, and unlock cognitive insights.
+            </p>
           </div>
-          <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">No assessments found.</h3>
-          <p className="text-slate-500 font-medium max-w-sm mx-auto mb-10 leading-relaxed">
-            There are currently no quizzes or exams scheduled for this course. Check back later!
-          </p>
-        </motion.div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredQuizzes.map((quiz, i) => {
-            const meta = getStatusMeta(quiz);
-            const now = new Date();
-            const canAttempt = user?.role === 'student' && quiz.isPublished && now >= new Date(quiz.startTime) && now <= new Date(quiz.endTime);
 
-            return (
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+             <div className="relative group w-full sm:w-auto">
+               <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary-500 transition-colors" size={18} />
+               <input 
+                 className="bg-white border border-slate-100 rounded-[24px] pl-16 pr-6 h-16 text-sm font-bold focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 outline-none transition-all w-full sm:w-80 shadow-sm" 
+                 placeholder="Search evaluations..." 
+                 value={search}
+                 onChange={e => setSearch(e.target.value)}
+               />
+             </div>
+             {(user?.role === 'teacher' || user?.role === 'admin') && (
+               <button 
+                 onClick={() => setShowForm(true)}
+                 className="btn btn-primary h-16 px-10 gap-3 text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-primary-500/20 w-full sm:w-auto"
+               >
+                 <Plus size={20} strokeWidth={3} /> Post Evaluation
+               </button>
+             )}
+          </div>
+        </header>
+
+        {/* Create Assessment Modal Overlay */}
+        <AnimatePresence>
+          {showForm && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
               <motion.div
-                key={quiz._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="group relative bg-white rounded-[32px] border border-slate-200 p-8 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-900/5 transition-all duration-500 overflow-hidden"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl"
+                onClick={() => setShowForm(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 40 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 40 }}
+                className="relative w-full max-w-2xl bg-white border border-slate-100 rounded-[64px] shadow-2xl p-12 lg:p-16 overflow-hidden"
               >
-                <div className="absolute top-0 left-0 w-2 h-full bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
                 
-                <div className="flex items-start justify-between mb-8">
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 ${
-                    canAttempt ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
-                  }`}>
-                    <FileText size={28} />
-                  </div>
-                  <div className="flex gap-2">
-                     <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${meta.bg} ${meta.text} ${meta.border}`}>
-                       {meta.label}
-                     </span>
-                  </div>
-                </div>
-
-                <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight leading-tight group-hover:text-blue-600 transition-colors">
-                  {quiz.title}
-                </h3>
-                <p className="text-slate-500 font-medium line-clamp-2 mb-8 text-sm leading-relaxed">
-                  {quiz.description || 'No description provided for this assessment.'}
-                </p>
-
-                <div className="grid grid-cols-2 gap-6 mb-8 pt-8 border-t border-slate-50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-                      <Clock size={18} />
+                <div className="flex justify-between items-start mb-12 relative z-10">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-primary-50 text-primary-500 flex items-center justify-center border border-primary-100 shadow-inner">
+                      <Target size={24} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Duration</p>
-                      <p className="text-sm font-black text-slate-900 leading-none">{quiz.duration} min</p>
+                      <h2 className="text-3xl font-display font-extrabold text-slate-900 tracking-tight">Configure Assessment</h2>
+                      <p className="text-sm font-medium text-slate-500">Establish evaluation criteria and timeframes.</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-                      <Star size={18} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Points</p>
-                      <p className="text-sm font-black text-slate-900 leading-none">{quiz.totalMarks} pts</p>
-                    </div>
-                  </div>
+                  <button onClick={() => setShowForm(false)} aria-label="Close configuration" title="Close configuration" className="w-12 h-12 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-900 hover:text-white transition-all">
+                    <X size={20} />
+                  </button>
                 </div>
 
-                <div className="flex items-center justify-between mt-auto">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <Calendar size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">
-                      {new Date(quiz.startTime).toLocaleDateString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                <form onSubmit={handleCreate} className="space-y-8 relative z-10">
+                  <div className="space-y-8">
+                    <div className="space-y-3">
+                      <label htmlFor="assessment-title" className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Assessment Title</label>
+                      <input id="assessment-title" title="Enter assessment title" required className="input-premium h-16 text-lg" placeholder="e.g. Advanced Thermodynamics Final" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                      <div className="space-y-3">
+                        <label htmlFor="assessment-weight" className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Weight (Marks)</label>
+                        <input id="assessment-weight" title="Enter assessment weight" type="number" required className="input-premium h-16 text-lg" placeholder="20" value={form.totalMarks} onChange={e => setForm({...form, totalMarks: parseInt(e.target.value)})} />
+                      </div>
+                      <div className="space-y-3">
+                        <label htmlFor="assessment-duration" className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Duration (Min)</label>
+                        <input id="assessment-duration" title="Enter assessment duration" type="number" required className="input-premium h-16 text-lg" placeholder="30" value={form.duration} onChange={e => setForm({...form, duration: parseInt(e.target.value)})} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                      <div className="space-y-3">
+                        <label htmlFor="assessment-start" className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Start Threshold</label>
+                        <input id="assessment-start" title="Enter start threshold" type="datetime-local" required className="input-premium h-16 text-sm" value={form.startTime} onChange={e => setForm({...form, startTime: e.target.value})} />
+                      </div>
+                      <div className="space-y-3">
+                        <label htmlFor="assessment-end" className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">End Threshold</label>
+                        <input id="assessment-end" title="Enter end threshold" type="datetime-local" required className="input-premium h-16 text-sm" value={form.endTime} onChange={e => setForm({...form, endTime: e.target.value})} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label htmlFor="assessment-scope" className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Evaluation Scope</label>
+                      <textarea id="assessment-scope" title="Enter evaluation scope" rows={3} className="input-premium py-6 resize-none text-lg" placeholder="Detail the assessment requirements..." value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
+                    </div>
                   </div>
-                  
-                  <div className="flex gap-2">
-                    {user?.role === 'teacher' && !quiz.isPublished && (
-                      <button onClick={() => handlePublish(quiz._id)} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-50 text-emerald-700 font-black text-xs hover:bg-emerald-100 transition-all uppercase tracking-widest">
-                        Publish
-                      </button>
-                    )}
-                    <Link 
-                      href={`/courses/${courseId}/quizzes/${quiz._id}`}
-                      className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-xs transition-all uppercase tracking-widest group/btn ${
-                        canAttempt ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      {user?.role === 'student' ? (canAttempt ? 'Start Quiz' : 'View Details') : 'Manage'} <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
-                    </Link>
+
+                  <div className="flex gap-4 pt-4">
+                    <button type="submit" disabled={creating} className="btn btn-primary flex-1 h-16 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary-500/20">
+                      {creating ? <Loader2 size={20} className="animate-spin mr-2" /> : <><Zap size={18} fill="currentColor" className="mr-2" /> Finalize Configuration</>}
+                    </button>
                   </div>
-                </div>
+                </form>
               </motion.div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1, 2, 3].map(i => <div key={i} className="h-80 rounded-[48px] bg-white border border-slate-100 animate-pulse shadow-sm" />)}
+          </div>
+        ) : filteredQuizzes.length === 0 ? (
+          <div className="py-40 text-center bg-white rounded-[64px] border border-slate-100 shadow-2xl shadow-primary-500/5 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-primary-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+            <div className="w-28 h-28 bg-slate-50 rounded-[40px] shadow-inner mx-auto flex items-center justify-center mb-10 border border-slate-100 group-hover:scale-110 transition-transform duration-700 relative z-10">
+              <Brain size={48} className="text-slate-200" />
+            </div>
+            <h3 className="text-3xl font-display font-extrabold text-slate-900 mb-3 relative z-10">Intelligence Gap Detected</h3>
+            <p className="text-slate-500 font-medium max-w-sm mx-auto mb-12 text-lg relative z-10">The evaluation engine is currently idle. No active assessments detected in this portal.</p>
+            {(user?.role === 'teacher' || user?.role === 'admin') && (
+              <button onClick={() => setShowForm(true)} className="btn btn-primary h-16 px-12 text-[10px] font-black uppercase tracking-widest relative z-10">Initialize First Protocol</button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredQuizzes.map((quiz, idx) => {
+              const meta = getStatusMeta(quiz);
+              const now = new Date();
+              const canAttempt = user?.role === 'student' && quiz.isPublished && now >= new Date(quiz.startTime) && now <= new Date(quiz.endTime);
+
+              return (
+                <motion.div
+                  key={quiz._id}
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
+                  className="group relative"
+                >
+                  <div className="absolute inset-0 bg-primary-500/20 blur-[64px] opacity-0 group-hover:opacity-40 transition-opacity duration-700" />
+                  <div className="relative bg-white border border-slate-100 rounded-[48px] p-10 flex flex-col justify-between h-full hover:border-primary-500/50 transition-all duration-700 shadow-sm group-hover:shadow-2xl group-hover:shadow-primary-500/10 group-hover:-translate-y-2">
+                    <div className="space-y-8">
+                      <div className="flex items-start justify-between">
+                        <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center border transition-all duration-700 ${
+                          canAttempt 
+                            ? 'bg-primary-500 text-white border-primary-400 shadow-xl shadow-primary-500/20' 
+                            : 'bg-slate-50 text-slate-300 border-slate-100'
+                        }`}>
+                          <Cpu size={32} />
+                        </div>
+                        <div className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border flex items-center gap-2 shadow-sm ${meta.bg} ${meta.text} ${meta.border}`}>
+                          {meta.icon}
+                          {meta.label}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h3 className="text-2xl font-display font-extrabold text-slate-900 group-hover:text-primary-600 transition-colors tracking-tight leading-tight line-clamp-2">{quiz.title}</h3>
+                        <p className="text-slate-500 font-medium line-clamp-2 leading-relaxed text-sm">{quiz.description || 'No specialized assessment brief has been provided for this intelligence protocol.'}</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6 py-8 border-t border-slate-50">
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <Timer size={14} className="text-primary-500" /> Duration
+                          </p>
+                          <p className="text-lg font-display font-extrabold text-slate-800">{quiz.duration} <span className="text-xs text-slate-400">Min</span></p>
+                        </div>
+                        <div className="space-y-2 text-right">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 justify-end">
+                            <Target size={14} className="text-primary-500" /> Weight
+                          </p>
+                          <p className="text-lg font-display font-extrabold text-slate-800">{quiz.totalMarks} <span className="text-xs text-slate-400">Pts</span></p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-8 border-t border-slate-50">
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <Calendar size={16} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">
+                          {new Date(quiz.startTime).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      
+                      <div className="flex gap-3">
+                        {(user?.role === 'teacher' || user?.role === 'admin') && !quiz.isPublished && (
+                          <button 
+                            onClick={() => handlePublish(quiz)} 
+                            className="h-12 px-6 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm active:scale-95"
+                          >
+                            Broadcast
+                          </button>
+                        )}
+                        <Link 
+                          href={`/courses/${courseId}/quizzes/${quiz._id}`}
+                          className={`h-12 px-8 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95 ${
+                            canAttempt 
+                              ? 'btn-primary shadow-xl shadow-primary-500/20' 
+                              : 'bg-slate-900 text-white shadow-xl shadow-slate-900/20'
+                          }`}
+                        >
+                          {user?.role === 'student' ? (canAttempt ? 'Launch Engine' : 'View Analytics') : 'Manage Protocol'} 
+                          <ArrowRight size={16} />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
   );
 }

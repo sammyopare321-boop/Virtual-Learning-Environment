@@ -6,26 +6,18 @@ import { useAuth } from '@/context/AuthContext';
 import { courseApi } from '@/utils/api/courseApi';
 import { Course } from '@/types';
 import { AxiosError } from 'axios';
-import Sidebar from '@/components/shared/Sidebar';
 import { 
   Search, Filter, Plus, BookOpen, User, 
-  ChevronRight, Sparkles, AlertCircle, CheckCircle2 
+  ChevronRight, Sparkles, AlertCircle, CheckCircle2,
+  SlidersHorizontal, LayoutGrid, List
 } from 'lucide-react';
+import DashboardLayout from '@/layouts/DashboardLayout';
 
 const statusColor: Record<string, { bg: string, text: string, border: string }> = {
   active:   { bg: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-100' },
   draft:    { bg: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-100' },
   archived: { bg: 'bg-slate-100',   text: 'text-slate-600',   border: 'border-slate-200' },
 };
-
-const cardAccents = [
-  'from-blue-600 to-indigo-700',
-  'from-emerald-600 to-teal-700',
-  'from-violet-600 to-purple-700',
-  'from-rose-600 to-pink-700',
-  'from-amber-600 to-orange-700',
-  'from-sky-600 to-blue-700',
-];
 
 export default function CoursesPage() {
   const { user } = useAuth();
@@ -96,115 +88,106 @@ export default function CoursesPage() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
-      <Sidebar />
+    <DashboardLayout>
+      <div className="space-y-10">
+        {/* Toast Notification */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20, x: '-50%' }} 
+              animate={{ opacity: 1, y: 0, x: '-50%' }} 
+              exit={{ opacity: 0, y: -20, x: '-50%' }}
+              className={`fixed top-12 left-1/2 z-[100] px-6 py-4 rounded-2xl font-bold shadow-2xl border flex items-center gap-3 backdrop-blur-xl ${
+                toast.type === 'error' ? 'bg-red-50/90 text-red-700 border-red-200' : 'bg-emerald-50/90 text-emerald-700 border-emerald-200'
+              }`}
+            >
+              {toast.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
+              <span className="text-sm tracking-tight">{toast.msg}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }} exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className={`fixed top-8 left-1/2 z-50 px-6 py-3 rounded-full font-bold shadow-xl border flex items-center gap-2 ${
-              toast.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            }`}
-          >
-            {toast.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
-            {toast.msg}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <main className="flex-1 overflow-y-auto p-8 lg:p-12 scroll-smooth">
-        <div className="max-w-7xl mx-auto">
-          
-          {/* Header Section */}
-          <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
-            <div className="flex-1">
-              <motion.div 
-                initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-3 text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] mb-4"
-              >
-                <Sparkles size={14} />
-                Knowledge Ecosystem
-              </motion.div>
-              <motion.h1 
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter leading-none mb-6"
-              >
-                {isTeacher ? 'My Teaching' : 'Explore'} <span className="text-blue-600">Courses.</span>
-              </motion.h1>
-              <motion.p 
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                className="text-slate-500 text-lg font-medium max-w-xl leading-relaxed"
-              >
-                {isTeacher 
-                  ? 'Manage your academic curriculum, track student progress, and organize your teaching materials.' 
-                  : 'Expand your horizons with our curated selection of professional and academic courses.'}
-              </motion.p>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="relative group">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
-                <input 
-                  type="text" 
-                  placeholder="Search courses..."
-                  className="bg-white border border-slate-200 text-slate-900 pl-14 pr-6 h-16 rounded-2xl focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all outline-none font-bold shadow-sm w-full md:w-80"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-              </div>
-              {user?.role === 'admin' && (
-                <Link href="/admin/courses/new" className="h-16 px-8 rounded-2xl bg-blue-600 text-white font-black flex items-center gap-3 hover:bg-blue-700 shadow-xl shadow-blue-600/20 transition-all hover:-translate-y-1 active:scale-95 uppercase tracking-widest text-sm">
-                  <Plus size={20} strokeWidth={3} /> Create
-                </Link>
-              )}
-            </div>
-          </header>
-
-          {/* Filter Bar */}
-          <div className="flex items-center gap-4 mb-10 overflow-x-auto pb-4 no-scrollbar">
-            {['all', 'active', 'draft', 'archived'].map((status) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${
-                  statusFilter === status 
-                    ? 'bg-slate-900 text-white shadow-lg' 
-                    : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                {status}
-              </button>
-            ))}
+        {/* Header Section */}
+        <section className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+          <div className="space-y-2">
+            <h1 className="text-4xl md:text-5xl font-display font-extrabold text-slate-900 tracking-tight">
+              Course <span className="text-gradient">Library</span>
+            </h1>
+            <p className="text-slate-500 font-medium max-w-xl">
+              {isTeacher 
+                ? 'Manage your academic curriculum and track institutional impact.' 
+                : 'Accelerate your learning journey with our world-class curriculum.'}
+            </p>
           </div>
 
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative group min-w-[320px]">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search modules..."
+                className="input-premium pl-11 pr-4 h-12 text-sm font-medium shadow-sm"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            
+            <button className="btn btn-secondary h-12 px-4 gap-2">
+              <SlidersHorizontal size={18} /> Filters
+            </button>
+
+            {user?.role === 'admin' && (
+              <Link href="/admin/courses/new" className="btn btn-primary h-12 px-6 gap-2">
+                <Plus size={18} strokeWidth={3} /> Create Module
+              </Link>
+            )}
+          </div>
+        </section>
+
+        {/* Filter Tabs */}
+        <section className="flex items-center gap-2 border-b border-slate-100 pb-1 overflow-x-auto no-scrollbar">
+          {['all', 'active', 'draft', 'archived'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-6 py-3 text-[11px] font-black uppercase tracking-[0.15em] transition-all relative ${
+                statusFilter === status ? 'text-primary-500' : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              {status}
+              {statusFilter === status && (
+                <motion.div layoutId="status-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500 rounded-full" />
+              )}
+            </button>
+          ))}
+        </section>
+
+        {/* Courses Grid */}
+        <section className="min-h-[400px]">
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="h-[400px] rounded-[40px] bg-white border border-slate-100 animate-pulse" />
+                <div key={i} className="h-80 rounded-3xl bg-slate-50 animate-pulse border border-slate-100" />
               ))}
             </div>
           ) : courses.length === 0 ? (
             <motion.div 
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-[40px] border border-slate-200 p-20 text-center shadow-sm"
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }}
+              className="py-20 text-center bg-slate-50/50 rounded-[32px] border border-dashed border-slate-200"
             >
-              <div className="w-24 h-24 bg-blue-50 rounded-[32px] flex items-center justify-center mx-auto mb-8 shadow-inner">
-                <BookOpen size={48} className="text-blue-600/20" />
+              <div className="w-16 h-16 bg-white rounded-2xl shadow-sm mx-auto flex items-center justify-center mb-6 border border-slate-100">
+                <BookOpen size={28} className="text-slate-300" />
               </div>
-              <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">No courses found.</h3>
-              <p className="text-slate-500 font-medium max-w-sm mx-auto leading-relaxed">
-                We couldn't find any courses matching your current search or filters.
-              </p>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">No Modules Found</h3>
+              <p className="text-slate-500 text-sm max-w-xs mx-auto font-medium">Try adjusting your search or filters to find what you're looking for.</p>
             </motion.div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {courses.map((course, idx) => {
-                const accent = cardAccents[idx % cardAccents.length];
                 const isEnrolled = enrolled.has(course._id);
                 const status = statusColor[course.status] || statusColor.active;
-                const teacherName = typeof course.teacher === 'object' ? course.teacher?.name : 'TBA';
+                const teacherName = typeof course.teacher === 'object' ? course.teacher?.name : 'Academic Faculty';
 
                 return (
                   <motion.div
@@ -212,37 +195,36 @@ export default function CoursesPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="group relative bg-white rounded-[40px] border border-slate-200 hover:border-blue-500 transition-all duration-500 overflow-hidden hover:shadow-2xl hover:shadow-blue-900/5 hover:-translate-y-1"
+                    className="group card-premium card-premium-hover p-0 overflow-hidden flex flex-col h-full border-slate-100/50"
                   >
-                    {/* Course Banner */}
-                    <div className={`h-32 bg-gradient-to-br ${accent} p-8 relative overflow-hidden`}>
-                      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20" />
-                      <div className="relative z-10 flex justify-between items-start">
-                        <span className="px-3 py-1 rounded-lg bg-white/20 backdrop-blur-md text-[10px] font-black text-white uppercase tracking-widest border border-white/20">
+                    <div className="h-40 bg-slate-900 relative">
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-80 z-10" />
+                      <div className="absolute top-4 left-4 z-20 flex gap-2">
+                        <span className="px-2.5 py-1 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-black uppercase tracking-widest">
                           {course.code}
                         </span>
-                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${status.bg} ${status.text} ${status.border}`}>
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${status.bg} ${status.text} ${status.border}`}>
                           {course.status}
                         </span>
                       </div>
                     </div>
 
-                    <div className="p-8 flex flex-col h-[calc(100%-128px)]">
-                      <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight leading-tight group-hover:text-blue-600 transition-colors">
+                    <div className="p-8 flex-1 flex flex-col">
+                      <h3 className="text-xl font-display font-extrabold text-slate-900 mb-3 group-hover:text-primary-500 transition-colors leading-tight">
                         {course.title}
                       </h3>
-                      <p className="text-slate-500 font-medium line-clamp-2 mb-8 text-sm leading-relaxed">
+                      <p className="text-slate-500 text-sm font-medium line-clamp-2 mb-8 leading-relaxed">
                         {course.description || 'No description provided for this academic program.'}
                       </p>
 
-                      <div className="mt-auto">
-                        <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 mb-8">
-                          <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400">
-                            <User size={18} />
+                      <div className="mt-auto space-y-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 border border-slate-100 group-hover:border-primary-200 group-hover:bg-primary-50 transition-colors">
+                            <User size={16} />
                           </div>
                           <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Instructor</p>
-                            <p className="text-sm font-black text-slate-700 leading-none">{teacherName}</p>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Faculty</p>
+                            <p className="text-sm font-bold text-slate-700 leading-none">{teacherName}</p>
                           </div>
                         </div>
 
@@ -250,25 +232,25 @@ export default function CoursesPage() {
                           isEnrolled ? (
                             <Link 
                               href={`/courses/${course._id}`}
-                              className="flex items-center justify-center gap-2 w-full h-14 rounded-2xl bg-slate-900 text-white font-black text-sm hover:bg-blue-600 transition-all uppercase tracking-widest shadow-xl shadow-slate-900/10 group/btn"
+                              className="btn btn-primary w-full h-12 shadow-lg shadow-primary-500/20 group/btn"
                             >
-                              Continue Learning <ChevronRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
+                              Continue Workspace <ChevronRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
                             </Link>
                           ) : (
                             <button 
                               onClick={() => handleEnroll(course._id)}
                               disabled={enrolling === course._id}
-                              className="w-full h-14 rounded-2xl border-2 border-slate-200 text-slate-900 font-black text-sm hover:border-blue-500 hover:text-blue-600 transition-all uppercase tracking-widest disabled:opacity-50"
+                              className="btn btn-secondary w-full h-12 hover:border-primary-500 hover:text-primary-500 transition-all font-black"
                             >
-                              {enrolling === course._id ? 'Enrolling...' : 'Enroll in Course'}
+                              {enrolling === course._id ? 'Provisioning...' : 'Enroll in Module'}
                             </button>
                           )
                         ) : (
                           <Link 
                             href={`/courses/${course._id}`}
-                            className="flex items-center justify-center gap-2 w-full h-14 rounded-2xl bg-slate-100 text-slate-600 font-black text-sm hover:bg-slate-200 transition-all uppercase tracking-widest"
+                            className="btn btn-secondary w-full h-12 hover:border-primary-500 hover:text-primary-500 transition-all font-black"
                           >
-                            View Course Hub <ChevronRight size={18} />
+                            Enter Hub <ChevronRight size={16} />
                           </Link>
                         )}
                       </div>
@@ -278,8 +260,8 @@ export default function CoursesPage() {
               })}
             </div>
           )}
-        </div>
-      </main>
-    </div>
+        </section>
+      </div>
+    </DashboardLayout>
   );
 }
