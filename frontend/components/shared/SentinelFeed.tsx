@@ -72,6 +72,8 @@ export default function SentinelFeed({ isOpen, onClose }: { isOpen: boolean; onC
               </div>
               <button 
                 onClick={onClose}
+                aria-label="Close Sentinel"
+                title="Close Sentinel"
                 className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm"
               >
                 <X size={20} />

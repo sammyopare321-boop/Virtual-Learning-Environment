@@ -14,6 +14,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { courseApi } from '@/utils/api/courseApi';
+import { studentApi } from '@/utils/api/studentApi';
 import { useAuth } from '@/context/AuthContext';
 
 interface AnalyticsData {
@@ -39,33 +40,57 @@ interface AtRiskStudent {
   percentage: number;
 }
 
+interface StudentStats {
+  overallCompletion: number;
+  gpa: number;
+  assignmentsSubmitted: number;
+  onTimeRate: number;
+}
+
+interface Milestone {
+  id?: string;
+  _id?: string;
+  type: 'assignment' | 'quiz' | 'live_session';
+  title: string;
+  deadline: string;
+  course?: {
+    _id: string;
+    title: string;
+  };
+}
+
 export default function CourseIntelligence() {
   const { courseId } = useParams() as { courseId: string };
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [atRisk, setAtRisk] = useState<AtRiskStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [studentCount, setStudentCount] = useState(0);
+  const [studentStats, setStudentStats] = useState<StudentStats | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
 
   const { user } = useAuth();
 
   useEffect(() => {
     const fetchData = async () => {
-      // Students are not authorized to view class-wide analytics
-      if (user?.role === 'student') {
-        setLoading(false);
-        return;
-      }
-
       try {
-        const [analyticsRes, atRiskRes, studentsRes] = await Promise.all([
-          courseApi.getAnalytics(courseId),
-          courseApi.getAtRisk(courseId),
-          courseApi.getStudents(courseId)
-        ]);
+        if (user?.role === 'student') {
+          const [statsRes, milestonesRes] = await Promise.all([
+            studentApi.getMyStats(),
+            studentApi.getMyMilestones()
+          ]);
+          setStudentStats(statsRes.data.data);
+          setMilestones(milestonesRes.data.data || []);
+        } else {
+          const [analyticsRes, atRiskRes, studentsRes] = await Promise.all([
+            courseApi.getAnalytics(courseId),
+            courseApi.getAtRisk(courseId),
+            courseApi.getStudents(courseId)
+          ]);
 
-        setAnalytics(analyticsRes.data.data);
-        setAtRisk(atRiskRes.data.data || []);
-        setStudentCount(studentsRes.data.data?.length || 0);
+          setAnalytics(analyticsRes.data.data);
+          setAtRisk(atRiskRes.data.data || []);
+          setStudentCount(studentsRes.data.data?.length || 0);
+        }
       } catch (err) {
         console.error('Failed to fetch course intelligence:', err);
       } finally {
@@ -73,7 +98,7 @@ export default function CourseIntelligence() {
       }
     };
 
-    if (courseId && user) {
+    if (user) {
       fetchData();
     }
   }, [courseId, user]);
@@ -117,25 +142,25 @@ export default function CourseIntelligence() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
            <StatCard 
              icon={<Target size={20} />} 
-             label="My Current Grade" 
-             value="88%" 
-             trend="High" 
+             label="Overall Performance" 
+             value={`${studentStats?.overallCompletion || 0}%`} 
+             trend={studentStats?.gpa ? `GPA: ${studentStats.gpa}` : 'New'} 
              trendUp={true} 
              color="emerald"
            />
            <StatCard 
              icon={<BookOpen size={20} />} 
-             label="Modules Completed" 
-             value="4/12" 
-             trend="On Track" 
+             label="Submissions" 
+             value={`${studentStats?.assignmentsSubmitted || 0} Total`} 
+             trend="Assignments" 
              trendUp={true} 
              color="blue"
            />
            <StatCard 
              icon={<Activity size={20} />} 
-             label="Attendance" 
-             value="96%" 
-             trend="Excellent" 
+             label="Engagement" 
+             value={`${studentStats?.onTimeRate || 0}%`} 
+             trend="On-Time" 
              trendUp={true} 
              color="indigo"
            />
@@ -144,25 +169,29 @@ export default function CourseIntelligence() {
         <section className="bg-white rounded-[40px] border border-slate-100 p-10 shadow-sm relative overflow-hidden">
            <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
            <div className="relative z-10">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Continue your journey.</h3>
-              <p className="text-slate-500 font-medium mb-8">You&apos;re making great progress in this course. Keep up the momentum!</p>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Upcoming Milestones.</h3>
+              <p className="text-slate-500 font-medium mb-8">Your next academic transmissions and deadlines.</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <Link href={`/courses/${courseId}/modules`} className="group p-6 rounded-3xl bg-slate-50 border border-slate-50 hover:bg-white hover:border-primary-100 hover:shadow-xl hover:shadow-primary-900/5 transition-all">
-                    <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary-500 mb-4 group-hover:scale-110 transition-transform">
-                       <Zap size={20} />
-                    </div>
-                    <h4 className="text-lg font-black text-slate-900 mb-1">Resume Next Lesson</h4>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Module 4: Advanced Architectures</p>
-                 </Link>
-
-                 <Link href={`/courses/${courseId}/assignments`} className="group p-6 rounded-3xl bg-slate-50 border border-slate-50 hover:bg-white hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-900/5 transition-all">
-                    <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-indigo-500 mb-4 group-hover:scale-110 transition-transform">
-                       <Target size={20} />
-                    </div>
-                    <h4 className="text-lg font-black text-slate-900 mb-1">Upcoming Milestone</h4>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Due in 2 days: Project Proposal</p>
-                 </Link>
+                {milestones.length > 0 ? milestones.slice(0, 2).map((m, idx) => (
+                   <Link 
+                     key={m.id || idx}
+                     href={`/courses/${m.course?._id}/${m.type === 'assignment' ? 'assignments' : m.type === 'quiz' ? 'quizzes' : 'live'}`} 
+                     className="group p-6 rounded-3xl bg-slate-50 border border-slate-50 hover:bg-white hover:border-primary-100 hover:shadow-xl hover:shadow-primary-900/5 transition-all"
+                   >
+                      <div className={`w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform ${m.type === 'assignment' ? 'text-blue-500' : 'text-amber-500'}`}>
+                         {m.type === 'assignment' ? <Zap size={20} /> : <Target size={20} />}
+                      </div>
+                      <h4 className="text-lg font-black text-slate-900 mb-1 truncate">{m.title}</h4>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                        {m.course?.title} • {new Date(m.deadline).toLocaleDateString()}
+                      </p>
+                   </Link>
+                )) : (
+                  <div className="md:col-span-2 py-12 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                    <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No imminent milestones detected</p>
+                  </div>
+                )}
               </div>
            </div>
         </section>

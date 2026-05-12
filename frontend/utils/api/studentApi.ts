@@ -5,4 +5,6 @@ export const studentApi = {
   getMyGrades: () => api.get('/api/students/me/grades'),
   getMyCourseGrades: (courseId: string) => api.get(`/api/students/me/grades/${courseId}`),
   getMyAttendance: (courseId: string) => api.get(`/api/students/me/attendance/${courseId}`),
+  getMyStats: () => api.get('/api/students/me/stats'),
+  getMyMilestones: () => api.get('/api/students/me/milestones'),
 };

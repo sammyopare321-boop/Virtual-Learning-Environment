@@ -19,6 +19,28 @@ export const metadata: Metadata = {
   title: "UniLearn | The Intelligent Academic Workspace",
   description: "Experience the future of education with UniLearn. A premium, enterprise-grade SaaS platform for students, educators, and institutions.",
   keywords: ["LMS", "University Management", "SaaS", "Education Technology", "Academic Analytics"],
+  openGraph: {
+    title: "UniLearn | The Intelligent Academic Workspace",
+    description: "Experience the future of education with UniLearn. A premium, enterprise-grade SaaS platform for students, educators, and institutions.",
+    url: "https://unilearn.edu",
+    siteName: "UniLearn",
+    images: [
+      {
+        url: "https://unilearn.edu/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "UniLearn Dashboard Preview",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "UniLearn | The Intelligent Academic Workspace",
+    description: "The intelligent academic workspace for modern institutions.",
+    images: ["https://unilearn.edu/og-image.png"],
+  },
   icons: {
     icon: "/favicon.ico",
   }
@@ -28,7 +50,7 @@ import { SocketProvider } from "@/context/SocketContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { SentinelProvider } from "@/context/SentinelContext";
 import CommandPalette from "@/components/shared/CommandPalette";
-import SentinelWrapper from "@/components/shared/SentinelWrapper";
+import SentinelWrapper from "../components/shared/SentinelWrapper";
 
 export default function RootLayout({
   children,

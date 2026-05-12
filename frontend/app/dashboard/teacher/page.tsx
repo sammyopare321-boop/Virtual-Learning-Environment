@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { courseApi } from '@/utils/api/courseApi';
+import { teacherApi } from '@/utils/api/teacherApi';
 import { AxiosError } from 'axios';
 import Sidebar from '@/components/shared/Sidebar';
 import { 
@@ -34,15 +35,12 @@ export default function TeacherDashboard() {
   const [stats, setStats] = useState({ students: 0, attendance: 0, engagementData: [0,0,0,0,0,0,0], upcomingClasses: [] as any[] });
 
   useEffect(() => {
-    import('@/utils/api/axiosInstance')
-      .then(m => m.default.get('/api/teachers/me/stats'))
+    teacherApi.getStats()
       .then(res => setStats(res.data.data || { students: 0, attendance: 0, engagementData: [0,0,0,0,0,0,0], upcomingClasses: [] }))
       .catch(console.error);
   }, []);
 
-  const mockStudents = stats.students;
-  const mockAttendance = stats.attendance;
-  const engagementData = stats.engagementData;
+  const { students, attendance, engagementData } = stats;
 
   useEffect(() => {
     courseApi.getAll()
@@ -102,7 +100,7 @@ export default function TeacherDashboard() {
                 {greeting}, {user?.name?.split(' ')[0]} 👋
               </motion.h1>
               <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-slate-500 font-medium text-lg max-w-xl leading-relaxed">
-                You have <strong className="text-slate-900 font-bold">{mockStudents} active students</strong> to review and <strong className="text-slate-900 font-bold">{stats.upcomingClasses?.length || 0} upcoming classes</strong> today.
+                You have <strong className="text-slate-900 font-bold">{students} active students</strong> to review and <strong className="text-slate-900 font-bold">{stats.upcomingClasses?.length || 0} upcoming classes</strong> today.
               </motion.p>
             </div>
             
@@ -120,8 +118,8 @@ export default function TeacherDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             {[
               { label: 'My Workspaces', value: courses.length, icon: BookOpen, trend: '+1 this month', trendUp: true, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
-              { label: 'Active Students', value: mockStudents, icon: Users, trend: '+12% engagement', trendUp: true, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-              { label: 'Avg. Attendance', value: `${mockAttendance}%`, icon: Activity, trend: '-2% vs last week', trendUp: false, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' }
+              { label: 'Active Students', value: students, icon: Users, trend: '+12% engagement', trendUp: true, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+              { label: 'Avg. Attendance', value: `${attendance}%`, icon: Activity, trend: '-2% vs last week', trendUp: false, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' }
             ].map((stat, i) => (
               <motion.div 
                 key={i} 

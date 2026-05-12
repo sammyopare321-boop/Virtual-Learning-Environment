@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { courseApi } from '@/utils/api/courseApi';
+import { studentApi } from '@/utils/api/studentApi';
 import { 
   BookOpen, Calendar, Clock, ChevronRight, Activity, 
   Sparkles, TrendingUp, CheckCircle2, AlertCircle,
@@ -42,8 +43,8 @@ export default function StudentDashboard() {
     try {
       const [coursesRes, milestonesRes, statsRes] = await Promise.all([
         courseApi.getMyCourses(),
-        courseApi.getGlobalMilestones(),
-        import('@/utils/api/axiosInstance').then(m => m.default.get('/api/students/me/stats'))
+        studentApi.getMyMilestones(),
+        studentApi.getMyStats()
       ]);
       setCourses(coursesRes.data.data || []);
       setMilestones(milestonesRes.data.data || []);
@@ -186,14 +187,23 @@ export default function StudentDashboard() {
                           <h3 className="text-[15px] font-display font-extrabold text-slate-900 mb-2 group-hover:text-primary-500 transition-colors leading-snug line-clamp-2 min-h-[2.5rem]">
                             {course.title}
                           </h3>
-                          <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-50">
-                             <div className="flex items-center gap-2">
-                                <Activity size={14} className={course.progress && course.progress > 0 ? "text-emerald-500" : "text-slate-300"} />
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                  {course.progress || 0}% Processed
-                                </span>
+                          <div className="space-y-4 mt-6 pt-4 border-t border-slate-50">
+                             <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                   <Activity size={14} className={course.progress && course.progress > 0 ? "text-emerald-500" : "text-slate-300"} />
+                                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                     {course.progress || 0}% Processed
+                                   </span>
+                                </div>
+                                <ChevronRight size={16} className="text-slate-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
                              </div>
-                             <ChevronRight size={16} className="text-slate-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
+                             <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${course.progress || 0}%` }}
+                                  className={`h-full rounded-full ${course.progress && course.progress > 70 ? 'bg-emerald-500' : 'bg-primary-500'}`}
+                                />
+                             </div>
                           </div>
                        </div>
                     </Link>
