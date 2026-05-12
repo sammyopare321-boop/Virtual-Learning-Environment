@@ -210,7 +210,7 @@ export default function CoursesPage() {
                     </div>
 
                     <div className="p-8 flex-1 flex flex-col">
-                      <h3 className="text-xl font-display font-extrabold text-slate-900 mb-3 group-hover:text-primary-500 transition-colors leading-tight">
+                      <h3 className="text-lg font-display font-extrabold text-slate-900 mb-3 group-hover:text-primary-500 transition-colors leading-tight line-clamp-2 min-h-[3rem]">
                         {course.title}
                       </h3>
                       <p className="text-slate-500 text-sm font-medium line-clamp-2 mb-8 leading-relaxed">
@@ -224,7 +224,7 @@ export default function CoursesPage() {
                           </div>
                           <div>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Faculty</p>
-                            <p className="text-sm font-bold text-slate-700 leading-none">{teacherName}</p>
+                            <p className="text-sm font-bold text-slate-700 leading-none truncate" title={teacherName}>{teacherName}</p>
                           </div>
                         </div>
 

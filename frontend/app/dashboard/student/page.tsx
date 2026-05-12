@@ -69,7 +69,7 @@ export default function StudentDashboard() {
               {greeting},<br />
               <span className="text-gradient">{user?.name?.split(' ')[0]}</span>
             </h1>
-            <p className="text-slate-500 text-lg max-w-xl font-medium leading-relaxed">
+            <p className="text-slate-500 text-sm max-w-xl font-medium leading-relaxed line-clamp-2">
               You're making great progress. You have <span className="text-slate-900 font-bold">{milestones.length} important tasks</span> synced to your schedule this week.
             </p>
           </div>
@@ -156,7 +156,7 @@ export default function StudentDashboard() {
                           )}
                        </div>
                        <div className="p-6">
-                          <h3 className="text-lg font-display font-extrabold text-slate-900 mb-2 group-hover:text-primary-500 transition-colors leading-snug">
+                          <h3 className="text-[15px] font-display font-extrabold text-slate-900 mb-2 group-hover:text-primary-500 transition-colors leading-snug line-clamp-2 min-h-[2.5rem]">
                             {course.title}
                           </h3>
                           <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-50">
@@ -241,7 +241,7 @@ export default function StudentDashboard() {
                          {item.type === 'live_session' ? <Activity size={18} /> : <Calendar size={18} />}
                       </div>
                       <div className="flex-1 min-w-0">
-                         <h4 className="text-[13px] font-bold text-slate-900 truncate tracking-tight group-hover:text-primary-500 transition-colors">{item.title}</h4>
+                         <h4 className="text-[13px] font-bold text-slate-900 truncate tracking-tight group-hover:text-primary-500 transition-colors" title={item.title}>{item.title}</h4>
                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mt-1">
                             <Clock size={12} /> {new Date(item.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                          </p>
