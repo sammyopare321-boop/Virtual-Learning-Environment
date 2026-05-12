@@ -145,7 +145,7 @@ export default function CourseIntelligence() {
            <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
            <div className="relative z-10">
               <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Continue your journey.</h3>
-              <p className="text-slate-500 font-medium mb-8">You're making great progress in this course. Keep up the momentum!</p>
+              <p className="text-slate-500 font-medium mb-8">You&apos;re making great progress in this course. Keep up the momentum!</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <Link href={`/courses/${courseId}/modules`} className="group p-6 rounded-3xl bg-slate-50 border border-slate-50 hover:bg-white hover:border-primary-100 hover:shadow-xl hover:shadow-primary-900/5 transition-all">
