@@ -115,6 +115,7 @@ export default function AssignmentsPage() {
       const res = await courseApi.createAssignment(courseId, {
         ...form,
         totalMarks: parseInt(form.totalMarks),
+        dueDate: new Date(form.dueDate).toISOString(),
       });
       const newAssignment = res.data.data;
       toast.success('Mission deployment successful.');
