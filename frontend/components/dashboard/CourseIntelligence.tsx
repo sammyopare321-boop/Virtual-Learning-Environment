@@ -14,6 +14,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { courseApi } from '@/utils/api/courseApi';
+import { useAuth } from '@/context/AuthContext';
 
 interface AnalyticsData {
   classAverage: number;
