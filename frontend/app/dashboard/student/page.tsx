@@ -8,7 +8,7 @@ import {
   BookOpen, ChevronRight, Activity, 
   Sparkles, TrendingUp, Play, Star,
   Search, MoreVertical, Heart, Eye,
-  Layout, Palette, Code, UserPlus
+  Layout, Palette, Code, UserPlus, Plus
 } from 'lucide-react';
 import DashboardLayout from '@/layouts/DashboardLayout';
 
