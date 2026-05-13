@@ -90,23 +90,7 @@ export default function CourseLayout({ children }: { children: React.ReactNode }
   const activeTab = tabs.find(t => pathname === t.href || (t.href !== `/courses/${courseId}` && pathname.startsWith(t.href)));
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans overflow-x-hidden">
-      {/* Course Workspace Header */}
-      <header className="h-16 bg-white border-b border-slate-200 flex items-center px-6 justify-between shrink-0 sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <GraduationCap className="text-white" size={18} />
-          </div>
-          <span className="font-black text-lg text-slate-900 tracking-tight hidden sm:block">UniLearn</span>
-          <span className="font-bold text-xs text-slate-400 uppercase tracking-widest hidden sm:block ml-2 border-l border-slate-200 pl-4">Workspace</span>
-        </div>
-        <Link href={`/dashboard/${user?.role || 'student'}`} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors uppercase tracking-widest">
-          Exit Course
-        </Link>
-      </header>
-
-      <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-12">
-        <div className="space-y-8">
+    <div className="space-y-8">
         {/* Course Header Bar */}
         <div className="bg-white rounded-[32px] border border-slate-100 p-8 lg:p-10 shadow-sm relative overflow-hidden">
            <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -180,8 +164,6 @@ export default function CourseLayout({ children }: { children: React.ReactNode }
         >
           {children}
         </motion.div>
-        </div>
-      </main>
-    </div>
+      </div>
   );
 }
