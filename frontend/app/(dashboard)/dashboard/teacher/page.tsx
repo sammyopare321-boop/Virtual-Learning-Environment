@@ -272,7 +272,6 @@ export default function TeacherDashboard() {
 
             </div>
           </div>
-        </div>
 
       {/* Creation Modal Overlay */}
       <AnimatePresence>

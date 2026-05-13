@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { adminApi } from '@/utils/api/adminApi';
 import { 
-  ChevronRight, Search, Plus, Bell
+  ChevronRight, Search, Plus, Bell,
+  Users, GraduationCap, UserIcon, BookOpen, Activity, BarChart3, Calendar, Shield
 } from 'lucide-react';
 
 interface DashboardStats {
