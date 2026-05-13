@@ -17,11 +17,14 @@ const protectedPrefixes = [
 
 function decodeJWT(token: string) {
   try {
-    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    let base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
     // Using atob instead of Buffer.from to ensure compatibility with Next.js Edge runtime
     const json = atob(base64);
     return JSON.parse(json);
-  } catch { 
+  } catch (err) { 
     return null; 
   }
 }
