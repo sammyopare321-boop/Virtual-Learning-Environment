@@ -52,6 +52,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="lg:hidden h-16 bg-white border-b border-slate-100 flex items-center px-6 shrink-0 sticky top-0 z-30">
           <button 
             onClick={() => setIsSidebarOpen(true)}
+            aria-label="Open mobile menu"
+            title="Open mobile menu"
             className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-100 text-slate-400"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
