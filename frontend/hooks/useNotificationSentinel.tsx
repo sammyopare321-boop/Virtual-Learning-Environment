@@ -5,22 +5,31 @@ import { useSocket } from '@/context/SocketContext';
 import { useAuth } from '@/context/AuthContext';
 import { communicationApi } from '@/utils/api/communicationApi';
 import toast from 'react-hot-toast';
-import { Bell, MessageSquare, Sparkles } from 'lucide-react';
+import { Bell, MessageSquare } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+
+interface Notification {
+  _id: string;
+  message: string;
+  isRead: boolean;
+  type?: string;
+  createdAt: string;
+  [key: string]: unknown;
+}
 
 export default function useNotificationSentinel() {
   const { socket } = useSocket();
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const router = useRouter();
 
   const fetchNotifications = async () => {
     try {
       const res = await communicationApi.getMyNotifications();
-      const notifs = res.data.data;
+      const notifs: Notification[] = res.data.data;
       setNotifications(notifs);
-      setUnreadCount(notifs.filter((n: any) => !n.isRead).length);
+      setUnreadCount(notifs.filter((n: Notification) => !n.isRead).length);
     } catch (error) {
       console.error('Failed to fetch notifications', error);
     }
@@ -28,13 +37,15 @@ export default function useNotificationSentinel() {
 
   useEffect(() => {
     if (!user) return;
-    fetchNotifications();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchNotifications();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('new_notification', (notif: any) => {
+    socket.on('new_notification', (notif: Notification) => {
       setNotifications(prev => [notif, ...prev]);
       setUnreadCount(prev => prev + 1);
       

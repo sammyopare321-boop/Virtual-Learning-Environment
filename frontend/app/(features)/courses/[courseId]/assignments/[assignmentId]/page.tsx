@@ -77,7 +77,8 @@ export default function AssignmentDetailPage() {
   }, [assignmentId, isStudent, isTeacher]);
 
   useEffect(() => {
-    loadData();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadData();
   }, [loadData]);
 
   const handleFinalSubmit = async (textContent: string, files: File[]) => {
@@ -89,8 +90,9 @@ export default function AssignmentDetailPage() {
       const res = await courseApi.submitAssignment(assignmentId, fd);
       setSubmission(res.data.data);
       toast.success('Transmission successful. Mission complete.');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Transmission disrupted.');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      toast.error(axiosErr.response?.data?.message || 'Transmission disrupted.');
     } finally {
       setSubmitting(false);
     }
@@ -107,8 +109,9 @@ export default function AssignmentDetailPage() {
       });
       setAllSubmissions(p => p.map(s => s._id === submissionId ? { ...s, grade: parseInt(gf.grade), feedback: gf.feedback, status:'graded' } : s));
       toast.success('Assessment protocols finalized.');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Grading sequence failed.');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      toast.error(axiosErr.response?.data?.message || 'Grading sequence failed.');
     } finally {
       setGrading(null);
     }

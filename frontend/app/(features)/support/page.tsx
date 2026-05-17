@@ -16,7 +16,7 @@ export default function SupportPage() {
                 <LifeBuoy className="text-blue-600" size={32} />
               </div>
               <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-4">Support Center</h1>
-              <p className="text-slate-500 font-medium text-lg max-w-xl">We're here to help you make the most of your intelligent workspace. Get in touch with our team or explore our documentation.</p>
+              <p className="text-slate-500 font-medium text-lg max-w-xl">We&apos;re here to help you make the most of your intelligent workspace. Get in touch with our team or explore our documentation.</p>
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

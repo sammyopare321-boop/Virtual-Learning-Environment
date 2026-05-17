@@ -62,7 +62,8 @@ export default function AnnouncementsPage() {
   }, [courseId]);
 
   useEffect(() => {
-    fetchAnnouncements();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchAnnouncements();
   }, [fetchAnnouncements]);
 
   const handleCreate = async (e: React.FormEvent) => {

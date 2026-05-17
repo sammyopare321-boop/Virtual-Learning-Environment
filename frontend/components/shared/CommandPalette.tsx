@@ -24,10 +24,16 @@ interface CommandItem {
   role?: string[];
 }
 
+interface CourseOption {
+  _id: string;
+  title: string;
+  code: string;
+}
+
 export default function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [courses, setCourses] = useState<any[]>([]);
+  const [courses, setCourses] = useState<CourseOption[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const router = useRouter();
   const { user, logout } = useAuth();

@@ -111,7 +111,7 @@ export default function ReviewLaunch() {
         <div className="p-6 bg-slate-50 rounded-[32px] border border-slate-100 flex items-start gap-4">
            <Sparkles size={20} className="text-blue-600 mt-0.5" />
            <p className="text-xs font-bold text-slate-500 leading-relaxed italic">
-             "Once published, this course will be indexed in the UniLearn catalog. You can update the curriculum and settings at any time from your instructor dashboard."
+             &quot;Once published, this course will be indexed in the UniLearn catalog. You can update the curriculum and settings at any time from your instructor dashboard.&quot;
            </p>
         </div>
 

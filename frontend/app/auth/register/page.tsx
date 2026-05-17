@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { authApi } from '@/utils/api/authApi';
 import { useAuth } from '@/context/AuthContext';
+import { AxiosError } from 'axios';
 import { 
   GraduationCap, User, BookOpen, Building2, Mail, Lock, 
   Check, Loader2, ArrowRight, ShieldCheck, Zap, 
@@ -38,19 +39,11 @@ export default function RegisterPage() {
   const router = useRouter();
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'student', department: '' });
   const [loading, setLoading] = useState(false);
-  const [passChecks, setPassChecks] = useState({
-    length: false,
-    upper: false,
-    number: false,
-  });
-
-  useEffect(() => {
-    setPassChecks({
-      length: form.password.length >= 8,
-      upper: /[A-Z]/.test(form.password),
-      number: /[0-9]/.test(form.password),
-    });
-  }, [form.password]);
+  const passChecks = useMemo(() => ({
+    length: form.password.length >= 8,
+    upper: /[A-Z]/.test(form.password),
+    number: /[0-9]/.test(form.password),
+  }), [form.password]);
 
   const { login } = useAuth();
 
@@ -66,8 +59,9 @@ export default function RegisterPage() {
       toast.success('Account created! Welcome to UniLearn.');
       const loggedInUser = await login(form.email, form.password);
       router.push(`/dashboard/${loggedInUser.role}`);
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'Registration failed';
+    } catch (err: unknown) {
+      const axiosErr = err as AxiosError<{ message: string }>;
+      const msg = axiosErr.response?.data?.message || 'Registration failed';
       toast.error(msg);
     } finally {
       setLoading(false);

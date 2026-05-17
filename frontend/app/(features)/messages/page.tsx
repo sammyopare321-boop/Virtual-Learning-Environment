@@ -62,7 +62,13 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('new_message', (msg: any) => {
+    interface IncomingMessage {
+      senderId: string;
+      body: string;
+      createdAt: string;
+    }
+
+    socket.on('new_message', (msg: IncomingMessage) => {
       // If message is from the active chat, add it
       if (activeChat === msg.senderId) {
         setMessages(prev => [...prev, {

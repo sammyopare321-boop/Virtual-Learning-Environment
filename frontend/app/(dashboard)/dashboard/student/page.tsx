@@ -5,11 +5,9 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { courseApi } from '@/utils/api/courseApi';
 import { studentApi } from '@/utils/api/studentApi';
-import { 
-  BookOpen, Calendar, Clock, ChevronRight, Activity, 
+import { BookOpen, Calendar, Clock, ChevronRight, Activity, 
   Sparkles, TrendingUp, CheckCircle2, AlertCircle,
-  Play, Timer, Star, Award, Loader2
-} from 'lucide-react';
+  Play, Timer, Star, Award } from 'lucide-react';
 import { useSocket } from '@/context/SocketContext';
 
 interface Course {
@@ -21,6 +19,14 @@ interface Course {
   academicYear: string;
   coverImage?: string;
   progress?: number;
+}
+
+interface Milestone {
+  _id?: string;
+  title: string;
+  type: string;
+  deadline: string;
+  course?: { _id: string };
 }
 
 export default function StudentDashboard() {
@@ -36,7 +42,7 @@ export default function StudentDashboard() {
     onTimeRate: 100,
     totalCourses: 0
   });
-  const [milestones, setMilestones] = useState<any[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
 
   const fetchDashboardData = async () => {
     try {
@@ -56,12 +62,13 @@ export default function StudentDashboard() {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchDashboardData();
 
     if (socket) {
-      socket.on('notification', (data) => {
-        console.log('📡 Dashboard update received:', data);
-        fetchDashboardData(); // Re-sync everything when a notification arrives
+      socket.on('notification', () => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void fetchDashboardData();
       });
     }
 

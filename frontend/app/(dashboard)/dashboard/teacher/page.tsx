@@ -23,6 +23,14 @@ interface Course {
   studentCount?: number;
 }
 
+interface UpcomingClass {
+  title: string;
+  type: string;
+  time: string;
+  courseId: string;
+  color: string;
+}
+
 export default function TeacherDashboard() {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
@@ -31,7 +39,7 @@ export default function TeacherDashboard() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ title:'', code:'', description:'', semester:'Semester 1', academicYear:'2025/2026' });
 
-  const [stats, setStats] = useState({ students: 0, attendance: 0, engagementData: [0,0,0,0,0,0,0], upcomingClasses: [] as any[] });
+  const [stats, setStats] = useState({ students: 0, attendance: 0, engagementData: [0,0,0,0,0,0,0], upcomingClasses: [] as UpcomingClass[] });
 
   useEffect(() => {
     teacherApi.getStats()

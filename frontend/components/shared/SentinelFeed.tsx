@@ -111,7 +111,7 @@ export default function SentinelFeed({ isOpen, onClose }: { isOpen: boolean; onC
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                           notif.isRead ? 'bg-slate-50 dark:bg-slate-800' : 'bg-slate-50 dark:bg-slate-800'
                         }`}>
-                          {getIcon(notif.type)}
+                          {getIcon(notif.type || '')}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-bold leading-snug ${notif.isRead ? 'text-slate-500' : 'text-slate-900 dark:text-white'}`}>

@@ -26,10 +26,6 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!user) {
-      if (socket) {
-        socket.disconnect();
-        setSocket(null);
-      }
       return;
     }
 
@@ -40,6 +36,9 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         token: localStorage.getItem('token'),
       },
     });
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSocket(socketInstance);
 
     socketInstance.on('connect', () => {
       console.log('📡 Socket connected:', socketInstance.id);
@@ -55,10 +54,10 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setOnlineUsers(users);
     });
 
-    setSocket(socketInstance);
-
     return () => {
       socketInstance.disconnect();
+      setSocket(null);
+      setIsConnected(false);
     };
   }, [user]);
 

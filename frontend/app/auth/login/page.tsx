@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { AxiosError } from 'axios';
 import { 
   GraduationCap, Mail, Lock, ArrowRight, Loader2, 
   ShieldCheck, Search, Users, Sparkles, Star,
@@ -48,8 +49,9 @@ function LoginContent() {
       } else {
         router.push(`/dashboard/${loggedInUser.role}`);
       }
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'Invalid email or password';
+    } catch (err: unknown) {
+      const axiosErr = err as AxiosError<{ message: string }>;
+      const msg = axiosErr.response?.data?.message || 'Invalid email or password';
       setError(msg);
       toast.error(msg);
     } finally {
@@ -113,7 +115,7 @@ function LoginContent() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">potential.</span>
             </h2>
             <p className="text-slate-500 text-xl leading-relaxed mb-16 font-medium max-w-lg mx-auto">
-              Access the world's most intelligent workspace for students, educators, and institutions.
+              Access the world&apos;s most intelligent workspace for students, educators, and institutions.
             </p>
 
             {/* Product Preview Card */}
@@ -143,7 +145,7 @@ function LoginContent() {
                   {[1,2,3,4,5].map(i => <Star key={i} size={16} className="text-amber-400 fill-amber-400" />)}
                 </div>
                 <p className="text-base font-bold text-slate-800 mb-6 leading-relaxed italic">
-                  "UniLearn isn't just a tool; it's the core of our digital campus experience."
+                  &quot;UniLearn isn&apos;t just a tool; it&apos;s the core of our digital campus experience.&quot;
                 </p>
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-600/30">ER</div>

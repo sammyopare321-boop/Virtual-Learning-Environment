@@ -45,7 +45,7 @@ export default function TermsPage() {
                   <AlertCircle className="text-amber-500" size={24} /> 3. Limitation of Liability
                 </h2>
                 <p className="text-slate-600 leading-relaxed">
-                  UniLearn provides educational tools "as is." While we strive for 100% uptime and accuracy, we are not liable for any data loss or service interruptions.
+                   UniLearn provides educational tools &quot;as is.&quot; While we strive for 100% uptime and accuracy, we are not liable for any data loss or service interruptions.
                 </p>
               </div>
             </section>

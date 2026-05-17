@@ -191,7 +191,7 @@ export default function CoursesPage() {
                 <BookOpen size={28} className="text-slate-300" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">No Modules Found</h3>
-              <p className="text-slate-500 text-sm max-w-xs mx-auto font-medium">Try adjusting your search or filters to find what you're looking for.</p>
+              <p className="text-slate-500 text-sm max-w-xs mx-auto font-medium">Try adjusting your search or filters to find what you&apos;re looking for.</p>
             </motion.div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

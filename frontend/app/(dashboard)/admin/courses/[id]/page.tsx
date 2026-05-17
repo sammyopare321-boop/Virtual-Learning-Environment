@@ -8,6 +8,7 @@ import { Course, User } from '@/types';
 import { AxiosError } from 'axios';
 import styles from './admin_course_detail.module.css';
 
+type TeacherWithEmail = { _id: string; name?: string; email?: string };
 type TabType = 'overview' | 'students' | 'modules' | 'analytics' | 'settings';
 
 interface ToastState {
@@ -61,11 +62,13 @@ export default function AdminCourseDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    fetchCourse();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchCourse();
   }, [fetchCourse]);
 
   useEffect(() => {
-    if (activeTab === 'students') fetchStudents();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (activeTab === 'students') void fetchStudents();
   }, [activeTab, fetchStudents]);
 
   const navItems = [
@@ -175,7 +178,7 @@ export default function AdminCourseDetailPage() {
                   </div>
                   <div>
                     <p style={{ fontSize:14, fontWeight:600, color:'#0f172a', margin:0 }}>{typeof course?.teacher === 'object' ? course.teacher?.name : 'TBA'}</p>
-                    <p style={{ fontSize:12, color:'#64748b', margin:0 }}>{typeof course?.teacher === 'object' ? (course.teacher as any)?.email : ''}</p>
+                    <p style={{ fontSize:12, color:'#64748b', margin:0 }}>{typeof course?.teacher === 'object' ? (course.teacher as TeacherWithEmail)?.email : ''}</p>
                   </div>
                 </div>
               </div>

@@ -63,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </svg>
           </button>
           <div className="flex-1 text-center font-display font-black text-slate-900 tracking-tighter uppercase text-sm italic">
-            UniLearn <span className="text-primary-500">Intelligenge</span>
+            UniLearn <span className="text-primary-500">Intelligence</span>
           </div>
         </div>
 

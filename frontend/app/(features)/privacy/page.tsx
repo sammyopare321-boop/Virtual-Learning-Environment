@@ -39,7 +39,7 @@ export default function PrivacyPage() {
                   <FileText className="text-amber-500" size={24} /> 3. Your Rights
                 </h2>
                 <p className="text-slate-600 leading-relaxed">
-                  You have the right to access, update, or delete your personal information at any time. If you wish to exercise these rights, please contact your institution's administrator.
+                  You have the right to access, update, or delete your personal information at any time. If you wish to exercise these rights, please contact your institution&apos;s administrator.
                 </p>
               </div>
             </section>

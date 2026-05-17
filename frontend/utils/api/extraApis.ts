@@ -1,5 +1,5 @@
 import api from './axiosInstance';
-import { Quiz, Question, Attempt, LiveSession } from '@/types';
+import { Quiz, Question, LiveSession } from '@/types';
 
 export const submissionApi = {
   submitAssignment: (assignmentId: string, formData: FormData) =>
