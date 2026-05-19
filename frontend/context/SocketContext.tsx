@@ -27,13 +27,11 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!user) {
-      setIsConnected(false);
       return;
     }
 
     const token = getSessionToken();
     if (!token) {
-      setIsConnected(false);
       return;
     }
 

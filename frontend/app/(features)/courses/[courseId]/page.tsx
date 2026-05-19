@@ -47,21 +47,21 @@ export default function CourseOverviewPage() {
   return (
     <div className="space-y-12">
       {/* Course Header Hero */}
-      <section className="relative rounded-[32px] overflow-hidden bg-slate-900 text-white shadow-2xl shadow-slate-900/20">
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/60 to-transparent z-10" />
-        <div className="absolute top-0 right-0 w-1/2 h-full opacity-40 bg-[url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80')] bg-cover bg-center" />
+      <section className="relative rounded-[24px] overflow-hidden bg-slate-900 text-white shadow-xl shadow-slate-900/10 max-w-6xl mx-auto min-h-[320px] lg:min-h-[380px] flex flex-col justify-end">
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/80 to-transparent z-10" />
+        <div className="absolute top-0 right-0 w-2/3 h-full opacity-40 bg-[url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80')] bg-cover bg-center" />
         
-        <div className="relative z-20 p-10 lg:p-14 flex flex-col md:flex-row md:items-end justify-between gap-10">
+        <div className="relative z-20 p-8 lg:p-12 flex flex-col md:flex-row md:items-end justify-between gap-8 mt-auto">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <span className="px-3 py-1 rounded-full bg-primary-500 text-[10px] font-black uppercase tracking-widest">
+              <span className="px-3 py-1 rounded-lg bg-primary-500 text-[11px] font-bold tracking-wide">
                 {course?.code}
               </span>
-              <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[10px] font-black uppercase tracking-widest">
+              <span className="px-3 py-1 rounded-lg bg-white/10 backdrop-blur-md border border-white/10 text-[11px] font-bold tracking-wide">
                 {course?.semester} • {course?.academicYear}
               </span>
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-extrabold tracking-tight max-w-2xl leading-[1.1]">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold tracking-tight max-w-2xl leading-[1.1]">
               {course?.title}
             </h1>
             <div className="flex items-center gap-6 pt-4">
@@ -109,18 +109,20 @@ export default function CourseOverviewPage() {
       </section>
 
       {/* Workspace Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start max-w-6xl mx-auto">
         
         {/* Main Intelligence Panel */}
-        <div className="lg:col-span-9">
+        <div className="lg:col-span-8">
           <CourseIntelligence />
         </div>
 
         {/* Quick Access Sidebar */}
-        <div className="lg:col-span-3 space-y-10">
-          <div>
-            <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 px-2">Knowledge Access</h3>
-            <div className="space-y-2">
+        <div className="lg:col-span-4 space-y-6">
+          <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-[24px]">
+            <h3 className="text-[13px] font-bold text-slate-900 mb-4 px-2 flex items-center gap-2">
+              <Layers size={16} className="text-primary-500" /> Knowledge Access
+            </h3>
+            <div className="space-y-1.5">
               {navigation.map((item, idx) => (
                 <motion.div
                   key={item.href}
@@ -130,15 +132,15 @@ export default function CourseOverviewPage() {
                 >
                   <Link 
                     href={item.href}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 hover:border-primary-200 hover:shadow-xl hover:shadow-primary-900/5 transition-all group"
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-primary-200 hover:bg-white hover:shadow-md hover:shadow-primary-900/5 transition-all group"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.bg} ${item.color}`}>
-                        <item.icon size={18} strokeWidth={2.5} />
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${item.bg} ${item.color}`}>
+                        <item.icon size={16} strokeWidth={2.5} />
                       </div>
-                      <span className="text-[13px] font-bold text-slate-700 group-hover:text-primary-500 transition-colors tracking-tight">{item.label}</span>
+                      <span className="text-[13px] font-semibold text-slate-700 group-hover:text-primary-600 transition-colors tracking-tight">{item.label}</span>
                     </div>
-                    <ArrowRight size={14} className="text-slate-200 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
+                    <ArrowRight size={14} className="text-slate-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
                   </Link>
                 </motion.div>
               ))}
@@ -146,18 +148,18 @@ export default function CourseOverviewPage() {
           </div>
 
           {/* Smart Summary Card */}
-          <div className="card-premium p-8 bg-slate-50 border-none shadow-sm overflow-hidden relative group">
+          <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-[24px] overflow-hidden relative group">
              <div className="absolute top-0 right-0 w-24 h-24 bg-primary-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl group-hover:bg-primary-500/10 transition-colors" />
-             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center gap-2">
-               <Activity size={14} className="text-primary-500" /> Syllabus Status
+             <h4 className="text-[13px] font-bold text-slate-900 mb-5 flex items-center gap-2">
+               <Activity size={16} className="text-primary-500" /> Syllabus Status
              </h4>
-             <div className="space-y-6">
+             <div className="space-y-5">
                 <div>
                   <div className="flex justify-between items-end mb-2">
-                     <span className="text-xs font-bold text-slate-600">Module Completion</span>
-                     <span className="text-sm font-black text-slate-900">62%</span>
+                     <span className="text-xs font-semibold text-slate-500">Module Completion</span>
+                     <span className="text-sm font-bold text-slate-900">62%</span>
                   </div>
-                  <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                      <motion.div 
                       initial={{ width: 0 }}
                       animate={{ width: '62%' }}
@@ -166,11 +168,11 @@ export default function CourseOverviewPage() {
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 shadow-sm">
-                   <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 shadow-sm">
+                   <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
                       <CheckSquare size={16} />
                    </div>
-                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Attendance: 94%</span>
+                   <span className="text-[12px] font-semibold text-slate-600 tracking-wide">Attendance: 94%</span>
                 </div>
              </div>
           </div>

@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       return false;
     }
-  }, [user]);
+  }, []);
 
   const exitImpersonation = useCallback(async () => {
     try {

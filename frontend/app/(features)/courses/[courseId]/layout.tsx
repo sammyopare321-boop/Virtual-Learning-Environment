@@ -73,75 +73,69 @@ export default function CourseLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="space-y-8">
-      <div className="bg-white rounded-[32px] border border-slate-100 p-8 lg:p-10 shadow-sm relative overflow-hidden">
+      <div className="bg-white rounded-[24px] border border-slate-100 p-6 lg:p-8 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-              <Link href="/courses" className="hover:text-primary-500 transition-colors">
-                Courses
-              </Link>
-              <ChevronRight size={12} className="text-slate-300" />
-              <span className="text-slate-900 truncate max-w-[200px]">{course.title}</span>
-            </div>
-
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-3">
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="px-3 py-1 rounded-lg bg-primary-50 text-primary-700 border border-primary-100 text-[10px] font-black uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-500 tracking-wide">
+                <Link href="/courses" className="hover:text-primary-600 transition-colors">Courses</Link>
+                <ChevronRight size={12} className="text-slate-400" />
+              </div>
+              <span className="px-2 py-0.5 rounded-md bg-primary-50 text-primary-700 text-[11px] font-semibold tracking-wide">
                 {course.code}
               </span>
-              <span
-                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
-                  course.status === 'active'
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                    : 'bg-slate-50 text-slate-600 border-slate-200'
-                }`}
-              >
+              <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold tracking-wide ${ course.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-600' }`}>
                 {course.status}
               </span>
-              <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                <Sparkles size={12} className="text-amber-400" />
+            </div>
+
+            <div className="flex items-end gap-4">
+              <h1 className="text-2xl lg:text-3xl font-display font-bold text-slate-900 tracking-tight leading-tight">
+                {course.title}
+              </h1>
+              <div className="hidden sm:flex items-center gap-1.5 text-[12px] font-medium text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 mb-1">
+                <Sparkles size={14} className="text-amber-400" />
                 {course.semester} · {course.academicYear}
               </div>
             </div>
-
-            <h1 className="text-3xl lg:text-4xl font-display font-extrabold text-slate-900 tracking-tight leading-tight">
-              {course.title}
-            </h1>
           </div>
 
           <div className="flex items-center gap-3">
             {isOwner && (
               <Link
                 href={`/courses/${courseId}/settings`}
-                className="btn btn-primary h-12 px-6 gap-2 shadow-lg shadow-primary-500/20"
+                className="btn btn-primary h-10 px-5 gap-2 text-sm shadow-md shadow-primary-500/10 rounded-xl"
               >
-                <SettingsIcon size={18} /> Manage Course
+                <SettingsIcon size={16} /> Manage Course
               </Link>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mt-10 -mb-2">
-          {tabs.map((tab) => {
-            const isActive =
-              pathname === tab.href ||
-              (tab.href !== `/courses/${courseId}` && pathname.startsWith(tab.href));
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all whitespace-nowrap ${
-                  isActive
-                    ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20'
-                    : 'text-slate-400 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                <tab.icon size={14} strokeWidth={2.5} />
-                {tab.label}
-              </Link>
-            );
-          })}
+        <div className="mt-8 pt-6 border-t border-slate-100">
+          <div className="flex flex-wrap bg-slate-100/80 p-1.5 rounded-[16px] gap-1 relative z-10">
+            {tabs.map((tab) => {
+              const isActive =
+                pathname === tab.href ||
+                (tab.href !== `/courses/${courseId}` && pathname.startsWith(tab.href));
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-[13px] transition-all ${
+                    isActive
+                      ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50'
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 border border-transparent'
+                  }`}
+                >
+                  <tab.icon size={16} />
+                  {tab.label}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
 
