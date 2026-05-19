@@ -306,7 +306,12 @@ export default function TeacherDashboard() {
             
             <div className="relative">
               <input type="text" placeholder="Ask AI..." className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-500 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all" />
-              <button className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-primary-600 rounded-lg text-white hover:bg-primary-500 transition-colors">
+              <button 
+                type="button"
+                aria-label="Send query to AI"
+                title="Send query to AI"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-primary-600 rounded-lg text-white hover:bg-primary-500 transition-colors"
+              >
                 <Send size={14} />
               </button>
             </div>
@@ -351,7 +356,7 @@ export default function TeacherDashboard() {
           {/* 9. SCHEDULE PANEL */}
           <div className="rounded-[24px] bg-white border border-slate-200 p-6 shadow-sm">
             <h3 className="text-xs font-bold text-slate-500 mb-5 uppercase tracking-widest flex items-center gap-2">
-              <Clock size={16} className="text-amber-500" /> Today's Schedule
+              <Clock size={16} className="text-amber-500" /> {"Today's Schedule"}
             </h3>
             
             {stats.upcomingClasses?.length > 0 ? (
@@ -401,7 +406,13 @@ export default function TeacherDashboard() {
                   <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Create Course</h2>
                   <p className="text-slate-500 font-medium">Configure your new course environment.</p>
                 </div>
-                <button onClick={() => setShowForm(false)} className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all">
+                <button 
+                  type="button"
+                  aria-label="Close modal" 
+                  title="Close modal" 
+                  onClick={() => setShowForm(false)} 
+                  className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all"
+                >
                   <X size={20} />
                 </button>
               </div>

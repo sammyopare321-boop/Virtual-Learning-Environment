@@ -23,17 +23,21 @@ interface NavSection {
 }
 
 const studentLinks = [
-  { group: 'Overview', items: [
-    { href: '/dashboard/student',    label: 'Dashboard',      icon: LayoutDashboard },
-    { href: '/radar',                label: 'Academic Radar', icon: Radar },
+  { group: 'Core', items: [
+    { href: '/dashboard/student',    label: 'Dashboard',       icon: LayoutDashboard },
+    { href: '/courses',              label: 'My Courses',      icon: BookOpen },
+    { href: '/assignments',          label: 'Assignments',     icon: BarChart3 },
+    { href: '/schedule',             label: 'Schedule',        icon: Activity },
   ]},
-  { group: 'Academic', items: [
-    { href: '/courses',              label: 'My Courses',     icon: BookOpen },
-    { href: '/messages',             label: 'Messages',       icon: MessageSquare },
-    { href: '/notifications',        label: 'Notifications',  icon: Bell },
+  { group: 'Communication', items: [
+    { href: '/messages',             label: 'Messages',        icon: MessageSquare },
   ]},
-  { group: 'Account', items: [
-    { href: '/profile',              label: 'Profile Settings', icon: UserIcon },
+  { group: 'Intelligence', items: [
+    { href: '/progress',             label: 'Progress',        icon: Radar },
+    { href: '/ai-tutor',             label: 'AI Tutor',        icon: Sparkles },
+  ]},
+  { group: 'Settings', items: [
+    { href: '/profile',              label: 'Settings',        icon: Settings },
   ]}
 ];
 
@@ -58,17 +62,18 @@ const teacherLinks = [
 ];
 
 const adminLinks = [
-  { group: 'Administration', items: [
-    { href: '/dashboard/admin',      label: 'Control Panel',   icon: LayoutDashboard },
-    { href: '/admin/users',          label: 'User Management', icon: Users },
-    { href: '/admin/courses',        label: 'Course Registry', icon: BookOpen },
+  { group: 'Control', items: [
+    { href: '/dashboard/admin',      label: 'Dashboard',       icon: LayoutDashboard },
+    { href: '/admin/users',          label: 'Users',           icon: Users },
+    { href: '/admin/courses',        label: 'Courses',         icon: BookOpen },
   ]},
   { group: 'Intelligence', items: [
-    { href: '/admin/analytics',      label: 'System Insights', icon: BarChart3 },
-    { href: '/admin/logs',           label: 'Audit Logs',      icon: Activity },
+    { href: '/admin/analytics',      label: 'Analytics',       icon: BarChart3 },
+    { href: '/admin/reports',        label: 'Reports',         icon: Activity },
+    { href: '/admin/ai-insights',    label: 'AI Insights',     icon: Sparkles },
   ]},
-  { group: 'Settings', items: [
-    { href: '/profile',              label: 'Profile',         icon: UserIcon },
+  { group: 'System', items: [
+    { href: '/profile',              label: 'System Settings', icon: Settings },
   ]}
 ];
 

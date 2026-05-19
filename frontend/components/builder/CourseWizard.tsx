@@ -1,332 +1,973 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Sparkles, Shield, Layout, Palette, CheckCircle2, 
-  ArrowRight, ArrowLeft, Save, Loader2, Info
+  Sparkles, Calendar, Layout, Users, Settings, Clock, Plus, Trash2, 
+  Play, CheckCircle2, ArrowLeft, ArrowRight, Save, X, ChevronRight, 
+  Info, Lock, AlertCircle, Sparkle, BookOpen, Send, CalendarDays,
+  FileText, Video, HelpCircle, CheckSquare, Search, Award
 } from 'lucide-react';
-import { useForm, UseFormRegister, FieldErrors } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import Link from 'next/link';
 
-import StructureBuilder from './StructureBuilder';
-import AccessSettings from './AccessSettings';
-import AppearanceSettings from './AppearanceSettings';
-import ReviewLaunch from './ReviewLaunch';
+interface Session {
+  id: string;
+  day: string;
+  time: string;
+}
 
-// --- WIZARD SCHEMA ---
-const courseSchema = z.object({
-  title: z.string().min(5, "Course title must be at least 5 characters"),
-  code: z.string().min(3, "Course code is required"),
-  description: z.string().min(20, "Please provide a more detailed description"),
-  department: z.string().min(2, "Department is required"),
-  semester: z.string().min(1, "Semester is required"),
-  level: z.string().min(1, "Level is required"),
-  accentColor: z.string().min(1, "Accent color is required"),
-});
+interface Lesson {
+  id: string;
+  title: string;
+  type: 'video' | 'document' | 'quiz';
+}
 
-type CourseFormData = z.infer<typeof courseSchema>;
+interface Module {
+  id: string;
+  title: string;
+  lessons: Lesson[];
+}
+
+interface CourseFormState {
+  title: string;
+  code: string;
+  description: string;
+  category: string;
+  level: 'beginner' | 'intermediate' | 'advanced';
+  startDate: string;
+  endDate: string;
+  schedule: Session[];
+  modules: Module[];
+  enrollmentType: 'open' | 'invite';
+  students: string[];
+  maxStudents: string;
+  gradingSystem: 'percentage' | 'passfail';
+  assignmentsEnabled: boolean;
+  certificateEnabled: boolean;
+  visibility: 'draft' | 'published';
+}
+
+let idCounter = 0;
+function getUniqueId(prefix: string): string {
+  idCounter += 1;
+  return `${prefix}-${Date.now()}-${idCounter}`;
+}
 
 const STEPS = [
-  { id: 'identity',   title: 'Identity',    icon: Sparkles, desc: 'Core academic metadata and identity' },
-  { id: 'structure',  title: 'Architect',   icon: Layout,   desc: 'Design your curriculum skeleton' },
-  { id: 'access',     title: 'Gatekeeper',  icon: Shield,   desc: 'Protocols and enrollment controls' },
-  { id: 'appearance', title: 'Stylist',     icon: Palette,  desc: 'Visual personality and branding' },
-  { id: 'review',     title: 'Launchpad',   icon: CheckCircle2, desc: 'Final audit and publication' },
+  { id: 'basic', title: 'Basic Information', icon: Sparkles, desc: 'Title, code, description & category' },
+  { id: 'schedule', title: 'Structure & Schedule', icon: Calendar, desc: 'Dates and recurring class sessions' },
+  { id: 'content', title: 'Course Content', icon: Layout, desc: 'Modules, lessons, and quiz structures' },
+  { id: 'students', title: 'Students & Access', icon: Users, desc: 'Access controls and user enrollments' },
+  { id: 'publish', title: 'Settings & Publish', icon: Settings, desc: 'Grading options and catalog launch' },
 ];
 
 export default function CourseWizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(0);
+  
+  // Auto-save state
+  const [autoSaveStatus, setAutoSaveStatus] = useState<string>('Saved just now');
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  
+  // Form validation warnings
+  const [warnings, setWarnings] = useState<string[]>([]);
+  
+  // AI assist state
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
 
-  const { register, handleSubmit, formState: { errors, isValid }, watch } = useForm<CourseFormData>({
-    resolver: zodResolver(courseSchema),
-    mode: 'onChange',
-    defaultValues: {
-      title: '',
-      code: '',
-      description: '',
-      department: '',
-      semester: 'Semester 1',
-      level: 'Level 100',
-      accentColor: '#2563EB',
-    }
+  // Form core state
+  const [form, setForm] = useState<CourseFormState>({
+    title: '',
+    code: '',
+    description: '',
+    category: '',
+    level: 'beginner',
+    startDate: '',
+    endDate: '',
+    schedule: [],
+    modules: [],
+    enrollmentType: 'open',
+    students: [],
+    maxStudents: '50',
+    gradingSystem: 'percentage',
+    assignmentsEnabled: true,
+    certificateEnabled: true,
+    visibility: 'draft',
   });
 
-  const formValues = watch();
+  // Student search static list
+  const availableStudents = [
+    { id: 's1', name: 'John Doe', email: 'john@unipartner.com' },
+    { id: 's2', name: 'Ama Mensah', email: 'ama@unipartner.com' },
+    { id: 's3', name: 'Kofi Owusu', email: 'kofi@unipartner.com' },
+    { id: 's4', name: 'Sarah Adams', email: 'sarah@unipartner.com' },
+    { id: 's5', name: 'Emmanuel Debrah', email: 'emmanuel@unipartner.com' },
+  ];
+  
+  const [studentSearch, setStudentSearch] = useState('');
 
-  const nextStep = () => {
+  // Auto-save mechanism simulating cloud synchronization
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIsAutoSaving(true);
+      setAutoSaveStatus('Saving changes...');
+      
+      setTimeout(() => {
+        setIsAutoSaving(false);
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setAutoSaveStatus(`Auto-saved at ${now}`);
+      }, 800);
+    }, 12000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Real-time validation system based on step
+  useEffect(() => {
+    const activeWarnings: string[] = [];
+    if (currentStep === 0) {
+      if (!form.title) activeWarnings.push('Please enter a course title to continue');
+      else if (form.title.length < 5) activeWarnings.push('Course title should be at least 5 characters');
+      if (!form.code) activeWarnings.push('Please enter a unique catalog code');
+      if (!form.description) activeWarnings.push('Please provide a short course summary');
+      if (!form.category) activeWarnings.push('Please select a course category');
+    } else if (currentStep === 1) {
+      if (!form.startDate) activeWarnings.push('Please configure a valid start date');
+      if (!form.endDate) activeWarnings.push('Please configure a valid end date');
+      if (form.schedule.length === 0) activeWarnings.push('Recommend adding at least one weekly live class session');
+    } else if (currentStep === 2) {
+      if (form.modules.length === 0) activeWarnings.push('Add at least one module to architect your curriculum skeleton');
+    }
+    setWarnings(activeWarnings);
+  }, [form, currentStep]);
+
+  const handleNext = () => {
+    if (warnings.length > 0) return;
     setDirection(1);
-    setCurrentStep(p => Math.min(p + 1, STEPS.length - 1));
+    setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
   };
 
-  const prevStep = () => {
+  const handlePrev = () => {
     setDirection(-1);
-    setCurrentStep(p => Math.max(p - 1, 0));
+    setCurrentStep(prev => Math.max(prev - 1, 0));
+  };
+
+  // AI Assist filler
+  const handleAiGenerate = () => {
+    setIsAiGenerating(true);
+    setTimeout(() => {
+      setForm(prev => ({
+        ...prev,
+        title: 'Advanced React & Next.js Systems',
+        code: 'CS-302',
+        description: 'Dive deep into server components, routing architectures, state coordination, and performance engineering inside React 19.',
+        category: 'Technology',
+        level: 'advanced',
+        modules: [
+          {
+            id: 'm1',
+            title: 'Introduction to React Server Components',
+            lessons: [
+              { id: 'l1', title: 'RSC vs SSR: Core paradigms', type: 'video' },
+              { id: 'l2', title: 'Designing interactive boundary layouts', type: 'document' },
+            ]
+          },
+          {
+            id: 'm2',
+            title: 'Next.js App Routing and Middleware Security',
+            lessons: [
+              { id: 'l3', title: 'Route interception and virtual slots', type: 'video' },
+              { id: 'l4', title: 'Security audit quiz', type: 'quiz' },
+            ]
+          }
+        ]
+      }));
+      setIsAiGenerating(false);
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setAutoSaveStatus(`AI generation loaded & saved at ${now}`);
+    }, 1500);
+  };
+
+  // Schedule sub-sessions
+  const addScheduleSession = () => {
+    const newSession: Session = { id: getUniqueId('s'), day: 'Monday', time: '10:00 AM - 12:00 PM' };
+    setForm(prev => ({ ...prev, schedule: [...prev.schedule, newSession] }));
+  };
+
+  const removeScheduleSession = (id: string) => {
+    setForm(prev => ({ ...prev, schedule: prev.schedule.filter(s => s.id !== id) }));
+  };
+
+  const updateScheduleSession = (id: string, field: keyof Session, value: string) => {
+    setForm(prev => ({
+      ...prev,
+      schedule: prev.schedule.map(s => s.id === id ? { ...s, [field]: value } : s)
+    }));
+  };
+
+  // Content Modules / Lessons
+  const addModule = () => {
+    const newModule: Module = { id: getUniqueId('m'), title: 'Untitled Module', lessons: [] };
+    setForm(prev => ({ ...prev, modules: [...prev.modules, newModule] }));
+  };
+
+  const updateModuleTitle = (id: string, title: string) => {
+    setForm(prev => ({
+      ...prev,
+      modules: prev.modules.map(m => m.id === id ? { ...m, title } : m)
+    }));
+  };
+
+  const removeModule = (id: string) => {
+    setForm(prev => ({ ...prev, modules: prev.modules.filter(m => m.id !== id) }));
+  };
+
+  const addLesson = (moduleId: string, type: Lesson['type']) => {
+    const newLesson: Lesson = { id: getUniqueId('l'), title: `New ${type.toUpperCase()}`, type };
+    setForm(prev => ({
+      ...prev,
+      modules: prev.modules.map(m => m.id === moduleId ? { ...m, lessons: [...m.lessons, newLesson] } : m)
+    }));
+  };
+
+  const updateLessonTitle = (moduleId: string, lessonId: string, title: string) => {
+    setForm(prev => ({
+      ...prev,
+      modules: prev.modules.map(m => m.id === moduleId ? {
+        ...m,
+        lessons: m.lessons.map(l => l.id === lessonId ? { ...l, title } : l)
+      } : m)
+    }));
+  };
+
+  const removeLesson = (moduleId: string, lessonId: string) => {
+    setForm(prev => ({
+      ...prev,
+      modules: prev.modules.map(m => m.id === moduleId ? {
+        ...m,
+        lessons: m.lessons.filter(l => l.id !== lessonId)
+      } : m)
+    }));
+  };
+
+  // Student list additions
+  const toggleStudent = (name: string) => {
+    setForm(prev => {
+      const exists = prev.students.includes(name);
+      return {
+        ...prev,
+        students: exists ? prev.students.filter(s => s !== name) : [...prev.students, name]
+      };
+    });
+  };
+
+  // Submit complete course details
+  const handleSubmit = (visibility: 'draft' | 'published') => {
+    // Navigate home or to dashboard list
+    alert(`Success: Course "${form.title || 'Draft Course'}" successfully created as ${visibility.toUpperCase()}!`);
+    window.location.href = '/admin/courses';
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-12 px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        
-        {/* Wizard Header & Progress */}
-        <header className="mb-12">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10">
-            <div>
-              <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-2 text-balance">
-                {STEPS[currentStep].title}. <span className="text-blue-600">Workspace</span>
-              </h1>
-              <p className="text-slate-500 font-medium italic">{STEPS[currentStep].desc}</p>
-            </div>
-            
-            <div className="flex items-center gap-4 bg-white p-2 rounded-3xl border border-slate-200 shadow-sm">
-              <button className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-slate-50 text-slate-600 font-black text-xs hover:bg-slate-100 transition-all uppercase tracking-widest">
-                <Save size={14} /> Save Draft
-              </button>
-              <div className="h-6 w-px bg-slate-200" />
-              <div className="px-6 py-3">
-                <span className="text-xs font-black text-blue-600 uppercase tracking-widest">Step {currentStep + 1} of {STEPS.length}</span>
-              </div>
+    <div className="min-h-screen bg-[#F8FAFC]">
+      
+      {/* 🧭 TOP NAVIGATION BAR */}
+      <header className="sticky top-0 bg-white border-b border-slate-100 px-8 py-4 z-40 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-4">
+          <Link href="/admin/courses" className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:text-slate-900 flex items-center justify-center transition-colors">
+            <X size={20} />
+          </Link>
+          <div className="h-6 w-px bg-slate-200" />
+          <div>
+            <h1 className="text-base font-extrabold text-slate-900 tracking-tight">Create Course</h1>
+            <div className="flex items-center gap-2 mt-0.5 text-slate-400 text-[10px] uppercase font-bold tracking-wider">
+              <span>Wizard Builder</span>
+              <span>•</span>
+              <span className={isAutoSaving ? "text-primary-600 font-bold" : "text-slate-400 font-semibold"}>
+                {autoSaveStatus}
+              </span>
             </div>
           </div>
+        </div>
 
-          {/* Stepper Dots/Line */}
-          <div className="flex items-center justify-between relative px-4">
-            <div className="absolute left-8 right-8 top-1/2 -translate-y-1/2 h-0.5 bg-slate-200 z-0" />
-            <div 
-              className="absolute left-8 top-1/2 -translate-y-1/2 h-0.5 bg-blue-600 z-0 transition-all duration-500 ease-out" 
-              style={{ width: `${(currentStep / (STEPS.length - 1)) * 95}%` }}
-            />
-            
-            {STEPS.map((step, i) => {
-              const Icon = step.icon;
-              const isActive = i <= currentStep;
-              const isCurrent = i === currentStep;
-              return (
-                <div key={step.id} className="relative z-10 flex flex-col items-center">
-                  <button 
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => handleSubmit('draft')}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
+          >
+            <Save size={14} /> Save Draft
+          </button>
+          <button 
+            onClick={handleAiGenerate}
+            disabled={isAiGenerating}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-colors"
+          >
+            <Sparkles size={14} className={isAiGenerating ? "animate-spin" : ""} />
+            {isAiGenerating ? "Generating..." : "Generate with AI"}
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-6 py-10 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          
+          {/* 🧭 LEFT COLUMN: STEP NAVIGATION */}
+          <aside className="lg:col-span-3 space-y-2">
+            <div className="bg-white border border-slate-200 rounded-[24px] p-5 shadow-sm space-y-1">
+              {STEPS.map((step, idx) => {
+                const Icon = step.icon;
+                const isActive = currentStep === idx;
+                const isCompleted = idx < currentStep;
+                return (
+                  <button
+                    key={step.id}
                     onClick={() => {
-                      if (i < currentStep) {
-                        setDirection(i < currentStep ? -1 : 1);
-                        setCurrentStep(i);
+                      if (idx < currentStep || warnings.length === 0) {
+                        setDirection(idx < currentStep ? -1 : 1);
+                        setCurrentStep(idx);
                       }
                     }}
-                    disabled={i > currentStep}
-                    title={`Go to ${step.title} step`}
-                    aria-label={`Navigate to the ${step.title} stage of course creation`}
-                    className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 border-4 ${
-                      isCurrent 
-                        ? 'bg-blue-600 border-blue-100 text-white shadow-xl shadow-blue-600/20 scale-110' 
-                        : isActive 
-                          ? 'bg-blue-50 border-blue-50 text-blue-600' 
-                          : 'bg-white border-slate-100 text-slate-300'
+                    disabled={idx > currentStep && warnings.length > 0}
+                    className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all text-left group ${
+                      isActive 
+                        ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600' 
+                        : isCompleted
+                          ? 'text-emerald-600 hover:bg-slate-50' 
+                          : 'text-slate-400 hover:bg-slate-50'
                     }`}
                   >
-                    <Icon size={24} />
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                      isActive 
+                        ? 'bg-primary-600 text-white shadow-md' 
+                        : isCompleted
+                          ? 'bg-emerald-50 text-emerald-600' 
+                          : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'
+                    }`}>
+                      {isCompleted ? <CheckCircle2 size={16} /> : <Icon size={16} />}
+                    </div>
+                    <div>
+                      <span className="block text-xs font-black uppercase tracking-wider leading-none mb-1">
+                        Step {idx + 1}
+                      </span>
+                      <span className={`block text-sm font-extrabold truncate ${
+                        isActive ? 'text-slate-900' : 'text-slate-700'
+                      }`}>
+                        {step.title}
+                      </span>
+                    </div>
                   </button>
-                  <div className="absolute top-18 flex flex-col items-center w-32">
-                     <span className={`text-[10px] font-black uppercase tracking-[0.2em] mb-0.5 ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>
-                       {step.title}
-                     </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </header>
+                );
+              })}
+            </div>
 
-        {/* Main Workspace */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mt-20">
-          
-          {/* Step Content */}
-          <div className="lg:col-span-8">
-            <AnimatePresence mode="wait" custom={direction}>
+            {/* Validation Panel */}
+            <AnimatePresence>
+              {warnings.length > 0 && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                  className="bg-amber-50 border border-amber-200 rounded-[20px] p-5 shadow-sm space-y-3"
+                >
+                  <div className="flex items-center gap-2 text-amber-800 text-xs font-extrabold uppercase tracking-wider">
+                    <AlertCircle size={16} /> Warnings & Errors
+                  </div>
+                  <ul className="space-y-1">
+                    {warnings.map((w, i) => (
+                      <li key={i} className="text-xs text-amber-700 font-medium leading-relaxed flex items-start gap-1">
+                        <span>•</span>
+                        <span>{w}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </aside>
+
+          {/* 🖥️ MAIN PANEL: FORM STEP CONTENT */}
+          <main className="lg:col-span-6 space-y-8">
+            <AnimatePresence mode="wait">
               <motion.div
                 key={currentStep}
-                custom={direction}
-                initial={{ opacity: 0, x: direction * 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: direction * -50 }}
-                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                className="bg-white rounded-[48px] border border-slate-200 p-10 lg:p-16 shadow-xl shadow-slate-900/5 relative overflow-hidden"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }}
+                className="bg-white border border-slate-200 rounded-[32px] p-8 sm:p-10 shadow-sm relative overflow-hidden"
               >
-                {/* Decorative background element */}
-                <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-50 rounded-full blur-3xl opacity-50" />
                 
-                {renderStepContent(currentStep, register, errors, formValues)}
+                {/* 1. BASIC INFORMATION VIEW */}
+                {currentStep === 0 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="text-2xl font-black text-slate-900 tracking-tight">Basic Information</h2>
+                      <p className="text-sm text-slate-500 font-medium mt-1">Define core identity details for your virtual catalog.</p>
+                    </div>
 
-                {currentStep < STEPS.length - 1 && (
-                  <div className="mt-16 pt-10 border-t border-slate-100 flex items-center justify-between">
-                    <button 
-                      onClick={prevStep}
-                      disabled={currentStep === 0}
-                      className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all ${currentStep === 0 ? 'opacity-0 invisible' : 'opacity-100'}`}
-                    >
-                      <ArrowLeft size={18} /> Previous Step
-                    </button>
-                    
-                    <button 
-                      onClick={nextStep}
-                      className="flex items-center gap-4 px-10 py-5 rounded-2xl bg-blue-600 text-white font-black hover:bg-blue-700 shadow-2xl shadow-blue-600/20 transition-all active:scale-95 group"
-                    >
-                      Continue Journey
-                      <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                    </button>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Course Title *</label>
+                        <input 
+                          type="text"
+                          required
+                          value={form.title}
+                          onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+                          placeholder="Introduction to Programming"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 text-sm font-bold focus:bg-white focus:border-primary-500 transition-all outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Course Code *</label>
+                        <input 
+                          type="text"
+                          required
+                          value={form.code}
+                          onChange={e => setForm(p => ({ ...p, code: e.target.value }))}
+                          placeholder="CS101"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 text-sm font-bold focus:bg-white focus:border-primary-500 transition-all outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Description *</label>
+                        <textarea 
+                          rows={4}
+                          required
+                          value={form.description}
+                          onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                          placeholder="Write a short description of the course..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 text-sm font-medium focus:bg-white focus:border-primary-500 transition-all outline-none resize-none"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Category *</label>
+                          <select 
+                            value={form.category}
+                            onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm font-bold focus:bg-white focus:border-primary-500 transition-all outline-none"
+                          >
+                            <option value="">Select category ▼</option>
+                            <option value="Science">Science</option>
+                            <option value="Technology">Technology</option>
+                            <option value="Business">Business</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Level *</label>
+                          <div className="flex items-center gap-3 h-12">
+                            {['beginner', 'intermediate', 'advanced'].map(l => (
+                              <button
+                                key={l}
+                                type="button"
+                                onClick={() => setForm(p => ({ ...p, level: l as any }))}
+                                className={`flex-1 h-full rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
+                                  form.level === l 
+                                    ? 'bg-primary-600 text-white border-primary-600' 
+                                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                {l}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
+
+                {/* 2. STRUCTURE & SCHEDULE */}
+                {currentStep === 1 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="text-2xl font-black text-slate-900 tracking-tight">Schedule & Sessions</h2>
+                      <p className="text-sm text-slate-500 font-medium mt-1">Configure your semesters and recurring class times.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Start Date *</label>
+                          <input 
+                            type="date"
+                            value={form.startDate}
+                            onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm font-bold focus:bg-white focus:border-primary-500 transition-all outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">End Date *</label>
+                          <input 
+                            type="date"
+                            value={form.endDate}
+                            onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm font-bold focus:bg-white focus:border-primary-500 transition-all outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="border-t border-slate-100 pt-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Class Schedule *</label>
+                          <button 
+                            type="button" 
+                            onClick={addScheduleSession}
+                            className="flex items-center gap-1 text-xs font-bold text-primary-600 hover:underline"
+                          >
+                            <Plus size={14} /> Add Session
+                          </button>
+                        </div>
+
+                        {form.schedule.length === 0 ? (
+                          <div className="text-center py-6 border-2 border-dashed border-slate-100 rounded-xl">
+                            <Clock size={20} className="text-slate-300 mx-auto mb-2" />
+                            <p className="text-xs font-medium text-slate-400">No scheduled sessions. Click &quot;Add Session&quot; to configure weekly hours.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {form.schedule.map((session, idx) => (
+                              <div key={session.id} className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                                <select 
+                                  value={session.day} 
+                                  onChange={e => updateScheduleSession(session.id, 'day', e.target.value)}
+                                  className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none"
+                                >
+                                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                                    <option key={day} value={day}>{day}</option>
+                                  ))}
+                                </select>
+                                <input 
+                                  type="text" 
+                                  value={session.time} 
+                                  onChange={e => updateScheduleSession(session.id, 'time', e.target.value)}
+                                  placeholder="e.g. 10:00 AM - 12:00 PM"
+                                  className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 outline-none"
+                                />
+                                <button 
+                                  type="button" 
+                                  onClick={() => removeScheduleSession(session.id)}
+                                  className="text-slate-400 hover:text-rose-500 p-1"
+                                  title="Remove session"
+                                  aria-label="Remove scheduled class session"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. COURSE CONTENT */}
+                {currentStep === 2 && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Modules & Lessons</h2>
+                        <p className="text-sm text-slate-500 font-medium mt-1">Design your structured virtual learning skeleton.</p>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={addModule}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-50 text-primary-600 text-xs font-bold hover:bg-primary-100 transition-colors"
+                      >
+                        <Plus size={14} /> Add Module
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {form.modules.length === 0 ? (
+                        <div className="text-center py-10 border-2 border-dashed border-slate-100 rounded-[20px]">
+                          <Layout size={32} className="text-slate-200 mx-auto mb-4" />
+                          <h4 className="font-extrabold text-slate-800 text-sm mb-1">No modules yet</h4>
+                          <p className="text-xs text-slate-500 font-medium mb-4 max-w-xs mx-auto">Build curriculum layers with interactive modules and lessons.</p>
+                          <button 
+                            type="button" 
+                            onClick={addModule}
+                            className="px-4 py-2 rounded-lg bg-primary-600 text-white font-bold text-xs shadow-md shadow-primary-600/10 hover:bg-primary-700 transition-colors"
+                          >
+                            + Add your first module
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                          {form.modules.map((m, mIdx) => (
+                            <div key={m.id} className="p-5 border border-slate-200 rounded-[20px] bg-slate-50/50 space-y-4 relative">
+                              <div className="flex items-center justify-between gap-3">
+                                <input 
+                                  type="text" 
+                                  value={m.title}
+                                  onChange={e => updateModuleTitle(m.id, e.target.value)}
+                                  placeholder="Module Title (e.g. Module 1: Introduction)"
+                                  className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-extrabold text-slate-800 outline-none focus:border-primary-500 transition-colors"
+                                />
+                                <button 
+                                  type="button" 
+                                  onClick={() => removeModule(m.id)}
+                                  className="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 shrink-0"
+                                  title="Delete Module"
+                                  aria-label={`Delete module titled ${m.title}`}
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+
+                              {/* Lesson sub-tree */}
+                              <div className="space-y-2 pl-4 border-l border-slate-200">
+                                {m.lessons.map(lesson => (
+                                  <div key={lesson.id} className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                      lesson.type === 'video' 
+                                        ? 'bg-blue-50 text-blue-600' 
+                                        : lesson.type === 'quiz' 
+                                          ? 'bg-emerald-50 text-emerald-600' 
+                                          : 'bg-rose-50 text-rose-600'
+                                    }`}>
+                                      {lesson.type === 'video' ? <Video size={14} /> : lesson.type === 'quiz' ? <HelpCircle size={14} /> : <FileText size={14} />}
+                                    </div>
+                                    <input 
+                                      type="text" 
+                                      value={lesson.title}
+                                      onChange={e => updateLessonTitle(m.id, lesson.id, e.target.value)}
+                                      placeholder="Lesson Title (e.g. What is Programming?)"
+                                      className="flex-1 bg-transparent border-none text-xs font-bold text-slate-700 outline-none"
+                                    />
+                                    <button 
+                                      type="button" 
+                                      onClick={() => removeLesson(m.id, lesson.id)}
+                                      className="text-slate-300 hover:text-rose-500 p-1 shrink-0"
+                                      title="Remove lesson"
+                                      aria-label={`Remove lesson titled ${lesson.title}`}
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                ))}
+
+                                {/* Add Lesson Toggles */}
+                                <div className="flex items-center gap-2 pt-2">
+                                  {['video', 'document', 'quiz'].map(type => (
+                                    <button
+                                      key={type}
+                                      type="button"
+                                      onClick={() => addLesson(m.id, type as any)}
+                                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-white border border-slate-200 hover:border-primary-300 text-slate-500 hover:text-primary-600 text-[10px] font-bold uppercase tracking-wider transition-all"
+                                    >
+                                      + {type}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. STUDENTS & ACCESS */}
+                {currentStep === 3 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="text-2xl font-black text-slate-900 tracking-tight">Access & Enrollment</h2>
+                      <p className="text-sm text-slate-500 font-medium mt-1">Determine gatekeeper controls and select eligible students.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Enrollment Type *</label>
+                        <div className="flex items-center gap-4 h-12">
+                          <button
+                            type="button"
+                            onClick={() => setForm(p => ({ ...p, enrollmentType: 'open' }))}
+                            className={`flex-1 h-full rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
+                              form.enrollmentType === 'open' 
+                                ? 'bg-primary-600 text-white border-primary-600' 
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            Open Enrollment
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setForm(p => ({ ...p, enrollmentType: 'invite' }))}
+                            className={`flex-1 h-full rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
+                              form.enrollmentType === 'invite' 
+                                ? 'bg-primary-600 text-white border-primary-600' 
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            Invite Only
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-slate-100 pt-4">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Add Students</label>
+                        <div className="relative mb-3">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                          <input 
+                            type="text"
+                            placeholder="Search students..."
+                            value={studentSearch}
+                            onChange={e => setStudentSearch(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-slate-900 placeholder:text-slate-400 text-xs font-medium outline-none focus:bg-white focus:border-primary-500 transition-all"
+                          />
+                        </div>
+
+                        {/* Search matches */}
+                        <div className="space-y-1.5 max-h-44 overflow-y-auto border border-slate-100 rounded-xl p-2 bg-slate-50/50">
+                          {availableStudents
+                            .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()))
+                            .map(student => {
+                              const isChecked = form.students.includes(student.name);
+                              return (
+                                <button
+                                  key={student.id}
+                                  type="button"
+                                  onClick={() => toggleStudent(student.name)}
+                                  className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 hover:border-primary-300 transition-colors text-left"
+                                >
+                                  <div>
+                                    <span className="block font-bold text-slate-900 text-xs">{student.name}</span>
+                                    <span className="block text-[10px] text-slate-400 font-medium">{student.email}</span>
+                                  </div>
+                                  <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                                    isChecked ? 'bg-primary-600 border-primary-600 text-white' : 'border-slate-300'
+                                  }`}>
+                                    {isChecked && <CheckCircle2 size={10} />}
+                                  </div>
+                                </button>
+                              );
+                            })
+                          }
+                        </div>
+                      </div>
+
+                      <div className="border-t border-slate-100 pt-4">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Max Students (Optional)</label>
+                        <input 
+                          type="number"
+                          value={form.maxStudents}
+                          onChange={e => setForm(p => ({ ...p, maxStudents: e.target.value }))}
+                          placeholder="50"
+                          className="w-24 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-900 text-sm font-bold focus:bg-white focus:border-primary-500 transition-all outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. SETTINGS & PUBLISH */}
+                {currentStep === 4 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="text-2xl font-black text-slate-900 tracking-tight">Syllabus Launch Settings</h2>
+                      <p className="text-sm text-slate-500 font-medium mt-1">Configure grading preferences, credentialing rules, and launch course catalog.</p>
+                    </div>
+
+                    <div className="space-y-5">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Grading System</label>
+                        <div className="flex items-center gap-4 h-12">
+                          <button
+                            type="button"
+                            onClick={() => setForm(p => ({ ...p, gradingSystem: 'percentage' }))}
+                            className={`flex-1 h-full rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
+                              form.gradingSystem === 'percentage' 
+                                ? 'bg-primary-600 text-white border-primary-600' 
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            Percentage
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setForm(p => ({ ...p, gradingSystem: 'passfail' }))}
+                            className={`flex-1 h-full rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
+                              form.gradingSystem === 'passfail' 
+                                ? 'bg-primary-600 text-white border-primary-600' 
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            Pass / Fail
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 pt-3 border-t border-slate-100">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Additional Rules</label>
+                        
+                        <label className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
+                          <div>
+                            <span className="block font-bold text-slate-900 text-xs">Enable Assignments</span>
+                            <span className="block text-[10px] text-slate-400 font-medium mt-0.5">Allow virtual tasks and auto-grade checks.</span>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            checked={form.assignmentsEnabled}
+                            onChange={e => setForm(p => ({ ...p, assignmentsEnabled: e.target.checked }))}
+                            className="w-4 h-4 rounded accent-primary-600 cursor-pointer"
+                          />
+                        </label>
+
+                        <label className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
+                          <div>
+                            <span className="block font-bold text-slate-900 text-xs">Issue Completion Certificate</span>
+                            <span className="block text-[10px] text-slate-400 font-medium mt-0.5">Generate PDF credential on full modules completion.</span>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            checked={form.certificateEnabled}
+                            onChange={e => setForm(p => ({ ...p, certificateEnabled: e.target.checked }))}
+                            className="w-4 h-4 rounded accent-primary-600 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Visibility State</label>
+                        <div className="flex items-center gap-4 h-12">
+                          <button
+                            type="button"
+                            onClick={() => setForm(p => ({ ...p, visibility: 'draft' }))}
+                            className={`flex-1 h-full rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
+                              form.visibility === 'draft' 
+                                ? 'bg-slate-900 text-white border-slate-900' 
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            Draft
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setForm(p => ({ ...p, visibility: 'published' }))}
+                            className={`flex-1 h-full rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
+                              form.visibility === 'published' 
+                                ? 'bg-primary-600 text-white border-primary-600' 
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            Published
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer Controls */}
+                <div className="mt-12 pt-6 border-t border-slate-100 flex items-center justify-between">
+                  <button 
+                    type="button"
+                    onClick={handlePrev}
+                    disabled={currentStep === 0}
+                    className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-xs text-slate-400 hover:text-slate-800 transition-colors ${
+                      currentStep === 0 ? 'opacity-0 invisible' : 'opacity-100'
+                    }`}
+                  >
+                    <ArrowLeft size={16} /> Previous
+                  </button>
+
+                  {currentStep < STEPS.length - 1 ? (
+                    <button 
+                      type="button"
+                      onClick={handleNext}
+                      disabled={warnings.length > 0}
+                      className={`flex items-center gap-2 px-6 py-3 rounded-xl text-white font-bold text-xs transition-colors shadow-md ${
+                        warnings.length > 0 
+                          ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
+                          : 'bg-primary-600 hover:bg-primary-700 shadow-primary-600/10'
+                      }`}
+                    >
+                      Next Step <ArrowRight size={16} />
+                    </button>
+                  ) : (
+                    <button 
+                      type="button"
+                      onClick={() => handleSubmit(form.visibility)}
+                      className="flex items-center gap-2 px-8 py-3 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/10"
+                    >
+                      {form.visibility === 'published' ? 'Publish Course 🚀' : 'Save as Draft'}
+                    </button>
+                  )}
+                </div>
+
               </motion.div>
             </AnimatePresence>
-          </div>
+          </main>
 
-          {/* Intelligence Panel / Preview */}
-          <div className="lg:col-span-4">
-             <div className="sticky top-12 space-y-8">
-                {/* Dynamic Preview Card */}
-                <div className="bg-white rounded-[40px] border border-slate-200 overflow-hidden shadow-2xl">
-                   <div className="h-48 bg-slate-100 flex items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 to-indigo-600/10" />
-                      <div className="w-16 h-16 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-300 z-10">
-                         <Layout size={32} />
-                      </div>
-                      <div className="absolute bottom-4 left-4 flex gap-2 z-10">
-                         <div className="px-3 py-1 rounded-full bg-white/90 backdrop-blur-md text-[10px] font-black uppercase tracking-widest text-blue-600 shadow-sm">
-                            Real-time Preview
-                         </div>
-                      </div>
-                      {/* Course Accent Color Visual */}
-                      <div className="absolute top-0 right-0 w-32 h-32 opacity-20 -translate-y-1/2 translate-x-1/2 rounded-full" style={{ backgroundColor: formValues.accentColor }} />
-                   </div>
-                   <div className="p-8">
-                      <div className="flex items-center gap-2 text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-3">
-                         <Sparkles size={12} /> {formValues.code || 'CATALOG-CODE'}
-                      </div>
-                      <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-3 truncate">
-                        {formValues.title || 'Course Title'}
-                      </h3>
-                      <p className="text-slate-500 font-medium text-sm line-clamp-3 mb-8 text-balance">
-                        {formValues.description || 'Define the learning objectives of your program...'}
-                      </p>
-                      <div className="flex items-center gap-6 pt-6 border-t border-slate-100">
-                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Students</span>
-                            <span className="text-lg font-black text-slate-900">0</span>
-                         </div>
-                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Modules</span>
-                            <span className="text-lg font-black text-slate-900">1</span>
-                         </div>
-                      </div>
-                   </div>
+          {/* 📊 RIGHT COLUMN: REAL-TIME INLINE PREVIEW & AI INSIGHTS */}
+          <aside className="lg:col-span-3 space-y-6">
+            <div className="sticky top-28 space-y-6">
+              
+              {/* Dynamic Real-time Preview Card */}
+              <div className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm">
+                <div className="h-32 bg-slate-900 relative">
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-60 z-10" />
+                  <div className="absolute inset-0 bg-primary-500 opacity-20" />
+                  <div className="absolute top-4 left-4 z-20">
+                    <span className="px-2.5 py-1 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-black uppercase tracking-widest">
+                      {form.code || 'CODE101'}
+                    </span>
+                  </div>
+                  <div className="absolute bottom-4 left-4 z-20 flex gap-2">
+                    <span className="px-2 py-0.5 rounded-full bg-white/90 backdrop-blur-md text-[9px] font-bold uppercase tracking-wider text-slate-800">
+                      Live Preview
+                    </span>
+                  </div>
                 </div>
 
-                {/* AI Insight Box */}
-                <div className="bg-blue-600 rounded-[32px] p-8 text-white shadow-xl shadow-blue-600/20 relative overflow-hidden">
-                   <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
-                   <div className="flex items-center gap-3 mb-4">
-                      <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
-                         <Info size={16} />
-                      </div>
-                      <span className="text-xs font-black uppercase tracking-widest text-blue-100">Genesis Insights</span>
-                   </div>
-                   <p className="text-sm font-bold leading-relaxed opacity-90 italic">
-                     {getInsight(currentStep)}
-                   </p>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <span className="text-[10px] font-bold text-primary-600 uppercase tracking-widest">{form.category || 'CATEGORY'}</span>
+                    <h3 className="text-lg font-extrabold text-slate-900 truncate mt-1">{form.title || 'Course Title'}</h3>
+                    <p className="text-xs text-slate-500 font-medium line-clamp-3 mt-1.5 leading-relaxed">
+                      {form.description || 'Describe what your students will learn in this course catalog...'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
+                    <div>
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Students</span>
+                      <span className="block text-base font-extrabold text-slate-900">{form.students.length} / {form.maxStudents || '50'}</span>
+                    </div>
+                    <div className="h-6 w-px bg-slate-200" />
+                    <div>
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Modules</span>
+                      <span className="block text-base font-extrabold text-slate-900">{form.modules.length}</span>
+                    </div>
+                  </div>
                 </div>
-             </div>
-          </div>
+              </div>
+
+              {/* AI Guidance box */}
+              <div className="rounded-[24px] bg-slate-900 border border-slate-800 p-6 text-white shadow-xl relative overflow-hidden">
+                <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary-500 rounded-full blur-[40px] opacity-10" />
+                <div className="flex items-center gap-2 text-primary-400 text-xs font-black uppercase tracking-[0.15em] mb-3">
+                  <Sparkle size={14} /> AI Advisor
+                </div>
+                <p className="text-xs font-medium leading-relaxed opacity-90">
+                  {currentStep === 0 && "Including an academic department and detailed description helps search indexing catalog lookups."}
+                  {currentStep === 1 && "Ensure recurring dates do not conflict with university term periods and schedule recurring sessions."}
+                  {currentStep === 2 && "Splitting structures into logical, video-supported modules boosts curriculum completion rate by 40%."}
+                  {currentStep === 3 && "Setting class maximum limits guarantees higher cohort focus streak scores."}
+                  {currentStep === 4 && "Certificates act as powerful enrollment incentives. Highly recommended to keep enabled."}
+                </p>
+              </div>
+
+            </div>
+          </aside>
+
         </div>
       </div>
     </div>
   );
-}
-
-function getInsight(step: number) {
-  const insights = [
-    "Professional courses with high-quality thumbnails see 40% higher student engagement. Try using a clear, academic visual.",
-    "A modular curriculum helps students retain 60% more information by providing clear learning milestones.",
-    "Grading schemes with multiple assessment types (quizzes + assignments) provide a more holistic view of student progress.",
-    "Your course appearance defines your academic brand. Choose an accent color that represents your faculty identity.",
-    "Almost ready! Review your readiness checklist to ensure a perfect launch for your students."
-  ];
-  return insights[step] || insights[0];
-}
-
-function renderStepContent(
-  step: number, 
-  register: UseFormRegister<CourseFormData>, 
-  errors: FieldErrors<CourseFormData>, 
-  values: CourseFormData
-) {
-  switch(step) {
-    case 0:
-      return (
-        <div className="space-y-10">
-          <header>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2 text-balance">Identity Portal.</h2>
-            <p className="text-slate-500 font-medium">Define the academic persona and core metadata of your workspace.</p>
-          </header>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="md:col-span-2">
-               <label htmlFor="title" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Course Title *</label>
-               <input 
-                 id="title"
-                 {...register('title')}
-                 placeholder="e.g. Advanced Quantum Mechanics"
-                 className={`w-full bg-slate-50 border-2 rounded-[24px] px-8 py-6 text-xl text-slate-900 font-black focus:bg-white focus:ring-8 focus:ring-blue-600/5 transition-all outline-none ${errors.title ? 'border-rose-200' : 'border-slate-100 focus:border-blue-600'}`}
-               />
-               {errors.title && <p className="mt-3 text-xs font-black text-rose-500 uppercase tracking-widest">{errors.title.message}</p>}
-            </div>
-
-            <div className="md:col-span-1">
-               <label htmlFor="code" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Catalog Code *</label>
-               <input 
-                 id="code"
-                 {...register('code')}
-                 placeholder="e.g. PHYS-402"
-                 className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 h-16 text-slate-900 font-black focus:bg-white focus:border-blue-600 transition-all outline-none"
-               />
-            </div>
-
-            <div className="md:col-span-1">
-               <label htmlFor="dept" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Academic Dept *</label>
-               <input 
-                 id="dept"
-                 {...register('department')}
-                 placeholder="e.g. Faculty of Science"
-                 className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 h-16 text-slate-900 font-black focus:bg-white focus:border-blue-600 transition-all outline-none"
-               />
-            </div>
-
-            <div className="md:col-span-2">
-               <label htmlFor="desc" className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Description</label>
-               <textarea 
-                 id="desc"
-                 {...register('description')}
-                 rows={4}
-                 placeholder="What will your students discover in this course?"
-                 className="w-full bg-slate-50 border-2 border-slate-100 rounded-[24px] px-8 py-6 text-slate-900 font-medium focus:bg-white focus:border-blue-600 transition-all outline-none resize-none"
-               />
-            </div>
-          </div>
-        </div>
-      );
-    case 1:
-      return <StructureBuilder />;
-    case 2:
-      return <AccessSettings />;
-    case 3:
-      return <AppearanceSettings />;
-    case 4:
-      return <ReviewLaunch />;
-    default:
-      return <div className="py-20 text-center flex flex-col items-center">
-         <div className="w-20 h-20 bg-blue-50 text-blue-200 rounded-[32px] flex items-center justify-center mb-6">
-            <Layout size={40} />
-         </div>
-         <h3 className="text-2xl font-black text-slate-900 mb-2">{STEPS[step].title} Hub</h3>
-         <p className="text-slate-500 font-medium italic">&quot;This intelligence unit is being calibrated. Please proceed with the syllabus.&quot;</p>
-      </div>;
-  }
 }
