@@ -25,8 +25,8 @@ export default function StudentDashboard() {
     };
   }, [socket, refetch]);
 
-  const courses = data?.courses ?? [];
-  const milestones = data?.milestones ?? [];
+  const courses = (data?.courses ?? []).filter((c: any) => c !== null && c !== undefined);
+  const milestones = (data?.milestones ?? []).filter((m: any) => m && m.course);
   const stats = data?.stats ?? {
     overallCompletion: 0,
     assignmentsSubmitted: 0,
@@ -37,7 +37,7 @@ export default function StudentDashboard() {
   };
   const loading = isLoading;
 
-  const activeCourses = courses.filter(c => c.status === 'active');
+  const activeCourses = courses.filter((c: any) => c.status === 'active');
   const greeting = (() => {
     const h = new Date().getHours();
     if (h < 12) return 'Good Morning';

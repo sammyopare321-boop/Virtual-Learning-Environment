@@ -41,7 +41,8 @@ export default function TeacherDashboard() {
   const [form, setForm] = useState({ title:'', code:'', description:'', semester:'Semester 1', academicYear:'2025/2026' });
 
   const { data: stats = { students: 0, attendance: 0, engagementData: [0,0,0,0,0,0,0], upcomingClasses: [] as UpcomingClass[] } } = useTeacherStats(Boolean(user));
-  const { data: courses = [], isLoading: loading } = useTeacherCourses(user?._id, Boolean(user));
+  const { data: rawCourses = [], isLoading: loading } = useTeacherCourses(user?._id, Boolean(user));
+  const courses = (rawCourses || []).filter((c: any) => c !== null && c !== undefined);
 
   const { students, attendance, engagementData } = stats;
 
