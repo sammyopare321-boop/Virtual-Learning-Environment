@@ -1,7 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
+import { useNotifications } from '@/hooks/queries/useNotifications';
+import { queryKeys } from '@/lib/queryKeys';
 import { 
   Bell, CheckCircle2, MessageSquare, Megaphone, 
   Check, CheckCheck, Filter, Loader2, Video, GraduationCap, LucideIcon
@@ -63,26 +66,20 @@ const FILTERS: { id: FilterType; label: string }[] = [
 
 export default function NotificationsPage() {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: notificationsData = [], isLoading: loading } = useNotifications(Boolean(user));
+  const notifications = notificationsData as Notification[];
   const [filter, setFilter] = useState<FilterType>('all');
 
-  useEffect(() => {
-    communicationApi.getMyNotifications()
-      .then(res => setNotifications(res.data.data || []))
-      .catch(() => toast.error('Failed to load notifications'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter((n: Notification) => !n.isRead).length;
 
   const markAllRead = async () => {
-    const unread = notifications.filter(n => !n.isRead);
+    const unread = notifications.filter((n: Notification) => !n.isRead);
     if (unread.length === 0) return;
     
     try {
-      await Promise.all(unread.map(n => communicationApi.markNotificationRead(n._id)));
-      setNotifications(p => p.map(n => ({ ...n, isRead: true })));
+      await Promise.all(unread.map((n: Notification) => communicationApi.markNotificationRead(n._id)));
+      await queryClient.invalidateQueries({ queryKey: queryKeys.communication.notifications });
       toast.success('All marked as read');
     } catch {
       toast.error('Failed to update notifications');
@@ -90,12 +87,12 @@ export default function NotificationsPage() {
   };
 
   const markRead = async (id: string) => {
-    const notif = notifications.find(n => n._id === id);
+    const notif = notifications.find((n: Notification) => n._id === id);
     if (!notif || notif.isRead) return;
 
     try {
       await communicationApi.markNotificationRead(id);
-      setNotifications(p => p.map(n => n._id === id ? { ...n, isRead: true } : n));
+      await queryClient.invalidateQueries({ queryKey: queryKeys.communication.notifications });
     } catch {
       toast.error('Failed to mark as read');
     }

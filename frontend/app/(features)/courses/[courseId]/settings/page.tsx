@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { courseApi } from '@/utils/api/courseApi';
 import type { Course } from '@/types';
+import { useCourse } from '@/hooks/queries/useCourse';
+import { queryKeys } from '@/lib/queryKeys';
 import { useAuth } from '@/context/AuthContext';
 import { 
   Settings, Save, Trash2, AlertTriangle, 
@@ -29,39 +32,34 @@ export default function CourseSettingsPage() {
     status: 'active'
   });
   
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: course, isLoading: loading } = useCourse(courseId);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (courseId) {
-      courseApi.getOne(courseId)
-        .then(res => {
-          const c = res.data.data;
-          const teacherId = typeof c.teacher === 'object' ? c.teacher?._id : c.teacher;
-          if (teacherId !== user?._id && user?.role !== 'admin') {
-            router.push(`/courses/${courseId}`);
-            return;
-          }
-          setForm({
-            title: c.title || '',
-            code: c.code || '',
-            description: c.description || '',
-            semester: c.semester || 'Semester 1',
-            academicYear: c.academicYear || '2025/2026',
-            status: c.status || 'active'
-          });
-        })
-        .catch(() => router.push('/courses'))
-        .finally(() => setLoading(false));
+    if (!course) return;
+    const teacherId = typeof course.teacher === 'object' ? course.teacher?._id : course.teacher;
+    if (teacherId !== user?._id && user?.role !== 'admin') {
+      router.push(`/courses/${courseId}`);
+      return;
     }
-  }, [courseId, user, router]);
+    setForm({
+      title: course.title || '',
+      code: course.code || '',
+      description: course.description || '',
+      semester: course.semester || 'Semester 1',
+      academicYear: course.academicYear || '2025/2026',
+      status: course.status || 'active',
+    });
+  }, [course, courseId, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
       await courseApi.update(courseId, form);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
       toast.success('Configuration synchronized successfully.');
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };

@@ -1,0 +1,66 @@
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { quizApi } from '@/utils/api/extraApis';
+import { queryKeys } from '@/lib/queryKeys';
+import { Quiz, Question } from '@/types';
+
+export interface QuizAttempt {
+  _id: string;
+  status: 'in_progress' | 'completed' | 'started' | 'submitted' | 'graded';
+  startedAt?: string;
+  startTime?: string;
+  score?: number;
+  student?: { _id: string; name: string };
+}
+
+export interface QuizDetailData {
+  quiz: Quiz;
+  questions: Question[];
+  attempt: QuizAttempt | null;
+  allAttempts: QuizAttempt[];
+}
+
+async function fetchQuizDetail(
+  quizId: string,
+  role: { isStudent: boolean; isTeacher: boolean }
+): Promise<QuizDetailData> {
+  const qRes = await quizApi.getQuiz(quizId);
+  const quiz = qRes.data.data as Quiz;
+  const questions = (quiz.questions ?? []) as Question[];
+
+  let attempt: QuizAttempt | null = null;
+  let allAttempts: QuizAttempt[] = [];
+
+  if (role.isStudent) {
+    try {
+      const aRes = await quizApi.getMyAttempt(quizId);
+      attempt = aRes.data.data ?? null;
+    } catch {
+      attempt = null;
+    }
+  }
+
+  if (role.isTeacher) {
+    try {
+      const atRes = await quizApi.getAllAttempts(quizId);
+      allAttempts = atRes.data.data || [];
+    } catch {
+      allAttempts = [];
+    }
+  }
+
+  return { quiz, questions, attempt, allAttempts };
+}
+
+export function useQuizDetail(
+  quizId: string | undefined,
+  role: { isStudent: boolean; isTeacher: boolean },
+  enabled = true
+) {
+  return useQuery({
+    queryKey: [...queryKeys.quizzes.detail(quizId ?? ''), role.isStudent, role.isTeacher],
+    queryFn: () => fetchQuizDetail(quizId!, role),
+    enabled: Boolean(quizId) && enabled,
+  });
+}

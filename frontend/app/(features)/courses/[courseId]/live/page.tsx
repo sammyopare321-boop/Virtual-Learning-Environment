@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { courseApi } from '@/utils/api/courseApi';
+import { useCourseLiveSessions } from '@/hooks/queries/useCourseResources';
+import { queryKeys } from '@/lib/queryKeys';
 import { useAuth } from '@/context/AuthContext';
 import {
   Video, Radio, Plus, Calendar, Clock,
@@ -35,8 +38,9 @@ export default function LivePage() {
   const { courseId } = useParams() as { courseId: string };
   const { user } = useAuth();
 
-  const [sessions, setSessions] = useState<LiveSession[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: sessionsData = [], isLoading: loading } = useCourseLiveSessions(courseId, true, { refetchInterval: 30000 });
+  const sessions = sessionsData as LiveSession[];
   const [showForm, setShowForm] = useState(false);
   const [creating, setCreating] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
@@ -50,18 +54,8 @@ export default function LivePage() {
 
   const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
 
-  useEffect(() => {
-    const fetchSessions = () => {
-      courseApi.getLiveSessions(courseId)
-        .then(res => setSessions(res.data.data || []))
-        .catch(() => setSessions([]))
-        .finally(() => setLoading(false));
-    };
-
-    fetchSessions();
-    const interval = setInterval(fetchSessions, 30000);
-    return () => clearInterval(interval);
-  }, [courseId]);
+  const invalidateSessions = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.courses.liveSessions(courseId) });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,8 +65,8 @@ export default function LivePage() {
     }
     setCreating(true);
     try {
-      const res = await courseApi.createLiveSession(courseId, form);
-      setSessions(prev => [res.data.data, ...prev]);
+      await courseApi.createLiveSession(courseId, form);
+      await invalidateSessions();
       setShowForm(false);
       setForm({ title: '', scheduledAt: '', duration: 60, description: '' });
       toast.success('Broadcast transmission scheduled.');
@@ -86,8 +80,8 @@ export default function LivePage() {
   const handleStart = async (sessionId: string) => {
     setActingId(sessionId);
     try {
-      const res = await courseApi.startLiveSession(sessionId);
-      setSessions(prev => prev.map(s => s._id === sessionId ? res.data.data : s));
+      await courseApi.startLiveSession(sessionId);
+      await invalidateSessions();
       toast.success('Transmission active.');
     } catch {
       toast.error('Signal initialization failed.');
@@ -99,8 +93,8 @@ export default function LivePage() {
   const handleEnd = async (sessionId: string) => {
     setActingId(sessionId);
     try {
-      const res = await courseApi.endLiveSession(sessionId);
-      setSessions(prev => prev.map(s => s._id === sessionId ? res.data.data : s));
+      await courseApi.endLiveSession(sessionId);
+      await invalidateSessions();
       toast.success('Transmission terminated.');
     } catch {
       toast.error('Termination failure.');

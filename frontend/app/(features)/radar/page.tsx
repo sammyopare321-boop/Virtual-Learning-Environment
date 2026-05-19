@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Radar, Calendar as CalendarIcon, Clock, ChevronRight, 
@@ -8,8 +8,7 @@ import {
   Filter, Sparkles, AlertCircle, CheckCircle2,
   ArrowRight, BookOpen, GraduationCap, Timer
 } from 'lucide-react';
-import { courseApi } from '@/utils/api/courseApi';
-import { useAuth } from '@/context/AuthContext';
+import { useMilestones } from '@/hooks/queries/useMilestones';
 import { format, isToday, isTomorrow, isWithinInterval, addDays } from 'date-fns';
 import Link from 'next/link';
 
@@ -29,17 +28,8 @@ type MilestoneType = 'assignment' | 'quiz' | 'live_session';
 type FilterType = 'all' | MilestoneType;
 
 export default function AcademicRadarPage() {
-  const { user } = useAuth();
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: milestones = [], isLoading: loading } = useMilestones();
   const [filter, setFilter] = useState<FilterType>('all');
-
-  useEffect(() => {
-    courseApi.getGlobalMilestones()
-      .then(res => setMilestones(res.data.data))
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
 
   const filteredMilestones = milestones.filter(m => {
     if (filter === 'all') return true;
@@ -120,7 +110,7 @@ export default function AcademicRadarPage() {
 
                    return (
                       <motion.div 
-                        key={milestone.id}
+                        key={milestone.id ?? milestone._id}
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
@@ -150,7 +140,7 @@ export default function AcademicRadarPage() {
                             </div>
 
                             <Link 
-                              href={milestone.type === 'assignment' ? `/courses/${milestone.course._id}/assignments/${milestone.id}` : milestone.type === 'quiz' ? `/courses/${milestone.course._id}/quizzes/${milestone.id}` : `/courses/${milestone.course._id}/live`}
+                              href={milestone.type === 'assignment' ? `/courses/${milestone.course?._id}/assignments/${milestone.id ?? milestone._id}` : milestone.type === 'quiz' ? `/courses/${milestone.course?._id}/quizzes/${milestone.id ?? milestone._id}` : `/courses/${milestone.course?._id}/live`}
                               className="block"
                             >
                                <div className="bg-white rounded-[40px] border border-slate-100 p-10 shadow-sm hover:shadow-2xl hover:shadow-slate-900/5 transition-all group relative overflow-hidden">
@@ -168,7 +158,7 @@ export default function AcademicRadarPage() {
                                            {milestone.title}
                                         </h3>
                                         <div className={`flex items-center gap-2 ${side === 'left' ? 'md:justify-end' : 'md:justify-start'}`}>
-                                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{milestone.course.title}</span>
+                                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{milestone.course?.title ?? 'Course'}</span>
                                            <span className="w-1 h-1 rounded-full bg-slate-200" />
                                            <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{milestone.type.replace('_', ' ')}</span>
                                         </div>

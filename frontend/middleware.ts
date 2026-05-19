@@ -7,6 +7,7 @@ const roleRoutes: Record<string, string[]> = {
   '/dashboard/teacher': ['teacher'],
   '/dashboard/student': ['student'],
   '/admin':             ['admin'],
+  '/radar':             ['student'],
 };
 
 // Routes that require any authentication
@@ -39,7 +40,6 @@ export function middleware(request: NextRequest) {
 
   // No token — redirect to login
   if (!token) {
-    console.log('[Middleware] No token found, redirecting to login');
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
     url.searchParams.set('redirect', pathname);
@@ -48,7 +48,6 @@ export function middleware(request: NextRequest) {
 
   const decoded = decodeJWT(token);
   if (!decoded) {
-    console.log('[Middleware] Failed to decode JWT, redirecting to login');
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
     const response = NextResponse.redirect(url);
@@ -58,7 +57,6 @@ export function middleware(request: NextRequest) {
 
   // Check token expiry
   if (decoded.exp && decoded.exp * 1000 < Date.now()) {
-    console.log('[Middleware] Token expired, redirecting to login');
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
     const response = NextResponse.redirect(url);
@@ -69,7 +67,6 @@ export function middleware(request: NextRequest) {
   // Check role-based access
   for (const [route, roles] of Object.entries(roleRoutes)) {
     if (pathname.startsWith(route) && !roles.includes(decoded.role)) {
-      console.log(`[Middleware] Access denied for role ${decoded.role} to route ${route}`);
       const url = request.nextUrl.clone();
       url.pathname = `/dashboard/${decoded.role}`;
       return NextResponse.redirect(url);

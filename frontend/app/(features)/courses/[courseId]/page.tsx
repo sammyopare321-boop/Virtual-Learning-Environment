@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { courseApi } from '@/utils/api/courseApi';
-import { Course, LiveSession } from '@/types';
+import { useCourse } from '@/hooks/queries/useCourse';
+import { useCourseLiveSessions } from '@/hooks/queries/useCourseResources';
+import { LiveSession } from '@/types';
 import CourseIntelligence from '@/components/dashboard/CourseIntelligence';
 import { useAuth } from '@/context/AuthContext';
 import { 
@@ -20,22 +20,9 @@ export default function CourseOverviewPage() {
   const params = useParams();
   const courseId = params.courseId as string;
   const { user } = useAuth();
-  const [course, setCourse] = useState<Course | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [hasLive, setHasLive] = useState(false);
-
-  useEffect(() => {
-    if (courseId) {
-      courseApi.getOne(courseId)
-        .then(res => setCourse(res.data.data))
-        .finally(() => setLoading(false));
-
-      courseApi.getLiveSessions(courseId).then(res => {
-        const active = (res.data.data || []).some((s: LiveSession) => s.status === 'live');
-        setHasLive(active);
-      });
-    }
-  }, [courseId]);
+  const { data: course, isLoading: loading } = useCourse(courseId);
+  const { data: liveSessions = [] } = useCourseLiveSessions(courseId);
+  const hasLive = liveSessions.some((s: LiveSession) => s.status === 'live');
 
   const navigation = [
     { label:'Module Content', href:`/courses/${courseId}/modules`,       icon:BookOpen,      color:'text-blue-500',    bg:'bg-blue-50' },

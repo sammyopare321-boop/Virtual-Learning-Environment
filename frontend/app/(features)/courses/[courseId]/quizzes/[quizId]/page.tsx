@@ -3,8 +3,11 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import api from '@/utils/api/axiosInstance';
+import { quizApi } from '@/utils/api/extraApis';
+import { useQuizDetail, type QuizAttempt } from '@/hooks/queries/useQuizDetail';
+import { queryKeys } from '@/lib/queryKeys';
 import ImmersiveQuizPlayer from '@/components/learning/ImmersiveQuizPlayer';
 import { 
   Sparkles, Star, Clock, Play, Loader2, 
@@ -14,8 +17,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { Quiz, Course } from '@/types';
-import DashboardLayout from '@/layouts/DashboardLayout';
-
 interface Question {
   _id: string;
   text: string;
@@ -25,27 +26,22 @@ interface Question {
   marks: number;
 }
 
-interface Attempt {
-  _id: string;
-  status: 'in_progress' | 'completed';
-  startedAt: string;
-  score?: number;
-  student?: {
-    _id: string;
-    name: string;
-  };
-}
-
 export default function QuizDetailPage() {
   const { courseId, quizId } = useParams() as { courseId: string; quizId: string };
   const { user } = useAuth();
   const router = useRouter();
-  
-  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const queryClient = useQueryClient();
+
+  const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
+  const isStudent = user?.role === 'student';
+
+  const { data, isLoading, isError } = useQuizDetail(quizId, { isStudent, isTeacher });
+
+  const quiz = data?.quiz ?? null;
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [attempt, setAttempt] = useState<Attempt | null>(null);
-  const [allAttempts, setAllAttempts] = useState<Attempt[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [attempt, setAttempt] = useState<QuizAttempt | null>(null);
+  const [allAttempts, setAllAttempts] = useState<QuizAttempt[]>([]);
+  const loading = isLoading;
   const [starting, setStarting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showQForm, setShowQForm] = useState(false);
@@ -63,8 +59,6 @@ export default function QuizDetailPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
 
-  const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
-  const isStudent = user?.role === 'student';
   const courseData = quiz?.course as Course | undefined;
   const teacherId = typeof courseData?.teacher === 'object' ? courseData.teacher._id : courseData?.teacher;
   const isOwner = isTeacher && (teacherId === user?._id || user?.role === 'admin');
@@ -75,47 +69,31 @@ export default function QuizDetailPage() {
   };
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const qRes = await api.get(`/api/quizzes/${quizId}`);
-        const quizData = qRes.data.data;
-        setQuiz(quizData);
-        const qList = quizData?.questions || [];
-        setQuestions(qList);
-        
-        // Auto-open question form if teacher arrives with no questions (fresh quiz)
-        if (user?.role === 'teacher' && qList.length === 0 && !autoOpened.current) {
-          setShowQForm(true);
-          autoOpened.current = true;
-        }
-        
-        if (isStudent) {
-          try {
-            const aRes = await api.get(`/api/quizzes/${quizId}/my-attempt`);
-            setAttempt(aRes.data.data);
-          } catch {}
-        }
-        
-        if (isTeacher) {
-          try {
-            const atRes = await api.get(`/api/quizzes/${quizId}/attempts`);
-            setAllAttempts(atRes.data.data || []);
-          } catch {}
-        }
-      } catch (err) {
-        router.push(`/courses/${courseId}/quizzes`);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!data) return;
+    setQuestions(data.questions as Question[]);
+    setAttempt(data.attempt);
+    setAllAttempts(data.allAttempts);
+    if (user?.role === 'teacher' && data.questions.length === 0 && !autoOpened.current) {
+      setShowQForm(true);
+      autoOpened.current = true;
+    }
+  }, [data, user?.role]);
 
-    loadData();
-  }, [courseId, quizId, isStudent, isTeacher, router, user]);
+  useEffect(() => {
+    if (isError) {
+      router.push(`/courses/${courseId}/quizzes`);
+    }
+  }, [isError, router, courseId]);
+
+  const invalidateQuiz = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.detail(quizId) });
+  }, [queryClient, quizId]);
   const handleStart = async () => {
     setStarting(true);
     try {
-      const res = await api.post(`/api/quizzes/${quizId}/start`);
+      const res = await quizApi.startAttempt(quizId);
       setAttempt(res.data.data);
+      invalidateQuiz();
       showToast('Assessment protocols initialized.');
     } catch (e) {
       const error = e as { response?: { data?: { message?: string } } };
@@ -129,8 +107,9 @@ export default function QuizDetailPage() {
     setSubmitting(true);
     try {
       const answersArr = Object.entries(answers).map(([questionId, answer]) => ({ questionId, answer }));
-      const res = await api.post(`/api/quizzes/${quizId}/submit`, { answers: answersArr });
+      const res = await quizApi.submitAttempt(quizId, { answers: answersArr });
       setAttempt(res.data.data);
+      invalidateQuiz();
       showToast('Assessment synchronized and stored.');
     } catch (e) {
       const error = e as { response?: { data?: { message?: string } } };
@@ -138,13 +117,16 @@ export default function QuizDetailPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [quizId]);
+  }, [quizId, invalidateQuiz]);
 
 
   useEffect(() => {
     if (!attempt || attempt.status !== 'in_progress' || !quiz) return;
-    
-    const deadline = new Date(attempt.startedAt).getTime() + quiz.duration * 60000;
+
+    const startedAt = attempt.startedAt ?? attempt.startTime;
+    if (!startedAt) return;
+
+    const deadline = new Date(startedAt).getTime() + quiz.duration * 60000;
     const tick = setInterval(() => {
       const left = Math.max(0, deadline - Date.now());
       setTimeLeft(left);
@@ -177,8 +159,9 @@ export default function QuizDetailPage() {
         delete payload.correctAnswer;
       }
       
-      const res = await api.post(`/api/quizzes/${quizId}/questions`, payload);
+      const res = await quizApi.addQuestion(quizId, payload);
       setQuestions(p => [...p, res.data.data]);
+      invalidateQuiz();
       setShowQForm(false);
       setQForm({ text: '', type: 'multiple_choice', options: ['', '', '', ''], correctAnswer: '', marks: 5 });
       showToast('Intelligence item integrated.');
@@ -213,7 +196,6 @@ export default function QuizDetailPage() {
   }
 
   return (
-    <DashboardLayout>
       <div className="space-y-12 pb-20">
         
         <AnimatePresence>
@@ -519,7 +501,6 @@ export default function QuizDetailPage() {
 
         </div>
       </div>
-    </DashboardLayout>
   );
 }
 

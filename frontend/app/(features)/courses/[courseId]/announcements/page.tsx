@@ -1,8 +1,11 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { courseApi } from '@/utils/api/courseApi';
+import { useCourseAnnouncements } from '@/hooks/queries/useCourseResources';
+import { queryKeys } from '@/lib/queryKeys';
 import { useAuth } from '@/context/AuthContext';
 import { 
   Bell, Megaphone, Plus, Search, Filter, 
@@ -30,8 +33,9 @@ export default function AnnouncementsPage() {
   const { courseId } = useParams() as { courseId: string };
   const { user } = useAuth();
   
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: announcementsData = [], isLoading: loading } = useCourseAnnouncements(courseId);
+  const announcements = announcementsData as Announcement[];
   const [search, setSearch] = useState('');
   
   const [showForm, setShowForm] = useState(false);
@@ -49,29 +53,12 @@ export default function AnnouncementsPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const fetchAnnouncements = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await courseApi.getAnnouncements(courseId);
-      setAnnouncements(res.data.data || []);
-    } catch (err) {
-      setAnnouncements([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [courseId]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void fetchAnnouncements();
-  }, [fetchAnnouncements]);
-
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
     try {
-      const res = await courseApi.createAnnouncement(courseId, form);
-      setAnnouncements(p => [res.data.data, ...p]);
+      await courseApi.createAnnouncement(courseId, form);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.courses.announcements(courseId) });
       setForm({ title: '', body: '' });
       setShowForm(false);
       showToast('Announcement broadcast successfully!');

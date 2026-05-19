@@ -1,10 +1,12 @@
 'use client';
-import { useEffect, useState, useMemo } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { courseApi } from '@/utils/api/courseApi';
-import { teacherApi } from '@/utils/api/teacherApi';
+import { useTeacherStats, useTeacherCourses } from '@/hooks/queries/useTeacherDashboard';
+import { queryKeys } from '@/lib/queryKeys';
 import { AxiosError } from 'axios';
 import { 
   BookOpen, Plus, Sparkles, TrendingUp, Users, Clock, Calendar, 
@@ -33,43 +35,24 @@ interface UpcomingClass {
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ title:'', code:'', description:'', semester:'Semester 1', academicYear:'2025/2026' });
 
-  const [stats, setStats] = useState({ students: 0, attendance: 0, engagementData: [0,0,0,0,0,0,0], upcomingClasses: [] as UpcomingClass[] });
-
-  useEffect(() => {
-    teacherApi.getStats()
-      .then(res => setStats(res.data.data || { students: 0, attendance: 0, engagementData: [0,0,0,0,0,0,0], upcomingClasses: [] }))
-      .catch(console.error);
-  }, []);
+  const { data: stats = { students: 0, attendance: 0, engagementData: [0,0,0,0,0,0,0], upcomingClasses: [] as UpcomingClass[] } } = useTeacherStats(Boolean(user));
+  const { data: courses = [], isLoading: loading } = useTeacherCourses(user?._id, Boolean(user));
 
   const { students, attendance, engagementData } = stats;
-
-  useEffect(() => {
-    courseApi.getAll()
-      .then(res => {
-        const all = res.data.data || [];
-        setCourses(all.filter((c: Course) => {
-          if (!c.teacher) return false;
-          if (typeof c.teacher === 'object') return c.teacher._id === user?._id;
-          return c.teacher === user?._id;
-        }));
-      })
-      .catch(() => setCourses([]))
-      .finally(() => setLoading(false));
-  }, [user]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.code || !form.description) { toast.error('Title, code, and description are required.'); return; }
     setCreating(true);
     try {
-      const res = await courseApi.create(form);
-      setCourses(p => [res.data.data, ...p]);
+      await courseApi.create(form);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.teacher.courses(user!._id) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
       setShowForm(false);
       setForm({ title:'', code:'', description:'', semester:'Semester 1', academicYear:'2025/2026' });
       toast.success('Workspace created successfully!');

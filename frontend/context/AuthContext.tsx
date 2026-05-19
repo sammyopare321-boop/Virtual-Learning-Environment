@@ -3,7 +3,14 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { useRouter } from 'next/navigation';
 import { jwtDecode } from 'jwt-decode';
 import { authApi } from '@/utils/api/authApi';
-import { setAuthToken, getAuthToken } from '@/utils/api/axiosInstance';
+import { adminApi } from '@/utils/api/adminApi';
+import { setAuthToken } from '@/utils/api/axiosInstance';
+import {
+  applySessionToken,
+  clearSession,
+  getRelayToken,
+  getSessionToken,
+} from '@/utils/auth/session';
 
 import { User } from '@/types';
 
@@ -13,29 +20,13 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<User>;
   logout: () => void;
   isImpersonating: () => boolean;
+  exitImpersonation: () => Promise<void>;
   updateUser: (updatedData: Partial<User>) => void;
 }
 
-// ─── Cross-domain relay cookie ────────────────────────────────────────────────
-// The backend's HttpOnly cookie lives on *.onrender.com, which Vercel's Edge
-// middleware cannot see. We store the JWT in a regular cookie on the Vercel
-// domain as a "session signal" so middleware can guard protected routes.
-// The real Bearer token is always used for actual API calls.
-const RELAY_COOKIE = 'token';
-
-function setRelayCookie(token: string) {
-  if (typeof document === 'undefined') return;
-  const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
-  document.cookie = `${RELAY_COOKIE}=${token}; path=/; expires=${expires}; SameSite=Lax`;
-}
-
-function clearRelayCookie() {
-  if (typeof document === 'undefined') return;
-  document.cookie = `${RELAY_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
-}
-// ──────────────────────────────────────────────────────────────────────────────
-
 const AuthContext = createContext<AuthContextType | null>(null);
+
+const IMPERSONATION_MAX_AGE = 900; // 15 minutes — matches backend JWT
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]       = useState<User | null>(null);
@@ -43,14 +34,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router                = useRouter();
 
   useEffect(() => {
-    // On load, always try to fetch the current user.
-    // The browser will automatically send the HttpOnly 'token' cookie if it exists.
+    const relay = getRelayToken();
+    if (relay) setAuthToken(relay);
+
     authApi.getMe()
       .then(res => {
         setUser(res.data.data);
       })
       .catch(() => {
-        setAuthToken(null);
+        clearSession();
         setUser(null);
       })
       .finally(() => setLoading(false));
@@ -59,16 +51,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const res = await authApi.login({ email, password });
     const { data, token } = res.data;
-    
-    // 1. Set Bearer token for API calls
-    setAuthToken(token);
-    
-    // 2. Set relay cookie so Next.js middleware can detect session on Vercel domain
-    setRelayCookie(token);
-    
-    // 3. Update local state
+
+    applySessionToken(token);
     setUser(data);
-    
+
     return data;
   }, []);
 
@@ -76,8 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await authApi.logout();
     } finally {
-      setAuthToken(null);
-      clearRelayCookie();
+      clearSession();
       setUser(null);
       router.push('/auth/login');
     }
@@ -85,14 +70,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isImpersonating = useCallback(() => {
     try {
-      // Token is HttpOnly, but is also returned in the login response body.
-      // We detect impersonation from the user object's flag if available.
-      const token = (user as User & { _impersonationToken?: string })?._impersonationToken;
+      const token = getSessionToken();
       if (!token) return false;
       const decoded = jwtDecode<{ isImpersonation?: boolean }>(token);
       return decoded.isImpersonation === true;
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   }, [user]);
+
+  const exitImpersonation = useCallback(async () => {
+    try {
+      const res = await adminApi.exitImpersonation();
+      applySessionToken(res.data.token);
+      const me = await authApi.getMe();
+      setUser(me.data.data);
+      router.push('/dashboard/admin');
+    } catch {
+      clearSession();
+      setUser(null);
+      router.push('/auth/login');
+    }
+  }, [router]);
 
   const updateUser = useCallback((updatedData: Partial<User>) => {
     setUser((prev) => prev ? ({ ...prev, ...updatedData }) : null);
@@ -100,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, loading, login, logout, isImpersonating, updateUser
+      user, loading, login, logout, isImpersonating, exitImpersonation, updateUser
     }}>
       {children}
     </AuthContext.Provider>
@@ -112,3 +111,8 @@ export const useAuth = () => {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 };
+
+/** Apply tokens after admin impersonation (before full-page redirect). */
+export function establishImpersonationSession(impersonationToken: string) {
+  applySessionToken(impersonationToken, IMPERSONATION_MAX_AGE);
+}

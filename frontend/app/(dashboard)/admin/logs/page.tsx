@@ -1,10 +1,11 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { adminApi } from '@/utils/api/adminApi';
+import { useAdminLogs } from '@/hooks/queries/useAdmin';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import Sidebar from '@/components/shared/Sidebar';
 import { 
   ShieldAlert, KeyRound, Terminal, UserCog, AlertTriangle, 
   CheckCircle2, Search, Filter, RefreshCw, ClipboardList, Activity
@@ -57,8 +58,9 @@ function logToDisplay(log: LogEntry): DisplayLog {
 
 export default function AdminLogsPage() {
   const { user }              = useAuth();
-  const [logs, setLogs]       = useState<DisplayLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: rawLogs = [], isLoading: loading } = useAdminLogs({}, Boolean(user));
+  const logs: DisplayLog[] = (rawLogs as LogEntry[]).map(logToDisplay);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<LogType>('all');
   const [toast, setToast]     = useState<{msg: string, type: string} | null>(null);
@@ -68,29 +70,7 @@ export default function AdminLogsPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const fetchLogs = useCallback(async (ignore = false) => {
-    await Promise.resolve();
-    if (!ignore) setLoading(true);
-    try {
-      const res = await adminApi.getLogs();
-      if (!ignore) {
-        const raw = (res.data.data || []) as LogEntry[];
-        setLogs(raw.map(logToDisplay));
-      }
-    } catch (err) {
-      const error = err as AxiosError<{message: string}>;
-      showToast(error.response?.data?.message || 'Failed to fetch audit logs', 'error');
-      if (!ignore) setLogs([]);
-    } finally {
-      if (!ignore) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    let ignore = false;
-    Promise.resolve().then(() => fetchLogs(ignore));
-    return () => { ignore = true; };
-  }, [fetchLogs]);
+  const refreshLogs = () => queryClient.invalidateQueries({ queryKey: ['admin', 'logs'] });
 
   const filteredLogs = logs.filter(l => {
     const q = searchTerm.toLowerCase();
@@ -110,8 +90,7 @@ export default function AdminLogsPage() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
-      
+    <>
       {/* Toast Notification */}
       <AnimatePresence>
         {toast && (
@@ -127,11 +106,6 @@ export default function AdminLogsPage() {
         )}
       </AnimatePresence>
 
-      <Sidebar />
-
-      <main className="flex-1 overflow-y-auto p-8 lg:p-12 scroll-smooth">
-        <div className="max-w-7xl mx-auto">
-          
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10">
             <div>
@@ -172,7 +146,7 @@ export default function AdminLogsPage() {
                 </select>
               </div>
 
-              <button onClick={() => fetchLogs()} 
+              <button onClick={() => refreshLogs()} 
                 className="h-12 px-4 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 font-bold hover:bg-blue-100 transition-colors flex items-center gap-2 group">
                 <RefreshCw size={16} className={`${loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} /> 
                 Refresh
@@ -260,8 +234,6 @@ export default function AdminLogsPage() {
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Showing {filteredLogs.length} events</p>
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+    </>
   );
 }

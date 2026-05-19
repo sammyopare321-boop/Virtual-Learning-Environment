@@ -13,7 +13,6 @@ import {
 import { format } from 'date-fns';
 import Link from 'next/link';
 import SubmissionStudio from '@/components/learning/SubmissionStudio';
-import DashboardLayout from '@/layouts/DashboardLayout';
 import toast from 'react-hot-toast';
 
 interface Assignment {
@@ -118,7 +117,6 @@ export default function AssignmentDetailPage() {
   };
 
   if (loading) return (
-    <DashboardLayout>
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8">
         <div className="relative">
           <div className="w-20 h-20 border-4 border-slate-100 border-t-primary-500 rounded-full animate-spin shadow-xl shadow-primary-500/5" />
@@ -131,11 +129,9 @@ export default function AssignmentDetailPage() {
           <p className="text-slate-400 font-medium text-sm">Synchronizing mission telemetry...</p>
         </div>
       </div>
-    </DashboardLayout>
   );
 
   return (
-    <DashboardLayout>
       <div className="max-w-7xl mx-auto space-y-12 pb-20">
         
         {/* Breadcrumb Navigation */}
@@ -327,7 +323,6 @@ export default function AssignmentDetailPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 }
 

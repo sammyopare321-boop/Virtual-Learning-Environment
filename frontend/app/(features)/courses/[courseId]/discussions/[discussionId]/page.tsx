@@ -14,8 +14,6 @@ import {
   TrendingUp, Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import DashboardLayout from '@/layouts/DashboardLayout';
-
 interface Reply {
   _id: string;
   author: { _id: string; name: string };
@@ -89,7 +87,6 @@ export default function DiscussionThreadPage() {
 
   if (!thread) {
     return (
-      <DashboardLayout>
         <div className="max-w-2xl mx-auto py-32 text-center space-y-8">
           <div className="w-24 h-24 rounded-[32px] bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto shadow-inner">
             <MessageSquare size={40} className="text-rose-400" />
@@ -103,12 +100,10 @@ export default function DiscussionThreadPage() {
             <ChevronLeft size={16} /> Re-establish Link
           </Link>
         </div>
-      </DashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout>
       <div className="max-w-[1000px] mx-auto space-y-12 pb-20">
         {/* Header / Back nav */}
         <Link
@@ -275,6 +270,5 @@ export default function DiscussionThreadPage() {
           </div>
         </motion.div>
       </div>
-    </DashboardLayout>
   );
 }

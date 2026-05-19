@@ -5,7 +5,7 @@ import Sidebar from '@/components/shared/Sidebar';
 import SentinelFeed from '@/components/shared/SentinelFeed';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function AppShellLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSentinelOpen, setIsSentinelOpen] = useState(false);
 

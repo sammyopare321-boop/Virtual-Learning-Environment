@@ -35,6 +35,11 @@ exports.protect = asyncHandler(async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Not authorized' });
     }
 
+    if (decoded.isImpersonation) {
+      req.user.isImpersonation = true;
+      req.user.impersonatedBy = decoded.impersonatedBy;
+    }
+
     if (req.user.status === 'suspended') {
       return res.status(401).json({
         success: false,

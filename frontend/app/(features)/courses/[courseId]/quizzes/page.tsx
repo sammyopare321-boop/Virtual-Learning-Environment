@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { courseApi } from '@/utils/api/courseApi';
+import { useCourseQuizzes } from '@/hooks/queries/useCourseResources';
+import { queryKeys } from '@/lib/queryKeys';
 import { useAuth } from '@/context/AuthContext';
-import api from '@/utils/api/axiosInstance';
+import { quizApi } from '@/utils/api/extraApis';
 import { 
   FileText, Clock, ChevronRight, Plus, 
   Search, Filter, Sparkles, HelpCircle,
@@ -76,8 +79,9 @@ export default function QuizzesPage() {
   const router = useRouter();
   const { user } = useAuth();
   
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: quizzesData = [], isLoading: loading } = useCourseQuizzes(courseId);
+  const quizzes = quizzesData as Quiz[];
   const [search, setSearch] = useState('');
   
   const [showForm, setShowForm] = useState(false);
@@ -91,23 +95,13 @@ export default function QuizzesPage() {
     totalMarks: 20
   });
 
-  const fetchQuizzes = useCallback(() => {
-    courseApi.getQuizzes(courseId)
-      .then(res => setQuizzes(res.data.data || []))
-      .catch(() => setQuizzes([]))
-      .finally(() => setLoading(false));
-  }, [courseId]);
-
-  useEffect(() => {
-    fetchQuizzes();
-  }, [fetchQuizzes]);
-
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
     try {
       const res = await courseApi.createQuiz(courseId, form);
       const newQuiz = res.data.data;
+      await queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.list(courseId) });
       toast.success('Assessment initialized. Redirecting to Question Architect.');
       router.push(`/courses/${courseId}/quizzes/${newQuiz._id}`);
     } catch (err) {
@@ -124,8 +118,8 @@ export default function QuizzesPage() {
       return;
     }
     try {
-      await api.patch(`/api/quizzes/${quiz._id}/publish`);
-      setQuizzes(p => p.map(q => q._id === quiz._id ? { ...q, isPublished: true } : q));
+      await quizApi.publishQuiz(quiz._id);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.list(courseId) });
       toast.success('Assessment broadcasted to cohort.');
     } catch (err) {
       toast.error('Broadcast failed.');

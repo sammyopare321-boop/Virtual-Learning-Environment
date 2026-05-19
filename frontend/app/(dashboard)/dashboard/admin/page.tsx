@@ -1,9 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
-import { adminApi } from '@/utils/api/adminApi';
+import { useAdminStats } from '@/hooks/queries/useAdmin';
 import { 
   ChevronRight, Search, Plus, Bell,
   Users, GraduationCap, UserIcon, BookOpen, Activity, BarChart3, Calendar, Shield
@@ -20,16 +19,8 @@ interface DashboardStats {
 }
 
 export default function AdminDashboard() {
-  const { user, logout }    = useAuth();
-  const [stats, setStats]   = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    adminApi.getStats()
-      .then(res => setStats(res.data.data))
-      .catch(() => setStats({ totalUsers:0, totalStudents:0, totalTeachers:0, totalCourses:0, activeCourses:0, totalEnrollments:0 }))
-      .finally(() => setLoading(false));
-  }, []);
+  const { user } = useAuth();
+  const { data: stats, isLoading: loading } = useAdminStats(Boolean(user));
 
   const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const greeting = (() => {

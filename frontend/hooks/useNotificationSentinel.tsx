@@ -45,7 +45,7 @@ export default function useNotificationSentinel() {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('new_notification', (notif: Notification) => {
+    socket.on('notification', (notif: Notification) => {
       setNotifications(prev => [notif, ...prev]);
       setUnreadCount(prev => prev + 1);
       
@@ -137,7 +137,7 @@ export default function useNotificationSentinel() {
     });
 
     return () => {
-      socket.off('new_notification');
+      socket.off('notification');
       socket.off('new_message');
     };
   }, [socket, router]);

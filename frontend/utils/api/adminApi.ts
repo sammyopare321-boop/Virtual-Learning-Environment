@@ -25,7 +25,8 @@ export const adminApi = {
   deleteUser:     (id: string) => api.delete(`/api/admin/users/${id}`),
   changeStatus:   (id: string, status: User['status']) => api.patch(`/api/admin/users/${id}/status`, { status }),
   changeRole:     (id: string, role: User['role']) => api.patch(`/api/admin/users/${id}/role`, { role }),
-  impersonate:    (id: string) => api.post(`/api/admin/users/${id}/impersonate`),
+  impersonate:    (id: string) => api.post<{ success: boolean; impersonationToken: string }>(`/api/admin/users/${id}/impersonate`),
+  exitImpersonation: () => api.post<{ success: boolean; token: string }>('/api/admin/impersonate/exit'),
   
   // Platform Analytics
   getStats:       () => api.get('/api/admin/stats'),

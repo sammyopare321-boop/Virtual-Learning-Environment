@@ -1,81 +1,41 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
-import { courseApi } from '@/utils/api/courseApi';
-import { studentApi } from '@/utils/api/studentApi';
+import { useStudentDashboard } from '@/hooks/queries/useStudentDashboard';
 import { BookOpen, Calendar, Clock, ChevronRight, Activity, 
   Sparkles, TrendingUp, CheckCircle2, AlertCircle,
   Play, Timer, Star, Award } from 'lucide-react';
 import { useSocket } from '@/context/SocketContext';
 
-interface Course {
-  _id: string;
-  code: string;
-  title: string;
-  status: string;
-  semester: string;
-  academicYear: string;
-  coverImage?: string;
-  progress?: number;
-}
-
-interface Milestone {
-  _id?: string;
-  title: string;
-  type: string;
-  deadline: string;
-  course?: { _id: string };
-}
-
 export default function StudentDashboard() {
   const { user } = useAuth();
   const { socket } = useSocket();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ 
-    overallCompletion: 0, 
-    assignmentsSubmitted: 0, 
-    studyHours: 0, 
-    gpa: 0, 
-    onTimeRate: 100,
-    totalCourses: 0
-  });
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
-
-  const fetchDashboardData = async () => {
-    try {
-      const [coursesRes, milestonesRes, statsRes] = await Promise.all([
-        courseApi.getMyCourses(),
-        studentApi.getMyMilestones(),
-        studentApi.getMyStats()
-      ]);
-      setCourses(coursesRes.data.data || []);
-      setMilestones(milestonesRes.data.data || []);
-      setStats(prev => ({ ...prev, ...(statsRes.data.data || {}) }));
-    } catch (error) {
-      console.error('Dashboard sync error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, isLoading, isError, refetch } = useStudentDashboard(Boolean(user));
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void fetchDashboardData();
-
-    if (socket) {
-      socket.on('notification', () => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        void fetchDashboardData();
-      });
-    }
-
-    return () => {
-      if (socket) socket.off('notification');
+    if (!socket) return;
+    const onNotification = () => {
+      void refetch();
     };
-  }, [socket]);
+    socket.on('notification', onNotification);
+    return () => {
+      socket.off('notification', onNotification);
+    };
+  }, [socket, refetch]);
+
+  const courses = data?.courses ?? [];
+  const milestones = data?.milestones ?? [];
+  const stats = data?.stats ?? {
+    overallCompletion: 0,
+    assignmentsSubmitted: 0,
+    studyHours: 0,
+    gpa: 0,
+    onTimeRate: 100,
+    totalCourses: 0,
+  };
+  const loading = isLoading;
 
   const activeCourses = courses.filter(c => c.status === 'active');
   const greeting = (() => {
@@ -87,6 +47,14 @@ export default function StudentDashboard() {
 
   return (
     <div className="space-y-12 pb-12">
+        {isError && (
+          <div className="p-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 text-sm font-medium flex items-center justify-between gap-4">
+            <span>Could not load dashboard data.</span>
+            <button type="button" onClick={() => refetch()} className="font-bold underline shrink-0">
+              Retry
+            </button>
+          </div>
+        )}
         {/* Welcome Hero */}
         <section className="flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div className="space-y-2">

@@ -1,10 +1,12 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { courseApi } from '@/utils/api/courseApi';
-import { Course } from '@/types';
+import { useCoursesCatalog, useEnrolledCourseIds } from '@/hooks/queries/useCoursesCatalog';
+import { queryKeys } from '@/lib/queryKeys';
 import { AxiosError } from 'axios';
 import { 
   Search, Filter, Plus, BookOpen, User, 
@@ -19,9 +21,7 @@ const statusColor: Record<string, { bg: string, text: string, border: string }> 
 
 export default function CoursesPage() {
   const { user } = useAuth();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [enrolled, setEnrolled] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [enrolling, setEnrolling] = useState<string | null>(null);
@@ -35,46 +35,23 @@ export default function CoursesPage() {
   const isStudent = user?.role === 'student';
   const isTeacher = user?.role === 'teacher';
 
-  useEffect(() => {
-    if (isStudent) {
-      courseApi.getMyCourses()
-        .then(res => {
-          const ids = new Set<string>((res.data.data || []).map((c: Course) => c._id));
-          setEnrolled(ids);
-        })
-        .catch(() => {});
-    }
-  }, [isStudent]);
+  const catalogParams = {
+    ...(search ? { search } : {}),
+    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+  };
 
-  const fetchCourses = useCallback(() => {
-    const params: { search?: string; status?: string } = {};
-    if (search) params.search = search;
-    if (statusFilter !== 'all') params.status = statusFilter;
-    
-    courseApi.getAll(params)
-      .then(res => {
-        let all: Course[] = res.data.data || [];
-        if (isTeacher) {
-          all = all.filter((c: Course) => {
-            const tId = typeof c.teacher === 'object' ? c.teacher?._id : c.teacher;
-            return tId === user?._id;
-          });
-        }
-        setCourses(all);
-      })
-      .catch(() => setCourses([]))
-      .finally(() => setLoading(false));
-  }, [search, statusFilter, isTeacher, user]);
-
-  useEffect(() => {
-    fetchCourses();
-  }, [fetchCourses]);
+  const { data: courses = [], isLoading: loading } = useCoursesCatalog(catalogParams, {
+    teacherId: user?._id,
+    isTeacher,
+    enabled: Boolean(user),
+  });
+  const { data: enrolled = new Set<string>() } = useEnrolledCourseIds(isStudent);
 
   const handleEnroll = async (courseId: string) => {
     setEnrolling(courseId);
     try {
       await courseApi.enroll(courseId);
-      setEnrolled(prev => new Set([...prev, courseId]));
+      await queryClient.invalidateQueries({ queryKey: queryKeys.courses.enrolled });
       showToast('Successfully enrolled in course!');
     } catch (err: unknown) {
       let msg = 'Failed to enroll';
@@ -90,8 +67,8 @@ export default function CoursesPage() {
     
     try {
       await courseApi.delete(courseId);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
       showToast('Course deleted successfully');
-      fetchCourses();
     } catch (err: unknown) {
       let msg = 'Failed to delete course';
       if (err instanceof AxiosError) msg = err.response?.data?.message || msg;

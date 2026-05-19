@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { courseApi } from '@/utils/api/courseApi';
-import { Course } from '@/types';
+import { useCourse } from '@/hooks/queries/useCourse';
+import { useCourseModules } from '@/hooks/queries/useCourseModules';
 import { 
   FileText, Video, Presentation, FileCode2, Image as ImageIcon, 
   ChevronDown, Plus, ExternalLink, Trash2, Paperclip, Loader2, BookOpen,
@@ -15,13 +16,6 @@ import {
 } from 'lucide-react';
 import { AxiosError } from 'axios';
 import toast from 'react-hot-toast';
-
-interface Module {
-  _id: string;
-  title: string;
-  weekNumber: number;
-  order: number;
-}
 
 interface ContentItem {
   _id: string;
@@ -42,11 +36,11 @@ export default function ModulesPage() {
   const { courseId } = useParams() as { courseId: string };
   const { user } = useAuth();
   
-  const [course, setCourse]    = useState<Course | null>(null);
-  const [modules, setModules]  = useState<Module[]>([]);
+  const { data: course } = useCourse(courseId);
+  const { data: modules = [], isLoading: modulesLoading, refetch: refetchModules } = useCourseModules(courseId);
   const [expanded, setExpanded]= useState<Record<string, boolean>>({});
   const [content, setContent]  = useState<Record<string, ContentItem[]>>({});
-  const [loading, setLoading]  = useState(true);
+  const loading = modulesLoading;
   
   const [showModForm, setShowModForm] = useState(false);
   const [modForm, setModForm]  = useState({ title:'', weekNumber:'', order:'' });
@@ -66,29 +60,14 @@ export default function ModulesPage() {
   }, [content]);
 
   useEffect(() => {
-    async function init() {
-      if (!courseId) return;
-      try {
-        const [c, m] = await Promise.all([
-          courseApi.getOne(courseId),
-          courseApi.getModules(courseId),
-        ]);
-        setCourse(c.data.data);
-        const mods = m.data.data || [];
-        setModules(mods);
-        if (mods.length > 0) {
-          setExpanded({ [mods[0]._id]: true });
-          const res = await courseApi.getModuleContent(mods[0]._id);
-          setContent(p => ({ ...p, [mods[0]._id]: res.data.data || [] }));
-        }
-      } catch {
-        // Suppress initial fetch errors
-      } finally {
-        setLoading(false);
-      }
-    }
-    init();
-  }, [courseId]);
+    if (modules.length === 0) return;
+    setExpanded((prev) => (Object.keys(prev).length ? prev : { [modules[0]._id]: true }));
+    const firstId = modules[0]._id;
+    if (content[firstId]) return;
+    courseApi.getModuleContent(firstId).then((res) => {
+      setContent((p) => ({ ...p, [firstId]: res.data.data || [] }));
+    });
+  }, [modules, content]);
 
   const toggleModule = (moduleId: string) => {
     const willOpen = !expanded[moduleId];
@@ -104,12 +83,12 @@ export default function ModulesPage() {
     }
     setCreating(true);
     try {
-      const res = await courseApi.createModule(courseId, {
+      await courseApi.createModule(courseId, {
         title: modForm.title,
         weekNumber: parseInt(modForm.weekNumber),
         order: parseInt(modForm.order) || modules.length + 1,
       });
-      setModules(p => [...p, res.data.data]);
+      await refetchModules();
       setModForm({ title:'', weekNumber:'', order:'' });
       setShowModForm(false);
       toast.success('Curriculum node initialized.');

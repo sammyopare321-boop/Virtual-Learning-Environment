@@ -51,6 +51,8 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { SentinelProvider } from "@/context/SentinelContext";
 import CommandPalette from "@/components/shared/CommandPalette";
 import SentinelWrapper from "../components/shared/SentinelWrapper";
+import ImpersonationBanner from "@/components/shared/ImpersonationBanner";
+import QueryProvider from "@/components/providers/QueryProvider";
 
 export default function RootLayout({
   children,
@@ -61,30 +63,33 @@ export default function RootLayout({
     <html lang="en" className={`${sora.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <AuthProvider>
-          <SocketProvider>
-            <ThemeProvider>
-              <SentinelProvider>
-                <CommandPalette />
-                <SentinelWrapper />
-                <Toaster 
-                  position="top-right"
-                  toastOptions={{
-                    className: 'react-hot-toast',
-                    style: {
-                      borderRadius: '12px',
-                      background: '#fff',
-                      color: '#0f172a',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                    },
-                  }}
-                />
-                {children}
-              </SentinelProvider>
-            </ThemeProvider>
-          </SocketProvider>
+          <QueryProvider>
+            <SocketProvider>
+              <ThemeProvider>
+                <SentinelProvider>
+                  <ImpersonationBanner />
+                  <CommandPalette />
+                  <SentinelWrapper />
+                  <Toaster
+                    position="top-right"
+                    toastOptions={{
+                      className: 'react-hot-toast',
+                      style: {
+                        borderRadius: '12px',
+                        background: '#fff',
+                        color: '#0f172a',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        border: '1px solid #e2e8f0',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                      },
+                    }}
+                  />
+                  {children}
+                </SentinelProvider>
+              </ThemeProvider>
+            </SocketProvider>
+          </QueryProvider>
         </AuthProvider>
       </body>
     </html>

@@ -1,8 +1,6 @@
 'use client';
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { adminApi } from '@/utils/api/adminApi';
-import Sidebar from '@/components/shared/Sidebar';
+import { useAdminAnalytics } from '@/hooks/queries/useAdmin';
 import { 
   BarChart as BarChartIcon, PieChart, Users, BookOpen, 
   TrendingUp, CalendarCheck, Target, Network 
@@ -108,28 +106,12 @@ function DonutChart({ passRate=0, failRate=0 }: { passRate?: number, failRate?: 
 }
 
 export default function AdminAnalyticsPage() {
-  const [overview, setOverview] = useState<OverviewData | null>(null);
-  const [grades, setGrades]     = useState<GradesData | null>(null);
-  const [userGrowth, setUserGrowth] = useState<UserGrowthData[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceData | null>(null);
-  const [enrollment, setEnrollment] = useState<EnrollmentData[]>([]);
-  const [loading, setLoading]   = useState(true);
-
-  useEffect(() => {
-    Promise.allSettled([
-      adminApi.getOverview(),
-      adminApi.getGradeAnalytics(),
-      adminApi.getUserAnalytics(),
-      adminApi.getAttendanceAnalytics(),
-      adminApi.getEnrollmentTrends(),
-    ]).then(([ov, gr, ug, at, en]) => {
-      if (ov.status === 'fulfilled') setOverview(ov.value.data.data);
-      if (gr.status === 'fulfilled') setGrades(gr.value.data.data);
-      if (ug.status === 'fulfilled') setUserGrowth(ug.value.data.data || []);
-      if (at.status === 'fulfilled') setAttendance(at.value.data.data);
-      if (en.status === 'fulfilled') setEnrollment(en.value.data.data || []);
-    }).finally(() => setLoading(false));
-  }, []);
+  const { data, isLoading: loading } = useAdminAnalytics();
+  const overview = (data?.overview ?? null) as OverviewData | null;
+  const grades = (data?.grades ?? null) as GradesData | null;
+  const userGrowth = (data?.userGrowth ?? []) as UserGrowthData[];
+  const attendance = (data?.attendance ?? null) as AttendanceData | null;
+  const enrollment = (data?.enrollment ?? []) as EnrollmentData[];
 
   const gradeDistData: ChartDataItem[] = grades?.distribution ? [
     { label:'90-100', value: grades.distribution['90-100'] || 0 },
@@ -149,12 +131,7 @@ export default function AdminAnalyticsPage() {
   }));
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
-      <Sidebar />
-
-      <main className="flex-1 overflow-y-auto p-8 lg:p-12 scroll-smooth">
-        <div className="max-w-7xl mx-auto">
-          
+    <>
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10">
             <div>
               <h1 className="text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">Platform Analytics</h1>
@@ -269,8 +246,6 @@ export default function AdminAnalyticsPage() {
 
             </div>
           )}
-        </div>
-      </main>
-    </div>
+    </>
   );
 }

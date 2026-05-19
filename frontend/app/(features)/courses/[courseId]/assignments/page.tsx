@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { courseApi } from '@/utils/api/courseApi';
-import { Course } from '@/types';
+import { useCourse } from '@/hooks/queries/useCourse';
+import { useCourseAssignments } from '@/hooks/queries/useCourseResources';
+import { queryKeys } from '@/lib/queryKeys';
 import { 
   FileText, Calendar, Clock, Trophy, ChevronRight, 
   Plus, Loader2, CheckCircle2, AlertCircle, LucideIcon,
@@ -52,57 +55,23 @@ export default function AssignmentsPage() {
   const router = useRouter();
   const { user } = useAuth();
   
-  const [course, setCourse] = useState<Course | null>(null);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
-  const [loading, setLoading] = useState(true);
+  const isStudent = user?.role === 'student';
+  const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
+
+  const queryClient = useQueryClient();
+  const { data: course } = useCourse(courseId);
+  const { data: assignmentData, isLoading: loading } = useCourseAssignments(courseId, { isStudent });
+  const assignments = (assignmentData?.assignments ?? []) as Assignment[];
+  const submissions = (assignmentData?.submissions ?? {}) as unknown as Record<string, Submission>;
   const [search, setSearch] = useState('');
   
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title:'', description:'', dueDate:'', totalMarks:'' });
   const [creating, setCreating] = useState(false);
-
-  const isStudent = user?.role === 'student';
-  const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
   const isOwner = isTeacher && (
     (typeof course?.teacher === 'object' ? course.teacher._id === user?._id : course?.teacher === user?._id) || 
     user?.role === 'admin'
   );
-
-  useEffect(() => {
-    const loadData = async () => {
-      if (!courseId) return;
-      setLoading(true);
-      try {
-        const [c, a] = await Promise.all([
-          courseApi.getOne(courseId),
-          courseApi.getAssignments(courseId),
-        ]);
-        
-        const subMap: Record<string, Submission> = {};
-        if (user?.role === 'student') {
-          try {
-            const s = await courseApi.getMySubmissions(courseId);
-            s.data.data.forEach((sub: Submission) => {
-              subMap[sub.assignment] = sub;
-            });
-          } catch (e) {
-            console.error('Failed to load student submissions', e);
-          }
-        }
-
-        setCourse(c.data.data);
-        setAssignments(a.data.data || []);
-        setSubmissions(subMap);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [courseId, user?.role]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +87,7 @@ export default function AssignmentsPage() {
         dueDate: new Date(form.dueDate).toISOString(),
       });
       const newAssignment = res.data.data;
+      await queryClient.invalidateQueries({ queryKey: queryKeys.courses.assignments(courseId) });
       toast.success('Mission deployment successful.');
       router.push(`/courses/${courseId}/assignments/${newAssignment._id}`);
     } catch (err) {

@@ -1,9 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { courseApi } from '@/utils/api/courseApi';
+import { useCourse } from '@/hooks/queries/useCourse';
+import { useCourseGrades } from '@/hooks/queries/useCourseResources';
+import { queryKeys } from '@/lib/queryKeys';
 import { useAuth } from '@/context/AuthContext';
 import { 
   Trophy, Star, Target, TrendingUp, 
@@ -15,8 +19,6 @@ import {
 } from 'lucide-react';
 import { AxiosError } from 'axios';
 import toast from 'react-hot-toast';
-import { Course } from '@/types';
-
 interface GradeItem {
   _id: string;
   sourceId: { title: string };
@@ -37,64 +39,31 @@ export default function GradesPage() {
   const { courseId } = useParams() as { courseId: string };
   const { user } = useAuth();
   
-  const [course, setCourse] = useState<Course | null>(null);
-  const [weights, setWeights] = useState<{ assignmentWeight: number; quizWeight: number } | null>(null);
-  const [finalGrade, setFinalGrade] = useState<{ finalPercentage: number; assignmentAverage: number; quizAverage: number } | null>(null);
-  const [myGrades, setMyGrades] = useState<GradeItem[]>([]);
-  const [gradebook, setGradebook] = useState<GradebookEntry[]>([]);
-  const [atRisk, setAtRisk] = useState<GradebookEntry[]>([]);
-  
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: course } = useCourse(courseId);
+  const isStudent = user?.role === 'student';
+  const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
+  const role = isStudent ? 'student' : 'teacher';
+  const { data: gradeData, isLoading: loading } = useCourseGrades(courseId, role, Boolean(courseId && user));
+
+  const weights = gradeData?.weights ?? null;
+  const finalGrade = gradeData?.finalGrade ?? null;
+  const myGrades = (gradeData?.myGrades ?? []) as GradeItem[];
+  const gradebook = (gradeData?.gradebook ?? []) as GradebookEntry[];
+  const atRisk = (gradeData?.atRisk ?? []) as GradebookEntry[];
+
   const [showWeightForm, setShowWeightForm] = useState(false);
   const [wForm, setWForm] = useState({ assignmentWeight: 60, quizWeight: 40 });
   const [savingW, setSavingW] = useState(false);
 
-  const isStudent = user?.role === 'student';
-  const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
-
   useEffect(() => {
-    const loadData = async () => {
-      if (!courseId) return;
-      setLoading(true);
-      try {
-        const cRes = await courseApi.getOne(courseId);
-        setCourse(cRes.data.data);
-        
-        try { 
-          const wRes = await courseApi.getGradeWeights(courseId); 
-          setWeights(wRes.data.data); 
-          setWForm({ 
-            assignmentWeight: wRes.data.data.assignmentWeight, 
-            quizWeight: wRes.data.data.quizWeight 
-          }); 
-        } catch {}
-
-        if (isStudent) {
-          const [gRes, fRes] = await Promise.all([
-            courseApi.getStudentGrades(courseId),
-            courseApi.getStudentFinalGrade(courseId)
-          ]);
-          setMyGrades(gRes.data.data || []);
-          setFinalGrade(fRes.data.data);
-        }
-
-        if (isTeacher) {
-          const [gbRes, arRes] = await Promise.all([
-            courseApi.getGradebook(courseId),
-            courseApi.getAtRisk(courseId)
-          ]);
-          setGradebook(gbRes.data.data || []);
-          setAtRisk(arRes.data.data || []);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [courseId, isStudent, isTeacher]);
+    if (weights) {
+      setWForm({
+        assignmentWeight: weights.assignmentWeight,
+        quizWeight: weights.quizWeight,
+      });
+    }
+  }, [weights]);
 
   const handleSaveWeights = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,8 +73,8 @@ export default function GradesPage() {
     }
     setSavingW(true);
     try {
-      const res = await courseApi.setGradeWeights(courseId, wForm);
-      setWeights(res.data.data);
+      await courseApi.setGradeWeights(courseId, wForm);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.courses.grades(courseId, role) });
       setShowWeightForm(false);
       toast.success('Academic weights updated successfully!');
     } catch (e) {

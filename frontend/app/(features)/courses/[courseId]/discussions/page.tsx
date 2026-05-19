@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { courseApi } from '@/utils/api/courseApi';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCourseDiscussions } from '@/hooks/queries/useCourseResources';
+import { queryKeys } from '@/lib/queryKeys';
 import { communicationApi } from '@/utils/api/communicationApi';
 import { useAuth } from '@/context/AuthContext';
 import { 
@@ -46,19 +48,13 @@ interface Discussion {
 export default function DiscussionsPage() {
   const { courseId } = useParams() as { courseId: string };
   const { user } = useAuth();
-  const [discussions, setDiscussions] = useState<Discussion[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: discussionsData = [], isLoading: loading } = useCourseDiscussions(courseId);
+  const discussions = discussionsData as Discussion[];
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [posting, setPosting] = useState(false);
   const [form, setForm] = useState({ title: '', content: '' });
-
-  useEffect(() => {
-    courseApi.getDiscussions(courseId)
-      .then(res => setDiscussions(res.data.data || []))
-      .catch(() => setDiscussions([]))
-      .finally(() => setLoading(false));
-  }, [courseId]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,8 +64,8 @@ export default function DiscussionsPage() {
     }
     setPosting(true);
     try {
-      const res = await communicationApi.startDiscussion(courseId, form);
-      setDiscussions(prev => [res.data.data, ...prev]);
+      await communicationApi.startDiscussion(courseId, form);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.courses.discussions(courseId) });
       setShowForm(false);
       setForm({ title: '', content: '' });
       toast.success('Communication thread initialized!');

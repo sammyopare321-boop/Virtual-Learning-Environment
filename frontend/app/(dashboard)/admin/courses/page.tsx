@@ -1,11 +1,13 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { adminApi } from '@/utils/api/adminApi';
+import { useAdminCourses, useAdminTeachers } from '@/hooks/queries/useAdmin';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import Sidebar from '@/components/shared/Sidebar';
 import { 
   BookOpen, Search, Filter, Trash2, Archive, ArchiveRestore, 
   UserCog, AlertTriangle, CheckCircle2, X
@@ -40,14 +42,12 @@ const statusColor: Record<string, {bg: string, text: string, border: string}> = 
 };
 
 export default function AdminCoursesPage() {
+  const router = useRouter();
   const { user } = useAuth();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [search, setSearch]   = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage]       = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [reassignModal, setReassignModal] = useState<Course | null>(null);
   const [newTeacherId, setNewTeacherId]   = useState('');
@@ -70,43 +70,24 @@ export default function AdminCoursesPage() {
     return () => clearTimeout(handler);
   }, [search]);
 
-  const fetchCourses = useCallback(async (ignore = false) => {
-    await Promise.resolve(); // Break synchronous execution to avoid cascading render warning
-    if (!ignore) setLoading(true);
-    try {
-      const params: Record<string, string | number> = { page, limit: 10 };
-      if (debouncedSearch) params.search = debouncedSearch;
-      if (statusFilter !== 'all') params.status = statusFilter;
-      
-      const res = await adminApi.getAllCourses(params);
-      if (!ignore) {
-        setCourses(res.data.data || []);
-        setTotalPages(res.data.totalPages || 1);
-      }
-    } catch {
-      if (!ignore) setCourses([]);
-    } finally {
-      if (!ignore) setLoading(false);
-    }
-  }, [debouncedSearch, statusFilter, page]);
+  const courseParams: Record<string, string | number> = { page, limit: 10 };
+  if (debouncedSearch) courseParams.search = debouncedSearch;
+  if (statusFilter !== 'all') courseParams.status = statusFilter;
 
-  useEffect(() => {
-    let ignore = false;
-    Promise.resolve().then(() => fetchCourses(ignore));
-    return () => { ignore = true; };
-  }, [fetchCourses]);
+  const { data: coursesData, isLoading: loading } = useAdminCourses(courseParams, Boolean(user));
+  const courses = (coursesData?.courses ?? []) as Course[];
+  const totalPages = coursesData?.totalPages ?? 1;
+  const { data: teachersData } = useAdminTeachers(Boolean(user));
+  const teachers = (teachersData ?? []) as Teacher[];
 
-  useEffect(() => {
-    adminApi.getAllUsers({ role:'teacher', limit:100 })
-      .then(res => setTeachers(res.data.data || []))
-      .catch(() => {});
-  }, []);
+  const refreshCourses = () =>
+    queryClient.invalidateQueries({ queryKey: ['admin', 'courses'] });
 
   const handleStatusChange = async (course: Course, newStatus: 'active' | 'draft' | 'archived') => {
     setActionLoading(course._id + '_status');
     try {
       await adminApi.changeCourseStatus(course._id, newStatus);
-      setCourses(p => p.map(c => c._id === course._id ? { ...c, status: newStatus } : c));
+      await refreshCourses();
       showToast(`Course ${newStatus === 'archived' ? 'archived' : 'reactivated'} successfully.`);
     } catch (e) {
       const err = e as AxiosError<{message: string}>;
@@ -118,7 +99,7 @@ export default function AdminCoursesPage() {
     setActionLoading(course._id + '_delete');
     try {
       await adminApi.deleteCourse(course._id);
-      setCourses(p => p.filter(c => c._id !== course._id));
+      await refreshCourses();
       showToast('Course and all related data deleted.');
     } catch (e) {
       const err = e as AxiosError<{message: string}>;
@@ -131,8 +112,7 @@ export default function AdminCoursesPage() {
     setActionLoading(reassignModal._id + '_reassign');
     try {
       await adminApi.reassignTeacher(reassignModal._id, newTeacherId);
-      const teacher = teachers.find(t => t._id === newTeacherId);
-      setCourses(p => p.map(c => c._id === reassignModal._id ? { ...c, teacher: teacher as Teacher } : c));
+      await refreshCourses();
       showToast('Teacher reassigned successfully.');
       setReassignModal(null); setNewTeacherId('');
     } catch (e) {
@@ -142,7 +122,7 @@ export default function AdminCoursesPage() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
+    <>
       
       {/* Toast Notification */}
       <AnimatePresence>
@@ -241,11 +221,6 @@ export default function AdminCoursesPage() {
         )}
       </AnimatePresence>
 
-      <Sidebar />
-
-      <main className="flex-1 overflow-y-auto p-8 lg:p-12 scroll-smooth">
-        <div className="max-w-7xl mx-auto">
-          
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10">
             <div>
@@ -336,9 +311,13 @@ export default function AdminCoursesPage() {
                               <span className="inline-block px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wider uppercase mb-1">
                                 {course.code}
                               </span>
-                              <p className="font-extrabold text-slate-900 truncate mb-1">
+                              <button
+                                type="button"
+                                onClick={() => router.push(`/courses/${course._id}/settings`)}
+                                className="font-extrabold text-slate-900 truncate mb-1 text-left hover:text-blue-600 transition-colors"
+                              >
                                 {course.title}
-                              </p>
+                              </button>
                               <p className="text-xs font-bold text-slate-400 tracking-wider uppercase">
                                 {course.semester} · {course.academicYear}
                               </p>
@@ -410,8 +389,6 @@ export default function AdminCoursesPage() {
               </div>
             )}
           </div>
-        </div>
-      </main>
-    </div>
+    </>
   );
 }

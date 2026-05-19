@@ -1,11 +1,13 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, establishImpersonationSession } from '@/context/AuthContext';
 import { adminApi } from '@/utils/api/adminApi';
+import { useAdminUsers, useAdminOverview } from '@/hooks/queries/useAdmin';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 import { AxiosError } from 'axios';
-import Sidebar from '@/components/shared/Sidebar';
 import { 
   Users, GraduationCap, School, Shield, Search, Filter, 
   Trash2, Ban, CheckCircle2, UserCheck, UserPlus, Eye, X, AlertTriangle
@@ -41,14 +43,11 @@ const statusBadge: Record<string, {bg: string, text: string, border: string}> = 
 
 export default function AdminUsersPage() {
   const { user }              = useAuth();
-  const [users, setUsers]     = useState<User[]>([]);
-  const [stats, setStats]     = useState<StatsData>({ totalUsers:0, totalStudents:0, totalTeachers:0, totalAdmins:0 });
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [search, setSearch]   = useState('');
   const [roleFilter, setRoleFilter]     = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage]       = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast]     = useState<{msg: string, type: string} | null>(null);
@@ -69,45 +68,25 @@ export default function AdminUsersPage() {
     return () => clearTimeout(handler);
   }, [search]);
 
-  const fetchUsers = useCallback(async (ignore = false) => {
-    await Promise.resolve(); // Break synchronous execution
-    if (!ignore) setLoading(true);
-    try {
-      const params: Record<string, string | number> = { page, limit: 10 };
-      if (debouncedSearch) params.search = debouncedSearch;
-      if (roleFilter !== 'all') params.role = roleFilter;
-      if (statusFilter !== 'all') params.status = statusFilter;
-      
-      const res = await adminApi.getAllUsers(params);
-      if (!ignore) {
-        setUsers(res.data.data || []);
-        setTotalPages(res.data.totalPages || 1);
-      }
-    } catch {
-      if (!ignore) setUsers([]);
-    } finally {
-      if (!ignore) setLoading(false);
-    }
-  }, [debouncedSearch, roleFilter, statusFilter, page]);
+  const userParams: Record<string, string | number> = { page, limit: 10 };
+  if (debouncedSearch) userParams.search = debouncedSearch;
+  if (roleFilter !== 'all') userParams.role = roleFilter;
+  if (statusFilter !== 'all') userParams.status = statusFilter;
 
-  useEffect(() => {
-    adminApi.getOverview()
-      .then(res => setStats(res.data.data || {}))
-      .catch(() => {});
-  }, []);
+  const { data: usersData, isLoading: loading } = useAdminUsers(userParams, Boolean(user));
+  const users = (usersData?.users ?? []) as User[];
+  const totalPages = usersData?.totalPages ?? 1;
+  const { data: stats = { totalUsers:0, totalStudents:0, totalTeachers:0, totalAdmins:0 } } = useAdminOverview(Boolean(user));
 
-  useEffect(() => {
-    let ignore = false;
-    Promise.resolve().then(() => fetchUsers(ignore));
-    return () => { ignore = true; };
-  }, [fetchUsers]);
+  const refreshUsers = () =>
+    queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
 
   const handleStatusToggle = async (u: User) => {
     const newStatus = u.status === 'suspended' ? 'active' : 'suspended';
     setActionLoading(u._id + '_status');
     try {
       await adminApi.changeStatus(u._id, newStatus);
-      setUsers(p => p.map(x => x._id === u._id ? { ...x, status: newStatus } : x));
+      await refreshUsers();
       showToast(`${u.name} ${newStatus === 'suspended' ? 'suspended' : 'reactivated'} successfully.`);
     } catch (e) {
       const err = e as AxiosError<{message: string}>;
@@ -119,7 +98,7 @@ export default function AdminUsersPage() {
     setActionLoading(userId + '_role');
     try {
       await adminApi.changeRole(userId, newRole);
-      setUsers(p => p.map(x => x._id === userId ? { ...x, role: newRole } : x));
+      await refreshUsers();
       showToast('Role updated successfully.');
     } catch (e) {
       const err = e as AxiosError<{message: string}>;
@@ -131,7 +110,7 @@ export default function AdminUsersPage() {
     setActionLoading(u._id + '_delete');
     try {
       await adminApi.deleteUser(u._id);
-      setUsers(p => p.filter(x => x._id !== u._id));
+      await refreshUsers();
       showToast(`${u.name} deleted successfully.`);
     } catch (e) {
       const err = e as AxiosError<{message: string}>;
@@ -143,7 +122,9 @@ export default function AdminUsersPage() {
     setActionLoading(u._id + '_imp');
     try {
       const res = await adminApi.impersonate(u._id);
-      document.cookie = `token=${res.data.impersonationToken}; path=/; max-age=900`;
+      const token = res.data.impersonationToken;
+      if (!token) throw new Error('No impersonation token returned');
+      establishImpersonationSession(token);
       window.location.href = `/dashboard/${u.role}`;
     } catch (e) {
       const err = e as AxiosError<{message: string}>;
@@ -153,8 +134,7 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
-      
+    <>
       {/* Toast Notification */}
       <AnimatePresence>
         {toast && (
@@ -207,11 +187,6 @@ export default function AdminUsersPage() {
         )}
       </AnimatePresence>
 
-      <Sidebar />
-
-      <main className="flex-1 overflow-y-auto p-8 lg:p-12 scroll-smooth">
-        <div className="max-w-7xl mx-auto">
-          
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10">
             <div>
@@ -416,8 +391,6 @@ export default function AdminUsersPage() {
               </div>
             )}
           </div>
-        </div>
-      </main>
-    </div>
+    </>
   );
 }

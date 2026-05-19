@@ -1,8 +1,11 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { courseApi } from '@/utils/api/courseApi';
+import { useCourseAttendance } from '@/hooks/queries/useCourseResources';
+import { queryKeys } from '@/lib/queryKeys';
 import { useAuth } from '@/context/AuthContext';
 import { 
   Users, Calendar, CheckCircle2, XCircle, 
@@ -45,45 +48,24 @@ export default function AttendancePage() {
   const { courseId } = useParams() as { courseId: string };
   const { user } = useAuth();
   
-  const [sessions, setSessions] = useState<AttendanceSession[]>([]);
-  const [myRecords, setMyRecords] = useState<AttendanceRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  
+  const queryClient = useQueryClient();
+  const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
+  const role = isTeacher ? 'teacher' : 'student';
+  const { data: attendanceData, isLoading: loading } = useCourseAttendance(courseId, role);
+  const sessions = (attendanceData?.sessions ?? []) as AttendanceSession[];
+  const myRecords = (attendanceData?.studentRecords ?? []) as AttendanceRecord[];
+  const students = (attendanceData?.students ?? []) as Student[];
+
   // Teacher UI state
   const [showMarkModal, setShowMarkModal] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [students, setStudents] = useState<Student[]>([]);
   const [markingData, setMarkingData] = useState<Record<string, AttendanceStatus>>({});
   const [submitting, setSubmitting] = useState(false);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [newSessionTopic, setNewSessionTopic] = useState('');
 
-  const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        if (isTeacher) {
-          const [sessRes, studRes] = await Promise.all([
-            courseApi.getAttendance(courseId),
-            courseApi.getStudents(courseId)
-          ]);
-          setSessions(sessRes.data.data || []);
-          setStudents(studRes.data.data || []);
-        } else {
-          const res = await courseApi.getStudentAttendance(courseId);
-          setMyRecords(res.data.data || []);
-        }
-      } catch (err) {
-        toast.error('Failed to load attendance data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [courseId, isTeacher]);
+  const invalidateAttendance = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.courses.attendance(courseId, role) });
 
   const handleCreateSession = async () => {
     try {
@@ -91,7 +73,7 @@ export default function AttendancePage() {
         topic: newSessionTopic || 'Regular Class',
         date: new Date().toISOString()
       });
-      setSessions(prev => [res.data.data, ...prev]);
+      await invalidateAttendance();
       setShowSessionModal(false);
       setNewSessionTopic('');
       toast.success('Session created');
