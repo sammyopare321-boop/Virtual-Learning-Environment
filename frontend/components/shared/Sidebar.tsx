@@ -7,7 +7,7 @@ import {
   LayoutDashboard, BookOpen, MessageSquare, Bell, User as UserIcon, 
   LogOut, GraduationCap, Users, BarChart3, Activity, Radar, 
   Settings, HelpCircle, ChevronRight, Search, X, LucideIcon,
-  Zap, Moon, Sun
+  Zap, Moon, Sun, Sparkles
 } from 'lucide-react';
 import useNotificationSentinel from '@/hooks/useNotificationSentinel';
 
@@ -38,16 +38,22 @@ const studentLinks = [
 ];
 
 const teacherLinks = [
-  { group: 'Management', items: [
-    { href: '/dashboard/teacher',    label: 'Command Center',  icon: LayoutDashboard },
-    { href: '/courses',              label: 'Course Catalog',  icon: BookOpen },
+  { group: 'Core', items: [
+    { href: '/dashboard/teacher',    label: 'Dashboard',       icon: LayoutDashboard },
+    { href: '/courses',              label: 'Courses',         icon: BookOpen },
+    { href: '/students',             label: 'Students',        icon: Users },
+    { href: '/assignments',          label: 'Assignments',     icon: BarChart3 },
+    { href: '/schedule',             label: 'Schedule',        icon: Activity },
   ]},
   { group: 'Communication', items: [
     { href: '/messages',             label: 'Messages',       icon: MessageSquare },
-    { href: '/notifications',        label: 'Notifications',  icon: Bell },
   ]},
-  { group: 'System', items: [
-    { href: '/profile',              label: 'Account',        icon: UserIcon },
+  { group: 'Intelligence', items: [
+    { href: '/analytics',            label: 'Analytics',      icon: Radar },
+    { href: '/ai',                   label: 'AI Assistant',   icon: Sparkles },
+  ]},
+  { group: 'Settings', items: [
+    { href: '/profile',              label: 'Settings',        icon: Settings },
   ]}
 ];
 
