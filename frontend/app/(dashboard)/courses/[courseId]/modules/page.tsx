@@ -9,12 +9,10 @@ import { useCourse } from '@/hooks/queries/useCourse';
 import { useCourseModules } from '@/hooks/queries/useCourseModules';
 import { 
   FileText, Video, Presentation, FileCode2, Image as ImageIcon, 
-  ChevronDown, Plus, ExternalLink, Trash2, Paperclip, Loader2, BookOpen,
-  Layout, Calendar, Layers, Sparkles, Filter, Search, Info, AlertCircle,
-  ArrowRight, Download, CheckCircle2, Zap, Globe, Target, ShieldCheck,
-  Package, Box, Cpu, Terminal, X
+  ChevronDown, Plus, Trash2, Paperclip, Loader2, BookOpen,
+  Calendar, Layers, Filter, Search, Info, AlertCircle,
+  ArrowRight, Download, CheckCircle2, X
 } from 'lucide-react';
-import { AxiosError } from 'axios';
 import toast from 'react-hot-toast';
 
 interface ContentItem {
@@ -25,11 +23,11 @@ interface ContentItem {
 }
 
 const CONTENT_CONFIG = {
-  pdf:   { icon: FileText,     bg: 'bg-rose-50',    text: 'text-rose-600',    border: 'border-rose-100',    label: 'Technical Brief' },
-  video: { icon: Video,        bg: 'bg-blue-50',    text: 'text-blue-600',    border: 'border-blue-100',    label: 'Visual Lecture' },
-  slide: { icon: Presentation, bg: 'bg-amber-50',   text: 'text-amber-600',   border: 'border-amber-100',   label: 'Framework' },
-  note:  { icon: FileCode2,    bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100', label: 'Reference' },
-  image: { icon: ImageIcon,    bg: 'bg-purple-50',  text: 'text-purple-600',  border: 'border-purple-100',  label: 'Diagram' }
+  pdf:   { icon: FileText,     bg: 'bg-rose-50',    text: 'text-rose-600',    border: 'border-rose-100',    label: 'Lecture PDF' },
+  video: { icon: Video,        bg: 'bg-blue-50',    text: 'text-blue-600',    border: 'border-blue-100',    label: 'Video Lecture' },
+  slide: { icon: Presentation, bg: 'bg-amber-50',   text: 'text-amber-600',   border: 'border-amber-100',   label: 'Lecture Slides' },
+  note:  { icon: FileCode2,    bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100', label: 'Study Note' },
+  image: { icon: ImageIcon,    bg: 'bg-purple-50',  text: 'text-purple-600',  border: 'border-purple-100',  label: 'Illustration' }
 };
 
 export default function ModulesPage() {
@@ -38,13 +36,13 @@ export default function ModulesPage() {
   
   const { data: course } = useCourse(courseId);
   const { data: modules = [], isLoading: modulesLoading, refetch: refetchModules } = useCourseModules(courseId);
-  const [expanded, setExpanded]= useState<Record<string, boolean>>({});
-  const [content, setContent]  = useState<Record<string, ContentItem[]>>({});
-  const loading = modulesLoading;
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [content, setContent] = useState<Record<string, ContentItem[]>>({});
+  const [searchQuery, setSearchQuery] = useState('');
   
   const [showModForm, setShowModForm] = useState(false);
-  const [modForm, setModForm]  = useState({ title:'', weekNumber:'', order:'' });
-  const [creating, setCreating]= useState(false);
+  const [modForm, setModForm] = useState({ title: '', weekNumber: '', order: '' });
+  const [creating, setCreating] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
 
   const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
@@ -78,7 +76,7 @@ export default function ModulesPage() {
   const handleCreateModule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!modForm.title || !modForm.weekNumber) {
-      toast.error('Module parameters incomplete.');
+      toast.error('Please enter a title and a week number.');
       return;
     }
     setCreating(true);
@@ -89,12 +87,12 @@ export default function ModulesPage() {
         order: parseInt(modForm.order) || modules.length + 1,
       });
       await refetchModules();
-      setModForm({ title:'', weekNumber:'', order:'' });
+      setModForm({ title: '', weekNumber: '', order: '' });
       setShowModForm(false);
-      toast.success('Curriculum node initialized.');
+      toast.success('Syllabus module created successfully.');
     } catch (e) {
       const err = e as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Initialization failed.');
+      toast.error(err.response?.data?.message || 'Failed to create module.');
     } finally { setCreating(false); }
   };
 
@@ -103,10 +101,10 @@ export default function ModulesPage() {
     if (!file) return;
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     const typeMap: Record<string, ContentItem['type']> = { 
-      pdf:'pdf', mp4:'video', mov:'video', 
-      ppt:'slide', pptx:'slide', 
-      txt:'note', md:'note', 
-      png:'image', jpg:'image', jpeg:'image' 
+      pdf: 'pdf', mp4: 'video', mov: 'video', 
+      ppt: 'slide', pptx: 'slide', 
+      txt: 'note', md: 'note', 
+      png: 'image', jpg: 'image', jpeg: 'image' 
     };
     const type = typeMap[ext] || 'note';
     setUploading(moduleId);
@@ -118,117 +116,131 @@ export default function ModulesPage() {
       fd.append('order', String((content[moduleId]?.length || 0) + 1));
       const res = await courseApi.uploadContent(moduleId, fd);
       setContent(p => ({ ...p, [moduleId]: [...(p[moduleId] || []), res.data.data] }));
-      toast.success('Intelligence asset synchronized.');
+      toast.success('Course material uploaded successfully.');
     } catch (e) {
       const err = e as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Sync failed.');
+      toast.error(err.response?.data?.message || 'Failed to upload material.');
     } finally { setUploading(null); if (e.target) e.target.value = ''; }
   };
 
   const handleDeleteContent = async (moduleId: string, contentId: string) => {
-    if (!window.confirm('Terminate this asset from the curriculum?')) return;
+    if (!window.confirm('Are you sure you want to delete this resource from the module?')) return;
     try {
       await courseApi.deleteContent(contentId);
       setContent(p => ({ ...p, [moduleId]: p[moduleId].filter(c => c._id !== contentId) }));
-      toast.success('Asset terminated.');
+      toast.success('Resource deleted.');
     } catch { 
-      toast.error('Termination failed.'); 
+      toast.error('Failed to delete resource.'); 
     }
   };
 
+  const filteredModules = modules.filter(m => 
+    m.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    `week ${m.weekNumber}`.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div className="space-y-12 pb-20">
-      {/* Immersive Header */}
-      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-10">
-        <div className="space-y-4 flex-1">
-          <div className="flex items-center gap-2 text-primary-500 font-black text-[10px] uppercase tracking-[0.3em]">
-            <Package size={14} />
-            Curriculum Architecture
+    <div className="space-y-8 pb-12 max-w-6xl mx-auto">
+      
+      {/* Overview Block */}
+      <section className="bg-white rounded-3xl border border-slate-200 p-6 lg:p-8 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-primary-600 font-bold text-[10px] uppercase tracking-widest">
+              <BookOpen size={14} /> Course Modules & Syllabus
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              Syllabus & Learning Materials
+            </h2>
+            <p className="text-slate-500 font-medium text-sm">
+              Access the syllabus structure, download slides, watch lectures, and review study materials week-by-week.
+            </p>
           </div>
-          <h1 className="text-5xl lg:text-6xl font-display font-extrabold text-slate-900 tracking-tight leading-none">
-            Knowledge <span className="text-primary-500">Pipeline</span>
-          </h1>
-          <p className="text-slate-500 font-medium max-w-2xl text-lg leading-relaxed">
-            Explore the structured academic sequence of this program, featuring high-fidelity transmission modules and synchronized learning assets.
-          </p>
+
+          <div className="flex gap-3">
+            {isTeacher && (
+              <button 
+                onClick={() => setShowModForm(p => !p)}
+                className={`btn h-12 px-6 gap-2 text-xs font-bold shadow-sm transition-all rounded-xl ${
+                  showModForm 
+                    ? 'bg-slate-900 text-white hover:bg-slate-800' 
+                    : 'btn-primary'
+                }`}
+              >
+                {showModForm ? <><X size={16} /> Close Panel</> : <><Plus size={16} /> Add Module</>}
+              </button>
+            )}
+          </div>
         </div>
+      </section>
 
-        {isTeacher && (
-          <button 
-            onClick={() => setShowModForm(p => !p)}
-            className={`btn h-16 px-10 gap-3 text-[10px] font-black uppercase tracking-widest shadow-2xl transition-all ${
-              showModForm 
-                ? 'bg-slate-900 text-white shadow-slate-900/20' 
-                : 'btn-primary shadow-primary-500/20'
-            }`}
-          >
-            {showModForm ? <><X size={20} /> Close Terminal</> : <><Plus size={20} /> Initialize Module</>}
-          </button>
-        )}
-      </header>
-
-      {/* Administrative Terminal (Form) */}
+      {/* Module Creation Form */}
       <AnimatePresence>
         {showModForm && (
           <motion.div 
             initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-            animate={{ opacity: 1, height: 'auto', marginBottom: 48 }}
+            animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
             exit={{ opacity: 0, height: 0, marginBottom: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-white rounded-[48px] border border-slate-100 p-12 shadow-2xl shadow-primary-500/5 relative overflow-hidden">
+            <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
               
-              <div className="flex items-center gap-4 mb-10">
-                <div className="w-14 h-14 rounded-2xl bg-primary-50 text-primary-500 flex items-center justify-center border border-primary-100 shadow-inner">
-                  <Terminal size={24} />
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center border border-primary-100 shadow-sm">
+                  <Layers size={20} />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-display font-extrabold text-slate-900 tracking-tight">Deployment Console</h3>
-                  <p className="text-slate-500 font-medium">Define a new block in the curriculum sequence.</p>
+                  <h3 className="text-lg font-bold text-slate-900 tracking-tight">Create New Module</h3>
+                  <p className="text-slate-500 text-xs font-semibold">Add a new block/week to the syllabus sequence.</p>
                 </div>
               </div>
 
-              <form onSubmit={handleCreateModule} className="space-y-8 relative z-10">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                  <div className="lg:col-span-6 space-y-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Module Designation</label>
+              <form onSubmit={handleCreateModule} className="space-y-6 relative z-10">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  <div className="md:col-span-6 space-y-2">
+                    <label htmlFor="mod-title" className="text-[10px] font-black text-slate-400 uppercase tracking-wider px-1">Module Title</label>
                     <input 
-                      className="input-premium h-16 text-lg" 
-                      placeholder="e.g. Distributed Systems & Fault Tolerance" 
+                      id="mod-title"
+                      className="input-premium h-12 text-sm" 
+                      placeholder="e.g., Introduction to Distributed Systems" 
                       value={modForm.title} 
                       onChange={e => setModForm(p=>({...p,title:e.target.value}))} 
                       required 
                     />
                   </div>
-                  <div className="lg:col-span-3 space-y-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Week Index</label>
+                  <div className="md:col-span-3 space-y-2">
+                    <label htmlFor="mod-week" className="text-[10px] font-black text-slate-400 uppercase tracking-wider px-1">Week Number</label>
                     <input 
+                      id="mod-week"
                       type="number" min="1" 
-                      className="input-premium h-16 text-lg" 
+                      className="input-premium h-12 text-sm" 
                       placeholder="1" 
                       value={modForm.weekNumber} 
                       onChange={e => setModForm(p=>({...p,weekNumber:e.target.value}))} 
                       required 
                     />
                   </div>
-                  <div className="lg:col-span-3 space-y-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Sequence Order</label>
+                  <div className="md:col-span-3 space-y-2">
+                    <label htmlFor="mod-order" className="text-[10px] font-black text-slate-400 uppercase tracking-wider px-1">Syllabus Order</label>
                     <input 
+                      id="mod-order"
                       type="number" min="1" 
-                      className="input-premium h-16 text-lg" 
+                      className="input-premium h-12 text-sm" 
                       placeholder={String(modules.length + 1)} 
                       value={modForm.order} 
                       onChange={e => setModForm(p=>({...p,order:e.target.value}))} 
                     />
                   </div>
                 </div>
-                <div className="flex gap-4">
-                  <button type="submit" disabled={creating} className="btn btn-primary flex-1 h-16 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary-500/20">
-                    {creating ? <Loader2 size={20} className="animate-spin" /> : <><Zap size={18} fill="currentColor" className="mr-2" /> Commit to Pipeline</>}
+                <div className="flex gap-3">
+                  <button type="submit" disabled={creating} className="btn btn-primary h-12 px-6 text-xs font-bold shadow-sm">
+                    {creating ? <Loader2 size={16} className="animate-spin" /> : 'Create Module'}
                   </button>
-                  <button type="button" onClick={() => setShowModForm(false)} className="btn btn-secondary px-12 h-16 text-[10px] font-black uppercase tracking-widest">
-                    Abort
+                  <button type="button" onClick={() => setShowModForm(false)} className="btn btn-secondary h-12 px-6 text-xs font-bold shadow-sm">
+                    Cancel
                   </button>
                 </div>
               </form>
@@ -237,85 +249,88 @@ export default function ModulesPage() {
         )}
       </AnimatePresence>
 
-      {/* Global Filter Control */}
-      <div className="flex flex-col md:flex-row gap-6">
+      {/* Filter and Search Bar */}
+      <div className="flex gap-4">
         <div className="relative flex-1 group">
-          <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" size={20} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors" size={16} />
           <input 
             type="text" 
-            placeholder="Search curriculum intelligence nodes..."
-            className="w-full bg-white border border-slate-100 pl-16 pr-8 h-18 rounded-[32px] focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all outline-none font-bold shadow-sm text-lg placeholder:text-slate-300"
+            placeholder="Search syllabus modules..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full bg-white border border-slate-200 pl-12 pr-4 h-12 rounded-xl focus:border-primary-500 transition-all outline-none font-bold text-xs shadow-sm"
           />
         </div>
-        <button className="h-18 px-10 rounded-[32px] bg-white border border-slate-100 text-slate-900 font-black flex items-center gap-3 hover:bg-slate-50 transition-all active:scale-95 text-[10px] uppercase tracking-[0.2em] shadow-sm">
-          <Filter size={18} /> Global Sync
-        </button>
       </div>
 
-      {/* Module Feed */}
-      {loading ? (
-        <div className="space-y-8">
-          {[1,2,3].map(i => <div key={i} className="h-28 bg-white border border-slate-100 rounded-[48px] animate-pulse shadow-sm" />)}
+      {/* Modules List */}
+      {modulesLoading ? (
+        <div className="space-y-4">
+          {[1,2,3].map(i => <div key={i} className="h-20 bg-white border border-slate-200 rounded-3xl animate-pulse shadow-sm" />)}
         </div>
-      ) : modules.length === 0 ? (
+      ) : filteredModules.length === 0 ? (
         <motion.div 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[64px] border border-slate-100 p-32 text-center shadow-sm relative group overflow-hidden"
+          initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-3xl border border-slate-200 p-16 text-center shadow-sm relative group overflow-hidden"
         >
-          <div className="absolute inset-0 bg-primary-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-          <div className="relative z-10 space-y-8">
-            <div className="w-28 h-28 bg-slate-50 rounded-[40px] flex items-center justify-center mx-auto border border-slate-100 shadow-inner group-hover:scale-110 transition-transform duration-700">
-              <Box size={48} className="text-slate-200" />
+          <div className="relative z-10 space-y-6">
+            <div className="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto border border-slate-100 shadow-inner">
+              <BookOpen size={36} className="text-slate-300" />
             </div>
-            <div className="space-y-3">
-              <h3 className="text-3xl font-display font-extrabold text-slate-900 tracking-tight">Pipeline Void</h3>
-              <p className="text-slate-500 text-lg font-medium max-w-sm mx-auto leading-relaxed">
+            <div className="space-y-1">
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight">No Modules Found</h3>
+              <p className="text-slate-500 text-sm font-medium max-w-sm mx-auto leading-relaxed">
                 {isTeacher 
-                  ? 'No curriculum nodes have been initialized. Begin deployment using the terminal.' 
-                  : 'The instructor has not synchronized curriculum materials for this environment.'}
+                  ? 'No syllabus modules have been created. Click "Add Module" to start publishing materials.' 
+                  : 'The instructor has not published any syllabus modules for this course yet.'}
               </p>
             </div>
             {isTeacher && (
-              <button onClick={() => setShowModForm(true)} className="btn btn-primary h-16 px-12 font-black uppercase tracking-widest shadow-xl shadow-primary-500/10">Initialize First Block</button>
+              <button onClick={() => setShowModForm(true)} className="btn btn-primary h-12 px-6 text-xs font-bold shadow-sm">Add First Module</button>
             )}
           </div>
         </motion.div>
       ) : (
-        <div className="space-y-8">
-          {modules.sort((a,b) => a.weekNumber - b.weekNumber).map((mod, idx) => {
+        <div className="space-y-4">
+          {filteredModules.sort((a,b) => a.weekNumber - b.weekNumber).map((mod, idx) => {
             const isOpen = expanded[mod._id];
-            const items  = content[mod._id] || [];
+            const items = content[mod._id] || [];
             return (
               <motion.div 
-                initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}
+                initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
                 key={mod._id} 
-                className={`bg-white rounded-[48px] border border-slate-100 transition-all duration-700 overflow-hidden ${isOpen ? 'ring-2 ring-primary-500/20 shadow-2xl shadow-primary-500/10' : 'hover:border-primary-200 shadow-sm'}`}
+                className={`bg-white rounded-3xl border border-slate-200 transition-all duration-300 overflow-hidden ${
+                  isOpen ? 'shadow-md border-primary-200' : 'hover:border-primary-100'
+                }`}
               >
                 <button 
                   onClick={() => toggleModule(mod._id)} 
-                  className={`w-full flex items-center gap-8 p-8 lg:p-10 text-left transition-colors ${isOpen ? 'bg-primary-50/20' : 'hover:bg-slate-50/50'}`}
+                  className={`w-full flex items-center gap-6 p-6 text-left transition-colors ${isOpen ? 'bg-primary-50/10' : 'hover:bg-slate-50/40'}`}
                 >
-                  <div className={`w-20 h-20 rounded-[32px] flex flex-col items-center justify-center font-black transition-all duration-700 shrink-0 border border-slate-100 shadow-sm ${isOpen ? 'bg-primary-500 text-white border-primary-400 -translate-y-1 shadow-xl shadow-primary-500/30' : 'bg-slate-50 text-slate-400'}`}>
-                    <span className="text-[9px] uppercase tracking-tighter opacity-70">Block</span>
-                    <span className="text-2xl leading-none">{mod.weekNumber}</span>
+                  <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-bold transition-all duration-300 shrink-0 border border-slate-100 shadow-sm ${
+                    isOpen ? 'bg-primary-500 text-white border-primary-400' : 'bg-slate-50 text-slate-400'
+                  }`}>
+                    <span className="text-[8px] uppercase tracking-wider opacity-85">Week</span>
+                    <span className="text-xl leading-none">{mod.weekNumber}</span>
                   </div>
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <h4 className={`font-display font-extrabold text-2xl lg:text-3xl tracking-tight truncate transition-colors ${isOpen ? 'text-primary-600' : 'text-slate-900'}`}>{mod.title}</h4>
-                      {isOpen && <Sparkles size={18} className="text-primary-400 animate-pulse" />}
+
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className={`font-bold text-lg tracking-tight truncate transition-colors ${isOpen ? 'text-primary-600' : 'text-slate-900'}`}>{mod.title}</h4>
                     </div>
-                    <div className="flex items-center gap-6">
-                      <span className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        <Cpu size={14} /> {items.length} Intelligence Assets
+                    <div className="flex items-center gap-4">
+                      <span className="flex items-center gap-1 text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                        <Layers size={12} className="text-slate-400" /> {items.length} Resources
                       </span>
                       <div className="h-1.5 w-1.5 rounded-full bg-slate-200" />
-                      <span className="text-[10px] font-black text-primary-500/60 uppercase tracking-widest flex items-center gap-2">
-                         <ShieldCheck size={14} /> Synchronized
+                      <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded shadow-sm uppercase tracking-wider">
+                         Published
                       </span>
                     </div>
                   </div>
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 border border-slate-100 ${isOpen ? 'bg-primary-500 text-white rotate-180 border-primary-400' : 'bg-white text-slate-300'}`}>
-                    <ChevronDown size={28} strokeWidth={3} />
+
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 border border-slate-100 ${isOpen ? 'bg-primary-500 text-white rotate-180 border-primary-400' : 'bg-white text-slate-300'}`}>
+                    <ChevronDown size={18} strokeWidth={2.5} />
                   </div>
                 </button>
 
@@ -325,58 +340,55 @@ export default function ModulesPage() {
                       initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="px-10 pb-12 pt-4">
-                        <div className="h-px bg-slate-50 mb-12" />
+                      <div className="px-6 pb-6 pt-2">
+                        <div className="h-px bg-slate-100 mb-6" />
                         
                         {items.length === 0 ? (
-                          <div className="py-20 text-center rounded-[40px] bg-slate-50/50 border border-slate-100 flex flex-col items-center space-y-6">
-                            <Info size={40} className="text-slate-200" />
-                            <p className="text-slate-400 font-bold text-lg">Transmission buffer empty for this node.</p>
+                          <div className="py-12 text-center rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center gap-2">
+                            <Info size={24} className="text-slate-300" />
+                            <p className="text-slate-400 font-bold text-sm">No course materials uploaded in this module yet.</p>
                           </div>
                         ) : (
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                             {items.map((item, i) => {
                               const config = CONTENT_CONFIG[item.type] || CONTENT_CONFIG.note;
                               const Icon = config.icon;
                               return (
                                 <motion.div 
-                                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }}
+                                  initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}
                                   key={item._id} 
-                                  className="group flex items-center gap-6 p-6 rounded-[32px] bg-white border border-slate-100 hover:border-primary-200 hover:shadow-xl hover:shadow-primary-900/5 transition-all duration-500"
+                                  className="group flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-150 hover:border-primary-200 hover:shadow-md transition-all duration-300"
                                 >
-                                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 border transition-transform group-hover:scale-110 duration-700 ${config.bg} ${config.text} ${config.border}`}>
-                                    <Icon size={28} />
+                                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border transition-transform group-hover:scale-105 duration-300 ${config.bg} ${config.text} ${config.border}`}>
+                                    <Icon size={20} />
                                   </div>
                                   
-                                  <div className="flex-1 min-w-0 space-y-1.5">
-                                    <h5 className="font-display font-extrabold text-slate-800 text-lg truncate group-hover:text-primary-500 transition-colors tracking-tight">{item.title}</h5>
-                                    <div className="flex items-center gap-3">
-                                      <span className={`px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border ${config.bg} ${config.text} ${config.border}`}>
+                                  <div className="flex-1 min-w-0 space-y-1">
+                                    <h5 className="font-bold text-slate-800 text-sm truncate group-hover:text-primary-500 transition-colors tracking-tight">{item.title}</h5>
+                                    <div className="flex items-center gap-2">
+                                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${config.bg} ${config.text} ${config.border}`}>
                                         {config.label}
-                                      </span>
-                                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                        {item.type.toUpperCase()} NODE
                                       </span>
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center gap-3 shrink-0 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0 duration-500">
+                                  <div className="flex items-center gap-2 shrink-0 md:opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0 duration-300">
                                     <a 
                                       href={item.fileUrl} target="_blank" rel="noopener noreferrer" 
                                       aria-label={`Download ${item.title}`}
                                       title={`Download ${item.title}`}
-                                      className="w-12 h-12 rounded-2xl bg-primary-500 text-white hover:bg-primary-600 shadow-xl shadow-primary-500/20 flex items-center justify-center transition-all active:scale-90"
+                                      className="w-9 h-9 rounded-xl bg-primary-500 text-white hover:bg-primary-600 shadow-md shadow-primary-500/10 flex items-center justify-center transition-all active:scale-90"
                                     >
-                                      <Download size={20} />
+                                      <Download size={14} />
                                     </a>
                                     {isTeacher && (
                                       <button 
                                         onClick={() => handleDeleteContent(mod._id, item._id)} 
                                         aria-label={`Delete ${item.title}`}
                                         title={`Delete ${item.title}`}
-                                        className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-100 transition-all active:scale-90"
+                                        className="w-9 h-9 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-100 transition-all active:scale-90"
                                       >
-                                        <Trash2 size={20} />
+                                        <Trash2 size={14} />
                                       </button>
                                     )}
                                   </div>
@@ -387,27 +399,27 @@ export default function ModulesPage() {
                         )}
 
                         {isTeacher && (
-                          <div className="mt-6">
-                            <label htmlFor={`upload-${mod._id}`} className={`group relative flex flex-col items-center justify-center gap-6 w-full py-16 rounded-[48px] border-2 border-dashed font-black transition-all duration-700 cursor-pointer overflow-hidden ${
+                          <div className="mt-4">
+                            <label htmlFor={`upload-${mod._id}`} className={`group relative flex flex-col items-center justify-center gap-4 w-full py-8 rounded-2xl border-2 border-dashed font-black transition-all duration-300 cursor-pointer overflow-hidden ${
                               uploading === mod._id 
                                 ? 'border-primary-400 bg-primary-50 text-primary-600' 
-                                : 'border-slate-100 bg-slate-50 text-slate-400 hover:border-primary-400 hover:bg-primary-50/50 hover:text-primary-600'
+                                : 'border-slate-200 bg-slate-50 text-slate-400 hover:border-primary-400 hover:bg-primary-50/50 hover:text-primary-600'
                             }`}>
                               <div className="absolute inset-0 bg-primary-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                               
                               {uploading === mod._id ? (
                                 <>
-                                  <div className="w-16 h-16 rounded-full border-4 border-primary-100 border-t-primary-500 animate-spin" />
-                                  <span className="uppercase tracking-[0.3em] text-[10px]">Syncing Intelligence Node...</span>
+                                  <div className="w-10 h-10 rounded-full border-4 border-primary-100 border-t-primary-500 animate-spin" />
+                                  <span className="uppercase tracking-widest text-[9px]">Uploading Course Material...</span>
                                 </>
                               ) : (
                                 <>
-                                  <div className="w-20 h-20 rounded-[32px] bg-white border border-slate-100 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-700">
-                                    <Paperclip size={32} />
+                                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-300">
+                                    <Paperclip size={20} />
                                   </div>
-                                  <div className="text-center space-y-2 relative z-10">
-                                    <span className="block uppercase tracking-[0.3em] text-[11px] text-slate-900">Synchronize Syllabus Asset</span>
-                                    <span className="block text-[10px] font-bold opacity-50 uppercase tracking-widest">PDF, MP4, SLIDES, IMAGES (MAX 50MB)</span>
+                                  <div className="text-center space-y-1 relative z-10">
+                                    <span className="block uppercase tracking-wider text-[10px] text-slate-800">Upload Learning Resource</span>
+                                    <span className="block text-[9px] font-bold opacity-60 uppercase tracking-widest">PDF, PPT, MP4, TXT, IMAGES (MAX 50MB)</span>
                                   </div>
                                 </>
                               )}

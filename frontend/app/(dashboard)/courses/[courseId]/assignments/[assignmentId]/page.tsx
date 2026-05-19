@@ -55,47 +55,58 @@ export default function AssignmentDetailPage() {
   const isStudent = user?.role === 'student';
   const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
 
-  const loadData = useCallback(async () => {
-    if (!assignmentId) return;
-    try {
-      const aRes = await courseApi.getAssignment(assignmentId);
-      setAssignment(aRes.data.data);
-      
-      if (isStudent) {
-        try {
-          const sRes = await courseApi.getMySubmission(assignmentId);
-          const subData = sRes.data.data;
-          if (subData) {
-            setSubmission({
-              ...subData,
-              files: subData.fileUrls || subData.files || []
-            });
-          } else {
-            setSubmission(null);
-          }
-        } catch (err) {}
-      }
-      
-      if (isTeacher) {
-        try {
-          const sRes = await courseApi.getSubmissions(assignmentId);
-          const mapped = (sRes.data.data || []).map((sub: Submission) => ({
-            ...sub,
-            files: sub.fileUrls || sub.files || []
-          }));
-          setAllSubmissions(mapped);
-        } catch (err) {}
-      }
-    } catch (err) {
-      toast.error('Failed to load assignment details.');
-    } finally {
-      setLoading(false);
-    }
-  }, [assignmentId, isStudent, isTeacher]);
-
   useEffect(() => {
+    let active = true;
+
+    const loadData = async () => {
+      if (!assignmentId) return;
+      try {
+        const aRes = await courseApi.getAssignment(assignmentId);
+        if (!active) return;
+        setAssignment(aRes.data.data);
+        
+        if (isStudent) {
+          try {
+            const sRes = await courseApi.getMySubmission(assignmentId);
+            const subData = sRes.data.data;
+            if (!active) return;
+            if (subData) {
+              setSubmission({
+                ...subData,
+                files: subData.fileUrls || subData.files || []
+              });
+            } else {
+              setSubmission(null);
+            }
+          } catch (err) {}
+        }
+        
+        if (isTeacher) {
+          try {
+            const sRes = await courseApi.getSubmissions(assignmentId);
+            const mapped = (sRes.data.data || []).map((sub: Submission) => ({
+              ...sub,
+              files: sub.fileUrls || sub.files || []
+            }));
+            if (!active) return;
+            setAllSubmissions(mapped);
+          } catch (err) {}
+        }
+      } catch (err) {
+        toast.error('Failed to load assignment details.');
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
     void loadData();
-  }, [loadData]);
+
+    return () => {
+      active = false;
+    };
+  }, [assignmentId, isStudent, isTeacher]);
 
   const handleFinalSubmit = async (textContent: string, files: File[]) => {
     setSubmitting(true);
