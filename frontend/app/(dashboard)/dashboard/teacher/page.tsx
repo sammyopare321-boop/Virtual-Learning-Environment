@@ -43,7 +43,7 @@ export default function TeacherDashboard() {
 
   const { data: stats = { students: 0, attendance: 0, engagementData: [0,0,0,0,0,0,0], upcomingClasses: [] as UpcomingClass[] } } = useTeacherStats(Boolean(user));
   const { data: rawCourses = [], isLoading: loading } = useTeacherCourses(user?._id, Boolean(user));
-  const courses = (rawCourses || []).filter((c: any) => c !== null && c !== undefined);
+  const courses = (rawCourses as Course[] || []).filter((c): c is Course => c !== null && c !== undefined);
 
   const { students, attendance, engagementData } = stats;
 
@@ -251,7 +251,7 @@ export default function TeacherDashboard() {
             </div>
           ) : !isNewUser && (
             <div className="grid gap-4">
-              {courses.slice(0, 5).map((course: any, idx) => (
+              {courses.slice(0, 5).map((course: Course, idx) => (
                 <div key={course._id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-[20px] bg-white border border-slate-200 hover:border-primary-200 hover:shadow-md transition-all">
                   <div className="flex items-center gap-4 mb-4 sm:mb-0">
                     <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
