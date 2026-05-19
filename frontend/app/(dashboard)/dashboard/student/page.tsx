@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
-import { useStudentDashboard } from '@/hooks/queries/useStudentDashboard';
+import { useStudentDashboard, DashboardCourse, DashboardMilestone } from '@/hooks/queries/useStudentDashboard';
 import { 
   BookOpen, Calendar, Clock, ChevronRight, Activity, 
   Sparkles, TrendingUp, CheckCircle2, AlertCircle,
@@ -11,26 +11,6 @@ import {
   CheckCircle, ArrowRight, Sparkle, Send, Bell
 } from 'lucide-react';
 import { useSocket } from '@/context/SocketContext';
-
-interface Course {
-  _id: string;
-  code: string;
-  title: string;
-  status: string;
-  progress?: number;
-  coverImage?: string;
-}
-
-interface Milestone {
-  title: string;
-  type: string;
-  deadline: string;
-  course?: {
-    _id: string;
-    code: string;
-    title: string;
-  };
-}
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -48,8 +28,8 @@ export default function StudentDashboard() {
     };
   }, [socket, refetch]);
 
-  const courses = (data?.courses ?? []).filter((c: any) => c !== null && c !== undefined);
-  const milestones = (data?.milestones ?? []).filter((m: any) => m && m.course);
+  const courses = (data?.courses ?? []).filter((c: DashboardCourse | null | undefined) => c !== null && c !== undefined) as DashboardCourse[];
+  const milestones = (data?.milestones ?? []).filter((m: DashboardMilestone | null | undefined) => m !== null && m !== undefined && m.course) as DashboardMilestone[];
   const stats = data?.stats ?? {
     overallCompletion: 0,
     assignmentsSubmitted: 0,
@@ -230,7 +210,7 @@ export default function StudentDashboard() {
             </div>
           ) : !isNewStudent && (
             <div className="grid gap-4">
-              {courses.slice(0, 5).map((course: Course, idx) => (
+              {courses.slice(0, 5).map((course: DashboardCourse, idx) => (
                 <div key={course._id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-[20px] bg-white border border-slate-200 hover:border-primary-200 hover:shadow-md transition-all">
                   <div className="flex-1 min-w-0 mr-4">
                     <div className="flex items-center gap-3">
@@ -320,8 +300,8 @@ export default function StudentDashboard() {
               {milestones.length === 0 ? (
                 <p className="text-sm font-medium text-slate-500 text-center py-4">All clear! No assignments due.</p>
               ) : (
-                milestones.slice(0, 4).map((item: any, i) => {
-                  const relatedCourse = courses.find((c: any) => c._id === item.course?._id);
+                milestones.slice(0, 4).map((item: DashboardMilestone, i) => {
+                  const relatedCourse = courses.find((c: DashboardCourse) => c._id === item.course?._id);
                   return (
                     <Link 
                       key={i} 
