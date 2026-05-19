@@ -210,7 +210,7 @@ export default function StudentDashboard() {
             </div>
           ) : !isNewStudent && (
             <div className="grid gap-4">
-              {courses.slice(0, 5).map((course: DashboardCourse, idx) => (
+              {courses.slice(0, 5).map((course: DashboardCourse) => (
                 <div key={course._id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-[20px] bg-white border border-slate-200 hover:border-primary-200 hover:shadow-md transition-all">
                   <div className="flex-1 min-w-0 mr-4">
                     <div className="flex items-center gap-3">
