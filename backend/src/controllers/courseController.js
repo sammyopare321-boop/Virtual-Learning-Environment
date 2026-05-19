@@ -130,3 +130,41 @@ exports.getCourseStudents = asyncHandler(async (req, res, next) => {
     data: enrollments.map(e => e.student),
   });
 });
+
+// @desc    Enroll multiple students in course
+// @route   POST /api/courses/:id/students
+// @access  Private (Teacher/Admin)
+exports.enrollStudents = asyncHandler(async (req, res, next) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ success: false, message: 'Invalid ID' });
+  }
+
+  const course = await Course.findById(req.params.id);
+  if (!course) {
+    return res.status(404).json({ success: false, message: 'Course not found' });
+  }
+
+  const { studentIds } = req.body;
+  if (!Array.isArray(studentIds)) {
+    return res.status(400).json({ success: false, message: 'studentIds must be an array' });
+  }
+
+  const enrollments = [];
+  for (const studentId of studentIds) {
+    if (mongoose.Types.ObjectId.isValid(studentId)) {
+      const enrollment = await Enrollment.findOneAndUpdate(
+        { student: studentId, course: req.params.id },
+        { status: 'active' },
+        { upsert: true, new: true }
+      );
+      enrollments.push(enrollment);
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    count: enrollments.length,
+    data: enrollments
+  });
+});
+

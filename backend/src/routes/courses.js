@@ -8,7 +8,8 @@ const {
   createCourse,
   updateCourse,
   deleteCourse,
-  getCourseStudents
+  getCourseStudents,
+  enrollStudents
 } = require('../controllers/courseController');
 
 router.get('/', protect, getCourses);
@@ -27,5 +28,6 @@ router.put('/:id',
 );
 router.delete('/:id', protect, authorize('teacher', 'admin'), deleteCourse);
 router.get('/:id/students', protect, authorize('teacher', 'admin'), getCourseStudents);
+router.post('/:id/students', protect, authorize('teacher', 'admin'), enrollStudents);
 
 module.exports = router;

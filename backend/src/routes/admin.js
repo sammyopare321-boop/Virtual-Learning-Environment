@@ -39,10 +39,11 @@ const {
 
 // Apply auth to all admin routes
 router.use(protect);
-router.use(authorize('admin'));
 
-// User management
-router.get('/users', getUsers);
+// Allow teachers to view/search users for enrolling students
+router.get('/users', authorize('admin', 'teacher'), getUsers);
+
+router.use(authorize('admin'));
 router.get('/users/:id', getUser);
 router.put('/users/:id', updateUser);
 router.patch('/users/:id/role', changeUserRole);

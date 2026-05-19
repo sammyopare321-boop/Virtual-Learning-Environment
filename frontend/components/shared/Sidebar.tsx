@@ -30,7 +30,8 @@ const studentLinks = [
   ]},
   { group: 'Intelligence', items: [
     { href: '/radar',                label: 'Progress',        icon: Radar },
-    { href: '/notifications',        label: 'Notifications',   icon: Sparkles },
+    { href: '/ai-tutor',             label: 'AI Tutor',        icon: Sparkles },
+    { href: '/notifications',        label: 'Notifications',   icon: Bell },
   ]},
   { group: 'Settings', items: [
     { href: '/profile',              label: 'Settings',        icon: Settings },
@@ -45,7 +46,8 @@ const teacherLinks = [
   ]},
   { group: 'Intelligence', items: [
     { href: '/radar',                label: 'Analytics',       icon: Radar },
-    { href: '/notifications',        label: 'Notifications',   icon: Sparkles },
+    { href: '/ai-tutor',             label: 'AI Planner',      icon: Sparkles },
+    { href: '/notifications',        label: 'Notifications',   icon: Bell },
   ]},
   { group: 'Settings', items: [
     { href: '/profile',              label: 'Settings',        icon: Settings },

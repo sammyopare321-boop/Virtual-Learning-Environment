@@ -11,11 +11,19 @@ const asyncHandler = require('express-async-handler');
 // @route   GET /api/students/me/milestones
 // @access  Private/Student
 exports.getMyMilestones = asyncHandler(async (req, res, next) => {
-  // 1. Get student's enrolled courses
-  const enrollments = await Enrollment.find({ student: req.user.id }).select('course');
-  const courseIds = enrollments.map(e => e.course);
+  let courseIds = [];
+  if (req.user.role === 'student') {
+    const enrollments = await Enrollment.find({ student: req.user.id }).select('course');
+    courseIds = enrollments.map(e => e.course);
+  } else if (req.user.role === 'teacher') {
+    const courses = await Course.find({ teacher: req.user.id }).select('_id');
+    courseIds = courses.map(c => c._id);
+  } else {
+    const courses = await Course.find().select('_id');
+    courseIds = courses.map(c => c._id);
+  }
 
-  if (!courseIds.length) {
+  if (!courseIds || !courseIds.length) {
     return res.status(200).json({ success: true, data: [] });
   }
 
@@ -74,10 +82,19 @@ exports.getMyMilestones = asyncHandler(async (req, res, next) => {
 // @route   GET /api/students/me/stats
 // @access  Private/Student
 exports.getMyStats = asyncHandler(async (req, res, next) => {
-  const enrollments = await Enrollment.find({ student: req.user.id }).select('course');
-  const courseIds = enrollments.map(e => e.course);
+  let courseIds = [];
+  if (req.user.role === 'student') {
+    const enrollments = await Enrollment.find({ student: req.user.id }).select('course');
+    courseIds = enrollments.map(e => e.course);
+  } else if (req.user.role === 'teacher') {
+    const courses = await Course.find({ teacher: req.user.id }).select('_id');
+    courseIds = courses.map(c => c._id);
+  } else {
+    const courses = await Course.find().select('_id');
+    courseIds = courses.map(c => c._id);
+  }
 
-  if (!courseIds.length) {
+  if (!courseIds || !courseIds.length) {
     return res.status(200).json({
       success: true,
       data: { overallCompletion: 0, assignmentsSubmitted: 0 }

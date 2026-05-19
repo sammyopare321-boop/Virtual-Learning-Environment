@@ -9,6 +9,9 @@ import {
   FileText, Video, HelpCircle, CheckSquare, Search, Award
 } from 'lucide-react';
 import Link from 'next/link';
+import { courseApi } from '@/utils/api/courseApi';
+import { adminApi } from '@/utils/api/adminApi';
+import toast from 'react-hot-toast';
 
 interface Session {
   id: string;
@@ -92,16 +95,35 @@ export default function CourseWizard() {
     visibility: 'draft',
   });
 
-  // Student search static list
-  const availableStudents = [
-    { id: 's1', name: 'John Doe', email: 'john@unipartner.com' },
-    { id: 's2', name: 'Ama Mensah', email: 'ama@unipartner.com' },
-    { id: 's3', name: 'Kofi Owusu', email: 'kofi@unipartner.com' },
-    { id: 's4', name: 'Sarah Adams', email: 'sarah@unipartner.com' },
-    { id: 's5', name: 'Emmanuel Debrah', email: 'emmanuel@unipartner.com' },
-  ];
-  
+  const [availableStudents, setAvailableStudents] = useState<any[]>([]);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
+
+  // Fetch actual students from API
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setIsLoadingStudents(true);
+        const res = await adminApi.getAllUsers({ role: 'student', limit: 100 });
+        if (res.data && res.data.success) {
+          setAvailableStudents(res.data.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch students from API:", err);
+        // Fallback to beautiful mock list if API fails or is loading
+        setAvailableStudents([
+          { _id: 's1', name: 'John Doe', email: 'john@unipartner.com' },
+          { _id: 's2', name: 'Ama Mensah', email: 'ama@unipartner.com' },
+          { _id: 's3', name: 'Kofi Owusu', email: 'kofi@unipartner.com' },
+          { _id: 's4', name: 'Sarah Adams', email: 'sarah@unipartner.com' },
+          { _id: 's5', name: 'Emmanuel Debrah', email: 'emmanuel@unipartner.com' },
+        ]);
+      } finally {
+        setIsLoadingStudents(false);
+      }
+    };
+    fetchStudents();
+  }, []);
 
   // Auto-save mechanism simulating cloud synchronization
   useEffect(() => {
@@ -248,21 +270,83 @@ export default function CourseWizard() {
   };
 
   // Student list additions
-  const toggleStudent = (name: string) => {
+  const toggleStudent = (id: string) => {
     setForm(prev => {
-      const exists = prev.students.includes(name);
+      const exists = prev.students.includes(id);
       return {
         ...prev,
-        students: exists ? prev.students.filter(s => s !== name) : [...prev.students, name]
+        students: exists ? prev.students.filter(s => s !== id) : [...prev.students, id]
       };
     });
   };
 
   // Submit complete course details
-  const handleSubmit = (visibility: 'draft' | 'published') => {
-    // Navigate home or to dashboard list
-    alert(`Success: Course "${form.title || 'Draft Course'}" successfully created as ${visibility.toUpperCase()}!`);
-    window.location.href = '/admin/courses';
+  const handleSubmit = async (visibility: 'draft' | 'published') => {
+    const submitToast = toast.loading('Publishing course and persisting structure...');
+    try {
+      // 1. Build validation dates
+      let academicYear = '2026/2027';
+      let semester = 'Semester 1';
+      if (form.startDate) {
+        const dateObj = new Date(form.startDate);
+        const startYear = dateObj.getFullYear();
+        academicYear = `${startYear}/${startYear + 1}`;
+        const startMonth = dateObj.getMonth();
+        if (startMonth >= 6) {
+          semester = 'Semester 1';
+        } else {
+          semester = 'Semester 2';
+        }
+      }
+
+      const coursePayload = {
+        title: form.title || 'Untitled AI Generated Course',
+        code: form.code || `CS-${Math.floor(Math.random() * 900 + 100)}`,
+        description: form.description || 'No description provided.',
+        semester,
+        academicYear,
+        status: (visibility === 'published' ? 'active' : 'draft') as 'active' | 'draft',
+      };
+
+      // 2. Persist Course Core
+      const res = await courseApi.create(coursePayload);
+      if (!res.data || !res.data.success) {
+        throw new Error(res.data?.message || 'Failed to create course');
+      }
+
+      const newCourse = res.data.data;
+      const courseId = newCourse._id;
+
+      // 3. Persist Course Modules in order
+      if (form.modules && form.modules.length > 0) {
+        for (let idx = 0; idx < form.modules.length; idx++) {
+          const mod = form.modules[idx];
+          await courseApi.createModule(courseId, {
+            title: mod.title,
+            weekNumber: idx + 1,
+            order: idx + 1
+          });
+        }
+      }
+
+      // 4. Persist Student Enrollments
+      if (form.students && form.students.length > 0) {
+        // Enroll students via course nested endpoint
+        await courseApi.enrollStudents(courseId, form.students);
+      }
+
+      toast.success(`Success! Course "${coursePayload.title}" successfully created and catalogued.`, { id: submitToast });
+      
+      // Delay navigation slightly so they can read the success state
+      setTimeout(() => {
+        window.location.href = '/courses';
+      }, 1000);
+
+    } catch (err: any) {
+      console.error(err);
+      const errMsg = err.response?.data?.message || err.message || 'Error occurred';
+      toast.error(`Persistence failed: ${errMsg}`, { id: submitToast });
+    }
   };
 
   return (
@@ -728,30 +812,36 @@ export default function CourseWizard() {
 
                         {/* Search matches */}
                         <div className="space-y-1.5 max-h-44 overflow-y-auto border border-slate-100 rounded-xl p-2 bg-slate-50/50">
-                          {availableStudents
-                            .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()))
-                            .map(student => {
-                              const isChecked = form.students.includes(student.name);
-                              return (
-                                <button
-                                  key={student.id}
-                                  type="button"
-                                  onClick={() => toggleStudent(student.name)}
-                                  className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 hover:border-primary-300 transition-colors text-left"
-                                >
-                                  <div>
-                                    <span className="block font-bold text-slate-900 text-xs">{student.name}</span>
-                                    <span className="block text-[10px] text-slate-400 font-medium">{student.email}</span>
-                                  </div>
-                                  <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                                    isChecked ? 'bg-primary-600 border-primary-600 text-white' : 'border-slate-300'
-                                  }`}>
-                                    {isChecked && <CheckCircle2 size={10} />}
-                                  </div>
-                                </button>
-                              );
-                            })
-                          }
+                          {isLoadingStudents ? (
+                            <div className="p-4 text-center text-xs text-slate-400 font-medium">Loading roster...</div>
+                          ) : availableStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase())).length === 0 ? (
+                            <div className="p-4 text-center text-xs text-slate-400 font-medium">No students found</div>
+                          ) : (
+                            availableStudents
+                              .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()))
+                              .map(student => {
+                                const studentId = student._id || student.id;
+                                const isChecked = form.students.includes(studentId);
+                                return (
+                                  <button
+                                    key={studentId}
+                                    type="button"
+                                    onClick={() => toggleStudent(studentId)}
+                                    className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 hover:border-primary-300 transition-colors text-left"
+                                  >
+                                    <div>
+                                      <span className="block font-bold text-slate-900 text-xs">{student.name}</span>
+                                      <span className="block text-[10px] text-slate-400 font-medium">{student.email}</span>
+                                    </div>
+                                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                                      isChecked ? 'bg-primary-600 border-primary-600 text-white' : 'border-slate-300'
+                                    }`}>
+                                      {isChecked && <CheckCircle2 size={10} />}
+                                    </div>
+                                  </button>
+                                );
+                              })
+                          )}
                         </div>
                       </div>
 

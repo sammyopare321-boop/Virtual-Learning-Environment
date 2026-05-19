@@ -8,6 +8,7 @@ export const courseApi = {
   update:      (id: string, data: Partial<Course>)   => api.put(`/api/courses/${id}`, data),
   delete:      (id: string)    => api.delete(`/api/courses/${id}`),
   getStudents: (id: string)    => api.get(`/api/courses/${id}/students`),
+  enrollStudents: (id: string, studentIds: string[]) => api.post(`/api/courses/${id}/students`, { studentIds }),
   enroll:      (id: string)    => api.post(`/api/courses/${id}/enroll`),
   drop:        (id: string)    => api.delete(`/api/courses/${id}/enroll`),
   getMyCourses: ()             => api.get('/api/students/me/courses'),

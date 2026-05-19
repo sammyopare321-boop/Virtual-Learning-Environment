@@ -1,7 +1,7 @@
-'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useStudentDashboard, DashboardCourse, DashboardMilestone } from '@/hooks/queries/useStudentDashboard';
 import { 
@@ -13,6 +13,8 @@ import {
 import { useSocket } from '@/context/SocketContext';
 
 export default function StudentDashboard() {
+  const router = useRouter();
+  const [aiPrompt, setAiPrompt] = useState('');
   const { user } = useAuth();
   const { socket } = useSocket();
   const { data, isLoading, isError, refetch } = useStudentDashboard(Boolean(user));
@@ -266,21 +268,46 @@ export default function StudentDashboard() {
             
             <p className="text-slate-300 text-sm font-medium mb-4">What shall we study today?</p>
             <div className="space-y-2 mb-5">
-              <button className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 text-sm font-bold transition-colors">
+              <button 
+                onClick={() => router.push('/ai-tutor?prompt=Explain Programming loops')}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 text-sm font-bold transition-colors"
+              >
                 Explain Programming loops <ArrowRight size={14} className="text-slate-500" />
               </button>
-              <button className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 text-sm font-bold transition-colors">
+              <button 
+                onClick={() => router.push('/ai-tutor?prompt=Generate practice questions on databases')}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 text-sm font-bold transition-colors"
+              >
                 Generate practice questions <ArrowRight size={14} className="text-slate-500" />
               </button>
-              <button className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 text-sm font-bold transition-colors">
+              <button 
+                onClick={() => router.push('/ai-tutor?prompt=Help me solve my assignment')}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 text-sm font-bold transition-colors"
+              >
                 Help me solve assignment <ArrowRight size={14} className="text-slate-500" />
               </button>
             </div>
             
             <div className="relative">
-              <input type="text" placeholder="Ask AI..." className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-500 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all" />
+              <input 
+                type="text" 
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && aiPrompt.trim()) {
+                    router.push(`/ai-tutor?prompt=${encodeURIComponent(aiPrompt)}`);
+                  }
+                }}
+                placeholder="Ask AI..." 
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-500 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all" 
+              />
               <button 
                 type="button" 
+                onClick={() => {
+                  if (aiPrompt.trim()) {
+                    router.push(`/ai-tutor?prompt=${encodeURIComponent(aiPrompt)}`);
+                  }
+                }}
                 aria-label="Ask AI Tutor"
                 title="Ask AI Tutor"
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-primary-600 rounded-lg text-white hover:bg-primary-500 transition-colors"
