@@ -50,7 +50,7 @@ function LoginContent() {
   const initGoogleAuth = () => {
     if (typeof window !== 'undefined' && (window as any).google) {
       (window as any).google.accounts.id.initialize({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "862517578566686-yourdefaultid.apps.googleusercontent.com",
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
         callback: handleGoogleCredentialResponse,
       });
 
