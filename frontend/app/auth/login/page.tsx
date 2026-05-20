@@ -14,14 +14,64 @@ import {
 } from 'lucide-react';
 
 import { Suspense } from 'react';
+import Script from 'next/script';
 
 function LoginContent() {
-  const { login, user } = useAuth();
+  const { login, loginWithGoogle, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [form, setForm] = useState({ email: '', password: '', rememberMe: false });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleGoogleCredentialResponse = async (response: any) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const loggedInUser = await loginWithGoogle(response.credential);
+      toast.success('Welcome to UniLearn via Google!');
+      
+      const redirectTo = searchParams.get('redirect');
+      if (redirectTo) {
+        router.push(redirectTo);
+      } else {
+        router.push(`/dashboard/${loggedInUser.role}`);
+      }
+    } catch (err: unknown) {
+      const axiosErr = err as AxiosError<{ message: string }>;
+      const msg = axiosErr.response?.data?.message || 'Google Sign-In failed';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initGoogleAuth = () => {
+    if (typeof window !== 'undefined' && (window as any).google) {
+      (window as any).google.accounts.id.initialize({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "862517578566686-yourdefaultid.apps.googleusercontent.com",
+        callback: handleGoogleCredentialResponse,
+      });
+
+      (window as any).google.accounts.id.renderButton(
+        document.getElementById("google-signin-btn"),
+        { 
+          theme: "outline", 
+          size: "large",
+          shape: "rectangular",
+          text: "signin_with",
+          width: 200
+        }
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).google) {
+      initGoogleAuth();
+    }
+  }, []);
 
   // Auto-redirect if already logged in
   useEffect(() => {
@@ -281,11 +331,9 @@ function LoginContent() {
               <div className="relative flex justify-center text-[10px] font-black uppercase tracking-[0.3em]"><span className="bg-white px-6 text-slate-300">Social Authentication</span></div>
             </div>
 
-            <div className="grid grid-cols-2 gap-5">
-              <button aria-label="Login with Google" title="Google" className="flex items-center justify-center gap-3 h-14 rounded-2xl bg-white border border-slate-200 text-slate-700 text-sm font-black hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all hover:-translate-y-0.5 active:scale-95 uppercase tracking-widest">
-                <Search size={20} className="text-slate-400" /> Google
-              </button>
-              <button aria-label="Login with Github" title="Github" className="flex items-center justify-center gap-3 h-14 rounded-2xl bg-white border border-slate-200 text-slate-700 text-sm font-black hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all hover:-translate-y-0.5 active:scale-95 uppercase tracking-widest">
+            <div className="grid grid-cols-2 gap-5 items-center">
+              <div id="google-signin-btn" className="flex items-center justify-center h-14 w-full" />
+              <button type="button" aria-label="Login with Github" title="Github" className="flex items-center justify-center gap-3 h-14 rounded-2xl bg-white border border-slate-200 text-slate-700 text-sm font-black hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all hover:-translate-y-0.5 active:scale-95 uppercase tracking-widest">
                 <Globe size={20} className="text-slate-400" /> Github
               </button>
             </div>
@@ -308,6 +356,11 @@ function LoginContent() {
           </div>
         </div>
       </main>
+      <Script 
+        src="https://accounts.google.com/gsi/client" 
+        strategy="lazyOnload" 
+        onLoad={initGoogleAuth} 
+      />
     </div>
   );
 }

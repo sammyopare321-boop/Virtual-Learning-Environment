@@ -1,6 +1,6 @@
-'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Script from 'next/script';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -45,7 +45,54 @@ export default function RegisterPage() {
     number: /[0-9]/.test(form.password),
   }), [form.password]);
 
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
+  
+  const formRef = useRef(form);
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
+
+  const handleGoogleCredentialResponse = async (response: any) => {
+    setLoading(true);
+    try {
+      const currentForm = formRef.current;
+      const loggedInUser = await loginWithGoogle(response.credential, currentForm.role, currentForm.department);
+      toast.success('Account created! Welcome to UniLearn.');
+      router.push(`/dashboard/${loggedInUser.role}`);
+    } catch (err: unknown) {
+      const axiosErr = err as AxiosError<{ message: string }>;
+      const msg = axiosErr.response?.data?.message || 'Google Registration failed';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initGoogleAuth = () => {
+    if (typeof window !== 'undefined' && (window as any).google) {
+      (window as any).google.accounts.id.initialize({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "862517578566686-yourdefaultid.apps.googleusercontent.com",
+        callback: handleGoogleCredentialResponse,
+      });
+
+      (window as any).google.accounts.id.renderButton(
+        document.getElementById("google-signup-btn"),
+        { 
+          theme: "outline", 
+          size: "large",
+          shape: "rectangular",
+          text: "signup_with",
+          width: 250
+        }
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).google) {
+      initGoogleAuth();
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -341,6 +388,15 @@ export default function RegisterPage() {
               </button>
             </form>
 
+            <div className="relative my-8">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
+              <div className="relative flex justify-center text-[10px] font-black uppercase tracking-[0.3em]"><span className="bg-white px-6 text-slate-300">Social Registration</span></div>
+            </div>
+
+            <div className="flex justify-center w-full">
+              <div id="google-signup-btn" className="flex items-center justify-center h-14 w-full" />
+            </div>
+
             <div className="mt-12 pt-10 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-6">
               <p className="text-base font-bold text-slate-500">
                 Already registered?{' '}
@@ -361,6 +417,11 @@ export default function RegisterPage() {
           </div>
         </motion.div>
       </main>
+      <Script 
+        src="https://accounts.google.com/gsi/client" 
+        strategy="lazyOnload" 
+        onLoad={initGoogleAuth} 
+      />
     </div>
   );
 }

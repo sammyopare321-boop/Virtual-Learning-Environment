@@ -1,3 +1,5 @@
+jest.mock('axios');
+const axios = require('axios');
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { app, server } = require('../src/server');
@@ -18,6 +20,7 @@ describe('Auth Endpoints', () => {
 
   beforeEach(async () => {
     await User.deleteMany();
+    jest.clearAllMocks();
   });
 
   describe('POST /api/auth/register', () => {
@@ -82,6 +85,72 @@ describe('Auth Endpoints', () => {
         });
 
       expect(res.statusCode).toEqual(401);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
+  describe('POST /api/auth/google', () => {
+    it('should authenticate and register a new google user', async () => {
+      // Mock Google Token Verification response
+      axios.get.mockResolvedValue({
+        data: {
+          email: 'google-new@example.com',
+          name: 'Google User',
+          email_verified: 'true',
+          picture: 'https://avatar.url'
+        }
+      });
+
+      const res = await request(app)
+        .post('/api/auth/google')
+        .send({ token: 'mock-google-id-token' });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body).toHaveProperty('token');
+      expect(res.body.data.email).toEqual('google-new@example.com');
+
+      // Check database to ensure user was created
+      const dbUser = await User.findOne({ email: 'google-new@example.com' });
+      expect(dbUser).toBeDefined();
+      expect(dbUser.role).toEqual('student');
+    });
+
+    it('should authenticate and login an existing google user', async () => {
+      // Pre-create user in database
+      await User.create({
+        name: 'Existing Google',
+        email: 'google-exist@example.com',
+        password: 'some-random-password',
+        role: 'teacher'
+      });
+
+      // Mock Google Token Verification response
+      axios.get.mockResolvedValue({
+        data: {
+          email: 'google-exist@example.com',
+          name: 'Existing Google',
+          email_verified: 'true',
+          picture: 'https://avatar.url'
+        }
+      });
+
+      const res = await request(app)
+        .post('/api/auth/google')
+        .send({ token: 'mock-google-id-token' });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body).toHaveProperty('token');
+      expect(res.body.data.role).toEqual('teacher'); // Retained original role!
+    });
+
+    it('should fail if no token is provided', async () => {
+      const res = await request(app)
+        .post('/api/auth/google')
+        .send({});
+
+      expect(res.statusCode).toEqual(400);
       expect(res.body.success).toBe(false);
     });
   });

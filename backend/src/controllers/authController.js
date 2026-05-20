@@ -1,5 +1,7 @@
 const User = require('../models/User');
 const asyncHandler = require('express-async-handler');
+const axios = require('axios');
+const crypto = require('crypto');
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -129,3 +131,63 @@ const sendTokenResponse = (user, statusCode, res) => {
       data: userData,
     });
 };
+
+// @desc    Login or Register user with Google
+// @route   POST /api/auth/google
+// @access  Public
+exports.googleLogin = asyncHandler(async (req, res, next) => {
+  const { token, role, department } = req.body;
+
+  if (!token) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please provide a Google ID token',
+    });
+  }
+
+  try {
+    // 1. Verify token with Google's tokeninfo API
+    const googleRes = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
+    const { email, name, email_verified, picture } = googleRes.data;
+
+    if (!email_verified || email_verified === 'false') {
+      return res.status(400).json({
+        success: false,
+        message: 'Google email is not verified',
+      });
+    }
+
+    // 2. Check if user already exists
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // 3. User does not exist, so register them!
+      let resolvedRole = role || 'student';
+      // Security: Prevent registration as admin via Google Sign-In
+      if (resolvedRole === 'admin') {
+        resolvedRole = 'student';
+      }
+
+      // Generate a random secure password so mongoose validation succeeds
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+
+      user = await User.create({
+        name: name || email.split('@')[0],
+        email,
+        password: randomPassword,
+        role: resolvedRole,
+        department: department || 'General',
+        avatar: picture || 'no-photo.jpg',
+      });
+    }
+
+    // 4. Send token response
+    sendTokenResponse(user, 200, res);
+  } catch (error) {
+    console.error('[Google OAuth Error]', error.message);
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid Google token or OAuth error',
+    });
+  }
+});

@@ -18,6 +18,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
+  loginWithGoogle: (googleToken: string, role?: string, department?: string) => Promise<User>;
   logout: () => void;
   isImpersonating: () => boolean;
   exitImpersonation: () => Promise<void>;
@@ -50,6 +51,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await authApi.login({ email, password });
+    const { data, token } = res.data;
+
+    applySessionToken(token);
+    setUser(data);
+
+    return data;
+  }, []);
+
+  const loginWithGoogle = useCallback(async (googleToken: string, role?: string, department?: string) => {
+    const res = await authApi.googleLogin({ token: googleToken, role, department });
     const { data, token } = res.data;
 
     applySessionToken(token);
@@ -99,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, loading, login, logout, isImpersonating, exitImpersonation, updateUser
+      user, loading, login, loginWithGoogle, logout, isImpersonating, exitImpersonation, updateUser
     }}>
       {children}
     </AuthContext.Provider>

@@ -5,6 +5,7 @@ const {
   logout,
   getMe,
   updateMe,
+  googleLogin,
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -23,6 +24,7 @@ const { validate, schemas } = require('../middleware/validation');
 
 router.post('/register', validate(schemas.register), register);
 router.post('/login', loginLimiter, validate(schemas.login), login);
+router.post('/google', googleLogin);
 router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
 router.put('/me', protect, updateMe);
