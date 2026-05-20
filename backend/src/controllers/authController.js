@@ -148,7 +148,15 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
   try {
     // 1. Verify token with Google's tokeninfo API
     const googleRes = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
-    const { email, name, email_verified, picture } = googleRes.data;
+    const { email, name, email_verified, picture, aud } = googleRes.data;
+
+    // Security: Verify audience to ensure the token was issued for our app
+    if (aud !== process.env.GOOGLE_CLIENT_ID) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token audience mismatch',
+      });
+    }
 
     if (!email_verified || email_verified === 'false') {
       return res.status(400).json({
@@ -178,6 +186,7 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
         role: resolvedRole,
         department: department || 'General',
         avatar: picture || 'no-photo.jpg',
+        authProvider: 'google',
       });
     }
 

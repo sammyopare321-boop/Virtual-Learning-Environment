@@ -97,7 +97,8 @@ describe('Auth Endpoints', () => {
           email: 'google-new@example.com',
           name: 'Google User',
           email_verified: 'true',
-          picture: 'https://avatar.url'
+          picture: 'https://avatar.url',
+          aud: process.env.GOOGLE_CLIENT_ID
         }
       });
 
@@ -131,7 +132,8 @@ describe('Auth Endpoints', () => {
           email: 'google-exist@example.com',
           name: 'Existing Google',
           email_verified: 'true',
-          picture: 'https://avatar.url'
+          picture: 'https://avatar.url',
+          aud: process.env.GOOGLE_CLIENT_ID
         }
       });
 
