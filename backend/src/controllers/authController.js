@@ -49,6 +49,14 @@ exports.login = asyncHandler(async (req, res, next) => {
     });
   }
 
+  // Prevent Google users from logging in manually (they don't know their random password)
+  if (user.authProvider === 'google') {
+    return res.status(401).json({
+      success: false,
+      message: 'This account was created using Google Sign-In. Please click the Google button to log in.',
+    });
+  }
+
   // Check if password matches
   const isMatch = await user.matchPassword(password);
 
