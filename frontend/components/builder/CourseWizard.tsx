@@ -355,9 +355,10 @@ export default function CourseWizard() {
         window.location.href = '/courses';
       }, 1000);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      const errMsg = err.response?.data?.message || err.message || 'Error occurred';
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
+      const errMsg = error.response?.data?.message || error.message || 'Error occurred';
       toast.error(`Persistence failed: ${errMsg}`, { id: submitToast });
     }
   };
