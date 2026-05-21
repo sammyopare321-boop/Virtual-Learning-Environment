@@ -162,6 +162,7 @@ export default function CourseWizard() {
       else if (form.title.length < 5) activeWarnings.push('Course title should be at least 5 characters');
       if (!form.code) activeWarnings.push('Please enter a unique catalog code');
       if (!form.description) activeWarnings.push('Please provide a short course summary');
+      else if (form.description.length < 10) activeWarnings.push('Course summary must be at least 10 characters');
       if (!form.category) activeWarnings.push('Please select a course category');
     } else if (currentStep === 1) {
       if (!form.startDate) activeWarnings.push('Please configure a valid start date');
@@ -357,8 +358,11 @@ export default function CourseWizard() {
 
     } catch (err: unknown) {
       console.error(err);
-      const error = err as { response?: { data?: { message?: string } }; message?: string };
-      const errMsg = error.response?.data?.message || error.message || 'Error occurred';
+      const error = err as { response?: { data?: { message?: string, details?: string[] } }; message?: string };
+      const details = error.response?.data?.details;
+      const errMsg = details && details.length > 0 
+        ? details.join(', ') 
+        : (error.response?.data?.message || error.message || 'Error occurred');
       toast.error(`Persistence failed: ${errMsg}`, { id: submitToast });
     }
   };
