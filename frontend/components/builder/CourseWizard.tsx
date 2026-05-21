@@ -196,6 +196,9 @@ export default function CourseWizard() {
         description: 'Dive deep into server components, routing architectures, state coordination, and performance engineering inside React 19.',
         category: 'Technology',
         level: 'advanced',
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        schedule: [{ id: 's1', day: 'Monday', time: '10:00 AM - 12:00 PM' }],
         modules: [
           {
             id: 'm1',
@@ -975,8 +978,22 @@ export default function CourseWizard() {
                   </div>
                 )}
 
+                {/* Validation Warnings */}
+                {warnings.length > 0 && (
+                  <div className="mt-8 p-4 bg-red-50 border border-red-100 rounded-xl space-y-1">
+                    <div className="flex items-center gap-2 text-red-600 font-bold text-xs mb-2 uppercase tracking-widest">
+                      <AlertCircle size={14} /> Action Required
+                    </div>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {warnings.map((warn, i) => (
+                        <li key={i} className="text-xs text-red-600 font-medium">{warn}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 {/* Footer Controls */}
-                <div className="mt-12 pt-6 border-t border-slate-100 flex items-center justify-between">
+                <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
                   <button 
                     type="button"
                     onClick={handlePrev}
