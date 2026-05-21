@@ -227,7 +227,9 @@ export default function CourseWizard() {
   // Auto-start AI generation if requested via URL
   useEffect(() => {
     if (searchParams.get('ai') === 'true') {
-      handleAiGenerate();
+      setTimeout(() => {
+        handleAiGenerate();
+      }, 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
