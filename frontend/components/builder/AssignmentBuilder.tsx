@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -10,7 +10,7 @@ import {
   Image as ImageIcon, Link as LinkIcon, Sparkles, 
   FileText, Calendar, Target, Globe, Shield, 
   Plus, Trash2, ArrowRight, Save, Loader2,
-  Heading1, Heading2, Quote
+  Heading1, Heading2, Quote, ArrowLeft, ChevronUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -98,6 +98,25 @@ export default function AssignmentBuilder({ courseId }: { courseId: string }) {
   const [points, setPoints] = useState(100);
   const [dueDate, setDueDate] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (!mainEl) return;
+    
+    const onScroll = () => setShowScrollTop(mainEl.scrollTop > 300);
+    mainEl.addEventListener('scroll', onScroll, { passive: true });
+    return () => mainEl.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const editor = useEditor({
     extensions: [
@@ -143,6 +162,14 @@ export default function AssignmentBuilder({ courseId }: { courseId: string }) {
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
           <div className="flex-1">
+             <button
+               onClick={() => router.push(`/courses/${courseId}/assignments`)}
+               aria-label="Back to assignments"
+               className="inline-flex items-center gap-2 text-slate-400 hover:text-blue-600 font-bold text-sm uppercase tracking-widest transition-colors group mb-6"
+             >
+               <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+               Back to Assignments
+             </button>
              <div className="flex items-center gap-3 text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] mb-4">
                 <Sparkles size={14} />
                 Strategic Assignment Builder
@@ -262,6 +289,17 @@ export default function AssignmentBuilder({ courseId }: { courseId: string }) {
 
         </div>
       </div>
+
+      {/* Scroll to top FAB */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          aria-label="Scroll to top"
+          className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-2xl bg-slate-900 text-white shadow-2xl shadow-slate-900/30 flex items-center justify-center hover:bg-blue-600 hover:-translate-y-1 active:scale-95 transition-all duration-300"
+        >
+          <ChevronUp size={22} strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   );
 }
