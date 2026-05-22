@@ -39,7 +39,19 @@ export interface Course {
   } | string;
   students?: string[] | User[];
   modules?: Module[];
+  // Extended wizard fields
+  category?: string;
+  level?: 'beginner' | 'intermediate' | 'advanced';
+  startDate?: string;
+  endDate?: string;
+  enrollmentType?: 'open' | 'invite';
+  maxStudents?: number;
+  gradingSystem?: 'percentage' | 'passfail';
+  assignmentsEnabled?: boolean;
+  certificateEnabled?: boolean;
+  schedule?: { day: string; time: string }[];
 }
+
 
 export interface Quiz {
   _id: string;

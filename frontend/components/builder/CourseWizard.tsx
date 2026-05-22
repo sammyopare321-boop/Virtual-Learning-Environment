@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useReducer, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Sparkles, Calendar, Layout, Users, Settings, Clock, Plus, Trash2, 
-  Play, CheckCircle2, ArrowLeft, ArrowRight, Save, X, ChevronRight, 
-  Info, Lock, AlertCircle, Sparkle, BookOpen, Send, CalendarDays,
-  FileText, Video, HelpCircle, CheckSquare, Search, Award
+  CheckCircle2, ArrowLeft, ArrowRight, Save, X,
+  AlertCircle, Sparkle, FileText, Video, HelpCircle, Search
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -51,17 +51,18 @@ interface CourseFormState {
   modules: Module[];
   enrollmentType: 'open' | 'invite';
   students: string[];
-  maxStudents: string;
+  maxStudents: number;
   gradingSystem: 'percentage' | 'passfail';
   assignmentsEnabled: boolean;
   certificateEnabled: boolean;
   visibility: 'draft' | 'published';
 }
 
-let idCounter = 0;
-function getUniqueId(prefix: string): string {
-  idCounter += 1;
-  return `${prefix}-${Date.now()}-${idCounter}`;
+function getUniqueId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 const STEPS = [
@@ -73,13 +74,22 @@ const STEPS = [
 ];
 
 export default function CourseWizard() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
-  const [direction, setDirection] = useState(0);
   
-  // Auto-save state
-  const [autoSaveStatus, setAutoSaveStatus] = useState<string>('Saved just now');
-  const [isAutoSaving, setIsAutoSaving] = useState(false);
-  
+  // Auto-save status — initialized from localStorage to show restore message immediately
+  const [autoSaveStatus, setAutoSaveStatus] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('courseWizard_draft');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.title || parsed?.code) return 'Draft restored from local save';
+      }
+    } catch { /* ignore */ }
+    return 'Saved just now';
+  });
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // AI assist state
   const [isAiGenerating, setIsAiGenerating] = useState(false);
 
@@ -88,24 +98,34 @@ export default function CourseWizard() {
   const defaultTitle = searchParams.get('title') || '';
   const defaultCode = searchParams.get('code') || '';
 
-  // Form core state
-  const [form, setForm] = useState<CourseFormState>({
-    title: defaultTitle,
-    code: defaultCode,
-    description: '',
-    category: '',
-    level: 'beginner',
-    startDate: '',
-    endDate: '',
-    schedule: [],
-    modules: [],
-    enrollmentType: 'open',
-    students: [],
-    maxStudents: '50',
-    gradingSystem: 'percentage',
-    assignmentsEnabled: true,
-    certificateEnabled: true,
-    visibility: 'draft',
+  // Form core state — lazy initializer merges localStorage draft on first render
+  const [form, setForm] = useState<CourseFormState>(() => {
+    const defaults: CourseFormState = {
+      title: defaultTitle,
+      code: defaultCode,
+      description: '',
+      category: '',
+      level: 'beginner',
+      startDate: '',
+      endDate: '',
+      schedule: [],
+      modules: [],
+      enrollmentType: 'open',
+      students: [],
+      maxStudents: 50,
+      gradingSystem: 'percentage',
+      assignmentsEnabled: true,
+      certificateEnabled: true,
+      visibility: 'draft',
+    };
+    try {
+      const saved = localStorage.getItem('courseWizard_draft');
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<CourseFormState>;
+        if (parsed.title || parsed.code) return { ...defaults, ...parsed };
+      }
+    } catch { /* ignore corrupt drafts */ }
+    return defaults;
   });
 
   const [availableStudents, setAvailableStudents] = useState<StudentOption[]>([]);
@@ -138,21 +158,20 @@ export default function CourseWizard() {
     fetchStudents();
   }, []);
 
-  // Auto-save mechanism simulating cloud synchronization
+  // Auto-save: persist form draft to localStorage on every change
   useEffect(() => {
-    const timer = setInterval(() => {
-      setIsAutoSaving(true);
-      setAutoSaveStatus('Saving changes...');
-      
-      setTimeout(() => {
-        setIsAutoSaving(false);
-        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        setAutoSaveStatus(`Auto-saved at ${now}`);
-      }, 800);
-    }, 12000);
+    try {
+      localStorage.setItem('courseWizard_draft', JSON.stringify(form));
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      // Defer state update to avoid synchronous setState in effect
+      const id = setTimeout(() => setAutoSaveStatus(`Draft saved at ${now}`), 0);
+      return () => clearTimeout(id);
+    } catch {
+      // localStorage unavailable
+    }
+  }, [form]);
 
-    return () => clearInterval(timer);
-  }, []);
+
 
   // Real-time validation system calculated dynamically during render
   const warnings: string[] = (() => {
@@ -167,6 +186,9 @@ export default function CourseWizard() {
     } else if (currentStep === 1) {
       if (!form.startDate) activeWarnings.push('Please configure a valid start date');
       if (!form.endDate) activeWarnings.push('Please configure a valid end date');
+      if (form.startDate && form.endDate && new Date(form.endDate) <= new Date(form.startDate)) {
+        activeWarnings.push('End date must be after the start date');
+      }
       if (form.schedule.length === 0) activeWarnings.push('Recommend adding at least one weekly live class session');
     } else if (currentStep === 2) {
       if (form.modules.length === 0) activeWarnings.push('Add at least one module to architect your curriculum skeleton');
@@ -176,17 +198,14 @@ export default function CourseWizard() {
 
   const handleNext = () => {
     if (warnings.length > 0) return;
-    setDirection(1);
     setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
   };
 
   const handlePrev = () => {
-    setDirection(-1);
     setCurrentStep(prev => Math.max(prev - 1, 0));
   };
 
-  // AI Assist filler
-  const handleAiGenerate = () => {
+  const handleAiGenerate = useCallback(() => {
     setIsAiGenerating(true);
     setTimeout(() => {
       setForm(prev => ({
@@ -198,22 +217,22 @@ export default function CourseWizard() {
         level: 'advanced',
         startDate: new Date().toISOString().split('T')[0],
         endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        schedule: [{ id: 's1', day: 'Monday', time: '10:00 AM - 12:00 PM' }],
+        schedule: [{ id: getUniqueId(), day: 'Monday', time: '10:00 AM - 12:00 PM' }],
         modules: [
           {
-            id: 'm1',
+            id: getUniqueId(),
             title: 'Introduction to React Server Components',
             lessons: [
-              { id: 'l1', title: 'RSC vs SSR: Core paradigms', type: 'video' },
-              { id: 'l2', title: 'Designing interactive boundary layouts', type: 'document' },
+              { id: getUniqueId(), title: 'RSC vs SSR: Core paradigms', type: 'video' as const },
+              { id: getUniqueId(), title: 'Designing interactive boundary layouts', type: 'document' as const },
             ]
           },
           {
-            id: 'm2',
+            id: getUniqueId(),
             title: 'Next.js App Routing and Middleware Security',
             lessons: [
-              { id: 'l3', title: 'Route interception and virtual slots', type: 'video' },
-              { id: 'l4', title: 'Security audit quiz', type: 'quiz' },
+              { id: getUniqueId(), title: 'Route interception and virtual slots', type: 'video' as const },
+              { id: getUniqueId(), title: 'Security audit quiz', type: 'quiz' as const },
             ]
           }
         ]
@@ -222,21 +241,19 @@ export default function CourseWizard() {
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setAutoSaveStatus(`AI generation loaded & saved at ${now}`);
     }, 1500);
-  };
+  }, []);
 
-  // Auto-start AI generation if requested via URL
   useEffect(() => {
     if (searchParams.get('ai') === 'true') {
-      setTimeout(() => {
-        handleAiGenerate();
-      }, 0);
+      // Defer to avoid synchronous setState inside effect body
+      const id = setTimeout(() => handleAiGenerate(), 0);
+      return () => clearTimeout(id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleAiGenerate, searchParams]);
 
   // Schedule sub-sessions
   const addScheduleSession = () => {
-    const newSession: Session = { id: getUniqueId('s'), day: 'Monday', time: '10:00 AM - 12:00 PM' };
+    const newSession: Session = { id: getUniqueId(), day: 'Monday', time: '10:00 AM - 12:00 PM' };
     setForm(prev => ({ ...prev, schedule: [...prev.schedule, newSession] }));
   };
 
@@ -253,7 +270,7 @@ export default function CourseWizard() {
 
   // Content Modules / Lessons
   const addModule = () => {
-    const newModule: Module = { id: getUniqueId('m'), title: 'Untitled Module', lessons: [] };
+    const newModule: Module = { id: getUniqueId(), title: 'Untitled Module', lessons: [] };
     setForm(prev => ({ ...prev, modules: [...prev.modules, newModule] }));
   };
 
@@ -269,7 +286,7 @@ export default function CourseWizard() {
   };
 
   const addLesson = (moduleId: string, type: Lesson['type']) => {
-    const newLesson: Lesson = { id: getUniqueId('l'), title: `New ${type.toUpperCase()}`, type };
+    const newLesson: Lesson = { id: getUniqueId(), title: `New ${type.toUpperCase()}`, type };
     setForm(prev => ({
       ...prev,
       modules: prev.modules.map(m => m.id === moduleId ? { ...m, lessons: [...m.lessons, newLesson] } : m)
@@ -307,78 +324,104 @@ export default function CourseWizard() {
     });
   };
 
+  // Memoized filtered student list
+  const filteredStudents = useMemo(
+    () => availableStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase())),
+    [availableStudents, studentSearch]
+  );
+
   // Submit complete course details
   const handleSubmit = async (visibility: 'draft' | 'published') => {
     const submitToast = toast.loading('Publishing course and persisting structure...');
     try {
-      // 1. Build validation dates
+      // 1. Derive semester & academic year from start date
       let academicYear = '2026/2027';
       let semester = 'Semester 1';
       if (form.startDate) {
         const dateObj = new Date(form.startDate);
         const startYear = dateObj.getFullYear();
         academicYear = `${startYear}/${startYear + 1}`;
-        const startMonth = dateObj.getMonth();
-        if (startMonth >= 6) {
-          semester = 'Semester 1';
-        } else {
-          semester = 'Semester 2';
-        }
+        semester = dateObj.getMonth() >= 6 ? 'Semester 1' : 'Semester 2';
       }
 
+      // 2. Build full course payload — all collected form fields
       const coursePayload = {
-        title: form.title || 'Untitled AI Generated Course',
+        title: form.title || 'Untitled Course',
         code: form.code || `CS-${Math.floor(Math.random() * 900 + 100)}`,
         description: form.description || 'No description provided.',
         semester,
         academicYear,
         status: (visibility === 'published' ? 'active' : 'draft') as 'active' | 'draft',
+        category: form.category,
+        level: form.level,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        enrollmentType: form.enrollmentType,
+        maxStudents: form.maxStudents,
+        gradingSystem: form.gradingSystem,
+        assignmentsEnabled: form.assignmentsEnabled,
+        certificateEnabled: form.certificateEnabled,
+        schedule: form.schedule.map(s => ({ day: s.day, time: s.time })),
       };
 
-      // 2. Persist Course Core
+      // 3. Persist course core
       const res = await courseApi.create(coursePayload);
       if (!res.data || !res.data.success) {
         throw new Error(res.data?.message || 'Failed to create course');
       }
 
-      const newCourse = res.data.data;
-      const courseId = newCourse._id;
+      const courseId: string = res.data.data._id;
 
-      // 3. Persist Course Modules in order
-      if (form.modules && form.modules.length > 0) {
+      // 4. Persist modules AND their lessons in order
+      if (form.modules.length > 0) {
         for (let idx = 0; idx < form.modules.length; idx++) {
           const mod = form.modules[idx];
-          await courseApi.createModule(courseId, {
+          const modRes = await courseApi.createModule(courseId, {
             title: mod.title,
             weekNumber: idx + 1,
-            order: idx + 1
+            order: idx + 1,
           });
+
+          // Persist lessons for this module
+          const createdModuleId: string | undefined =
+            modRes.data?.data?._id ?? modRes.data?._id;
+
+          if (createdModuleId && mod.lessons.length > 0) {
+            for (const lesson of mod.lessons) {
+              const lessonFormData = new FormData();
+              lessonFormData.append('title', lesson.title);
+              lessonFormData.append('type', lesson.type);
+              await courseApi.createLesson(courseId, createdModuleId, lessonFormData);
+            }
+          }
         }
       }
 
-      // 4. Persist Student Enrollments
-      if (form.students && form.students.length > 0) {
-        // Enroll students via course nested endpoint
+      // 5. Enroll selected students
+      if (form.students.length > 0) {
         await courseApi.enrollStudents(courseId, form.students);
       }
 
-      toast.success(`Success! Course "${coursePayload.title}" successfully created and catalogued.`, { id: submitToast });
-      
-      // Delay navigation slightly so they can read the success state
+      // 6. Clear draft from localStorage on success
+      try { localStorage.removeItem('courseWizard_draft'); } catch { /* ignore */ }
+
+      toast.success(`Course "${coursePayload.title}" created successfully!`, { id: submitToast });
+
       setTimeout(() => {
-        window.location.href = '/courses';
+        router.push('/courses');
       }, 1000);
 
     } catch (err: unknown) {
       console.error(err);
-      const error = err as { response?: { data?: { message?: string, details?: string[] } }; message?: string };
+      const error = err as { response?: { data?: { message?: string; details?: string[] } }; message?: string };
       const details = error.response?.data?.details;
-      const errMsg = details && details.length > 0 
-        ? details.join(', ') 
-        : (error.response?.data?.message || error.message || 'Error occurred');
-      toast.error(`Persistence failed: ${errMsg}`, { id: submitToast });
+      const errMsg = details && details.length > 0
+        ? details.join(', ')
+        : (error.response?.data?.message || error.message || 'An error occurred');
+      toast.error(`Failed to create course: ${errMsg}`, { id: submitToast });
     }
   };
+
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -386,7 +429,7 @@ export default function CourseWizard() {
       {/* 🧭 TOP NAVIGATION BAR */}
       <header className="sticky top-0 bg-white border-b border-slate-100 px-8 py-4 z-40 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
-          <Link href="/admin/courses" className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:text-slate-900 flex items-center justify-center transition-colors">
+          <Link href="/courses" className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:text-slate-900 flex items-center justify-center transition-colors">
             <X size={20} />
           </Link>
           <div className="h-6 w-px bg-slate-200" />
@@ -395,7 +438,7 @@ export default function CourseWizard() {
             <div className="flex items-center gap-2 mt-0.5 text-slate-400 text-[10px] uppercase font-bold tracking-wider">
               <span>Wizard Builder</span>
               <span>•</span>
-              <span className={isAutoSaving ? "text-primary-600 font-bold" : "text-slate-400 font-semibold"}>
+              <span className="text-primary-600 font-semibold">
                 {autoSaveStatus}
               </span>
             </div>
@@ -409,14 +452,7 @@ export default function CourseWizard() {
           >
             <Save size={14} /> Save Draft
           </button>
-          <button 
-            onClick={handleAiGenerate}
-            disabled={isAiGenerating}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-colors"
-          >
-            <Sparkles size={14} className={isAiGenerating ? "animate-spin" : ""} />
-            {isAiGenerating ? "Generating..." : "Generate with AI"}
-          </button>
+
         </div>
       </header>
 
@@ -435,7 +471,6 @@ export default function CourseWizard() {
                     key={step.id}
                     onClick={() => {
                       if (idx < currentStep || warnings.length === 0) {
-                        setDirection(idx < currentStep ? -1 : 1);
                         setCurrentStep(idx);
                       }
                     }}
@@ -845,12 +880,10 @@ export default function CourseWizard() {
                         <div className="space-y-1.5 max-h-44 overflow-y-auto border border-slate-100 rounded-xl p-2 bg-slate-50/50">
                           {isLoadingStudents ? (
                             <div className="p-4 text-center text-xs text-slate-400 font-medium">Loading roster...</div>
-                          ) : availableStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase())).length === 0 ? (
+                          ) : filteredStudents.length === 0 ? (
                             <div className="p-4 text-center text-xs text-slate-400 font-medium">No students found</div>
                           ) : (
-                            availableStudents
-                              .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()))
-                              .map(student => {
+                            filteredStudents.map(student => {
                                 const studentId = (student._id || student.id) as string;
                                 const isChecked = form.students.includes(studentId);
                                 return (
@@ -881,7 +914,7 @@ export default function CourseWizard() {
                         <input 
                           type="number"
                           value={form.maxStudents}
-                          onChange={e => setForm(p => ({ ...p, maxStudents: e.target.value }))}
+                          onChange={e => setForm(p => ({ ...p, maxStudents: parseInt(e.target.value, 10) || 0 }))}
                           placeholder="50"
                           className="w-24 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-900 text-sm font-bold focus:bg-white focus:border-primary-500 transition-all outline-none"
                         />

@@ -88,7 +88,12 @@ const ToolbarButton = ({ onClick, isActive, icon, title }: { onClick: () => void
 );
 
 // --- MAIN BUILDER ---
-export default function AssignmentBuilder() {
+import { useRouter } from 'next/navigation';
+import { courseApi } from '@/utils/api/courseApi';
+import toast from 'react-hot-toast';
+
+export default function AssignmentBuilder({ courseId }: { courseId: string }) {
+  const router = useRouter();
   const [title, setTitle] = useState('');
   const [points, setPoints] = useState(100);
   const [dueDate, setDueDate] = useState('');
@@ -107,6 +112,29 @@ export default function AssignmentBuilder() {
       },
     },
   });
+
+  const handlePublish = async () => {
+    if (!title || !dueDate || !editor) {
+      toast.error('Title and Deadline are required.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const description = editor.getHTML();
+      const res = await courseApi.createAssignment(courseId, {
+        title,
+        description,
+        totalMarks: points,
+        dueDate: new Date(dueDate).toISOString(),
+      });
+      toast.success('Assignment Published Successfully!');
+      router.push(`/courses/${courseId}/assignments/${res.data.data._id}`);
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { data?: { message?: string } } };
+      toast.error(apiErr.response?.data?.message || 'Failed to publish assignment');
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-12 px-6 lg:px-8">
@@ -133,7 +161,7 @@ export default function AssignmentBuilder() {
              <button className="flex items-center gap-2 px-8 py-4 rounded-2xl bg-white border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm">
                 <Save size={16} /> Save Progress
              </button>
-             <button onClick={() => setIsSaving(true)} className="flex items-center gap-3 px-10 py-4 rounded-2xl bg-blue-600 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-700 shadow-2xl shadow-blue-600/20 transition-all active:scale-95">
+             <button onClick={handlePublish} disabled={isSaving} className="flex items-center gap-3 px-10 py-4 rounded-2xl bg-blue-600 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-700 shadow-2xl shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
                 {isSaving ? <Loader2 size={16} className="animate-spin" /> : <><Target size={16} /> Publish Project</>}
              </button>
           </div>

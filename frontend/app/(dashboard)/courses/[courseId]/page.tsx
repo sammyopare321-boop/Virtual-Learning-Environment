@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useCourse } from '@/hooks/queries/useCourse';
-import { useCourseAnnouncements, useCourseLiveSessions } from '@/hooks/queries/useCourseResources';
+import { useCourseLiveSessions } from '@/hooks/queries/useCourseResources';
 import { useAuth } from '@/context/AuthContext';
 import { studentApi } from '@/utils/api/studentApi';
 import { 
-  BookOpen, FileText, FlaskConical, BarChart3, CheckSquare, 
-  Bell, Video, Users, ArrowRight, Calendar, Mail, 
-  MapPin, Clock, Sparkles, CheckCircle2, ChevronRight
+  FileText, FlaskConical, 
+  Video, ArrowRight, Mail, 
+  MapPin, Clock, Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -26,55 +26,29 @@ interface Milestone {
   };
 }
 
-interface StudentStats {
-  overallCompletion: number;
-  gpa: number;
-  assignmentsSubmitted: number;
-  onTimeRate: number;
-}
-
 export default function CourseOverviewPage() {
   const { courseId } = useParams() as { courseId: string };
   const { user } = useAuth();
   
   const { data: course, isLoading: loading } = useCourse(courseId);
-  const { data: announcements = [], isLoading: loadingAnnouncements } = useCourseAnnouncements(courseId);
   const { data: liveSessions = [] } = useCourseLiveSessions(courseId);
 
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [studentStats, setStudentStats] = useState<StudentStats | null>(null);
   const [loadingStudentData, setLoadingStudentData] = useState(false);
 
   const isStudent = user?.role === 'student';
-  const hasLive = (liveSessions || []).some((s: any) => s.status === 'live');
+  const hasLive = (liveSessions as { status: string }[] || []).some(s => s.status === 'live');
 
   useEffect(() => {
     if (isStudent && user) {
       setLoadingStudentData(true);
-      Promise.all([
-        studentApi.getMyStats(),
-        studentApi.getMyMilestones()
-      ])
-        .then(([statsRes, milestonesRes]) => {
-          setStudentStats(statsRes.data?.data || null);
-          setMilestones(milestonesRes.data?.data || []);
-        })
-        .catch((err) => {
-          console.error('Error fetching student overview details:', err);
-        })
-        .finally(() => {
-          setLoadingStudentData(false);
-        });
+      studentApi.getMyMilestones()
+        .then(res => setMilestones(res.data?.data || []))
+        .catch(err => console.error('Error fetching milestones:', err))
+        .finally(() => setLoadingStudentData(false));
     }
   }, [isStudent, user]);
 
-  const quickNav = [
-    { label: 'Modules & Syllabus', href: `/courses/${courseId}/modules`, icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Assignments', href: `/courses/${courseId}/assignments`, icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-    { label: 'Quizzes & Tests', href: `/courses/${courseId}/quizzes`, icon: FlaskConical, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Grades & Analytics', href: `/courses/${courseId}/grades`, icon: BarChart3, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Announcements', href: `/courses/${courseId}/announcements`, icon: Bell, color: 'text-amber-600', bg: 'bg-amber-50' },
-  ];
 
   if (loading) {
     return (
@@ -187,136 +161,12 @@ export default function CourseOverviewPage() {
             </div>
           </section>
 
-          {/* Recent Announcements Feed */}
-          <section className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900 tracking-tight">Recent Announcements</h3>
-                <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mt-0.5">Stay updated with course news</p>
-              </div>
-              <Link 
-                href={`/courses/${courseId}/announcements`} 
-                className="text-primary-600 hover:text-primary-800 text-xs font-bold uppercase tracking-widest flex items-center gap-1"
-              >
-                View All <ChevronRight size={14} />
-              </Link>
-            </div>
-
-            {loadingAnnouncements ? (
-              <div className="space-y-4">
-                <div className="h-16 bg-slate-50 rounded-2xl animate-pulse" />
-                <div className="h-16 bg-slate-50 rounded-2xl animate-pulse" />
-              </div>
-            ) : announcements.length === 0 ? (
-              <div className="text-center py-12 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No announcements posted yet</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {announcements.slice(0, 3).map((ann: { _id: string; title: string; body: string; createdAt: string }) => (
-                  <Link
-                    key={ann._id}
-                    href={`/courses/${courseId}/announcements`}
-                    className="block p-5 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-white hover:border-primary-200 hover:shadow-md hover:shadow-primary-900/5 transition-all group"
-                  >
-                    <div className="flex justify-between items-start gap-4 mb-2">
-                      <h4 className="font-extrabold text-slate-900 group-hover:text-primary-600 transition-colors tracking-tight line-clamp-1">
-                        {ann.title}
-                      </h4>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0 mt-0.5">
-                        {new Date(ann.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                      </span>
-                    </div>
-                    <p className="text-slate-500 font-medium text-sm line-clamp-2 leading-relaxed">
-                      {ann.body}
-                    </p>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
 
         </div>
 
         {/* Right Column (Sidebar) */}
         <div className="lg:col-span-4 space-y-6">
           
-          {/* Quick Access Sidebar Navigation */}
-          <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 px-2">
-              Syllabus Workspaces
-            </h3>
-            <div className="space-y-2">
-              {quickNav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-primary-200 hover:bg-white hover:shadow-md hover:shadow-primary-900/5 transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${item.bg} ${item.color}`}>
-                      <item.icon size={16} strokeWidth={2.5} />
-                    </div>
-                    <span className="text-[13px] font-bold text-slate-700 group-hover:text-primary-600 transition-colors tracking-tight">
-                      {item.label}
-                    </span>
-                  </div>
-                  <ArrowRight size={14} className="text-slate-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* Progress / Status Summary Card */}
-          <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-primary-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl pointer-events-none" />
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-5">
-              Course Progress & Status
-            </h3>
-            
-            {loadingStudentData ? (
-              <div className="h-20 bg-slate-50 rounded-2xl animate-pulse" />
-            ) : isStudent && studentStats ? (
-              <div className="space-y-5">
-                <div>
-                  <div className="flex justify-between items-end mb-2">
-                    <span className="text-xs font-bold text-slate-500">Module Completion</span>
-                    <span className="text-sm font-extrabold text-slate-900">{studentStats.overallCompletion || 62}%</span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${studentStats.overallCompletion || 62}%` }}
-                      className="h-full bg-primary-500 rounded-full"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 border border-slate-100 shadow-sm">
-                    <CheckSquare size={16} className="text-emerald-500 shrink-0" />
-                    <span className="text-[11px] font-bold text-slate-600 tracking-tight">Attendance: {studentStats.onTimeRate || 94}%</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 border border-slate-100 shadow-sm">
-                    <Sparkles size={16} className="text-indigo-500 shrink-0" />
-                    <span className="text-[11px] font-bold text-slate-600 tracking-tight">GPA: {studentStats.gpa || '3.80'}</span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-semibold text-slate-500">Enrolled Students</span>
-                  <span className="font-extrabold text-slate-900">84 Active</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-semibold text-slate-500">Syllabus Status</span>
-                  <span className="px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 font-extrabold text-xs">Operational</span>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Upcoming Deadlines / Milestones Card */}
           <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl">
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">
