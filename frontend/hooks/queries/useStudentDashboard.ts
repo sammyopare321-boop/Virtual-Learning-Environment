@@ -31,6 +31,7 @@ export interface DashboardStats {
   gpa: number;
   onTimeRate: number;
   totalCourses: number;
+  attendance: number;
 }
 
 export interface StudentDashboardData {
@@ -46,6 +47,7 @@ const defaultStats: DashboardStats = {
   gpa: 0,
   onTimeRate: 100,
   totalCourses: 0,
+  attendance: 0,
 };
 
 async function fetchStudentDashboard(): Promise<StudentDashboardData> {

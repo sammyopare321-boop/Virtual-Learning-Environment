@@ -49,6 +49,7 @@ export const metadata: Metadata = {
 import { SocketProvider } from "@/context/SocketContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { SentinelProvider } from "@/context/SentinelContext";
+import ThemeToggle from "@/components/shared/ThemeToggle";
 import CommandPalette from "@/components/shared/CommandPalette";
 import SentinelWrapper from "../components/shared/SentinelWrapper";
 import ImpersonationBanner from "@/components/shared/ImpersonationBanner";
@@ -60,7 +61,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${sora.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${sora.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning data-scroll-behavior="smooth">
       <body className="font-sans antialiased">
         <AuthProvider>
           <QueryProvider>
@@ -68,7 +69,7 @@ export default function RootLayout({
               <ThemeProvider>
                 <SentinelProvider>
                   <ImpersonationBanner />
-                  <CommandPalette />
+                  <ThemeToggle />
                   <SentinelWrapper />
                   <Toaster
                     position="top-right"

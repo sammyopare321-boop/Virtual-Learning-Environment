@@ -81,7 +81,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const sections = (user?.role && linksByRole[user.role as keyof typeof linksByRole]) || studentLinks;
 
   return (
-    <aside className="w-[280px] h-screen bg-white border-r border-slate-100 flex flex-col z-30 sticky top-0 shrink-0 overflow-hidden">
+    <aside role="navigation" aria-label="Main navigation" className="w-[280px] h-screen bg-white border-r border-slate-100 flex flex-col z-30 sticky top-0 shrink-0 overflow-hidden">
       {/* Logo Section */}
       <div className="h-20 flex items-center px-6 mb-4 justify-between">
         <Link href="/" className="flex items-center gap-2.5 group">
