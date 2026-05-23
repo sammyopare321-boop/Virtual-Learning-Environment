@@ -63,7 +63,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
       {/* Main Content Hub */}
       <main className="flex-1 relative h-screen overflow-y-auto scrollbar-premium flex flex-col">
         {/* Mobile Header Trigger */}
-        <div className="lg:hidden h-16 bg-white border-b border-slate-100 flex items-center px-6 shrink-0 sticky top-0 z-30">
+        <div className="lg:hidden h-12 bg-white border-b border-slate-100 flex items-center px-4 shrink-0 sticky top-0 z-30">
           <button 
             onClick={() => setIsSidebarOpen(true)}
             aria-label="Open mobile menu"
@@ -81,7 +81,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
           </div>
         </div>
 
-        <div className="p-6 lg:p-12 max-w-7xl mx-auto w-full flex-1">
+        <div className="p-5 lg:p-8 max-w-[1400px] mx-auto w-full flex-1">
           {children}
         </div>
       </main>

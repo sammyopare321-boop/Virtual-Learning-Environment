@@ -8,15 +8,16 @@ import { courseApi } from '@/utils/api/courseApi';
 import { useCoursesCatalog, useEnrolledCourseIds } from '@/hooks/queries/useCoursesCatalog';
 import { queryKeys } from '@/lib/queryKeys';
 import { AxiosError } from 'axios';
-import { 
-  Search, Filter, Plus, BookOpen, User, 
-  ChevronRight, Sparkles, AlertCircle, CheckCircle2,
-  SlidersHorizontal, LayoutGrid, List, Trash2
+import {
+  Search, Plus, BookOpen, User,
+  ChevronRight, AlertCircle, CheckCircle2,
+  SlidersHorizontal, Trash2, ArrowUpRight
 } from 'lucide-react';
-const statusColor: Record<string, { bg: string, text: string, border: string }> = {
-  active:   { bg: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-100' },
-  draft:    { bg: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-100' },
-  archived: { bg: 'bg-slate-100',   text: 'text-slate-600',   border: 'border-slate-200' },
+
+const statusColor: Record<string, { bg: string; text: string; border: string }> = {
+  active:   { bg: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-200' },
+  draft:    { bg: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-200'   },
+  archived: { bg: 'bg-slate-100',   text: 'text-slate-500',   border: 'border-slate-200'   },
 };
 
 export default function CoursesPage() {
@@ -25,11 +26,11 @@ export default function CoursesPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [enrolling, setEnrolling] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ msg: string, type: string } | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
 
   const showToast = (msg: string, type = 'success') => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
+    setTimeout(() => setToast(null), 3000);
   };
 
   const isStudent = user?.role === 'student';
@@ -52,7 +53,7 @@ export default function CoursesPage() {
     try {
       await courseApi.enroll(courseId);
       await queryClient.invalidateQueries({ queryKey: queryKeys.courses.enrolled });
-      showToast('Successfully enrolled in course!');
+      showToast('Enrolled successfully!');
     } catch (err: unknown) {
       let msg = 'Failed to enroll';
       if (err instanceof AxiosError) msg = err.response?.data?.message || msg;
@@ -63,12 +64,11 @@ export default function CoursesPage() {
   };
 
   const handleDelete = async (courseId: string, title: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) return;
-    
+    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
     try {
       await courseApi.delete(courseId);
       await queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
-      showToast('Course deleted successfully');
+      showToast('Course deleted.');
     } catch (err: unknown) {
       let msg = 'Failed to delete course';
       if (err instanceof AxiosError) msg = err.response?.data?.message || msg;
@@ -76,189 +76,197 @@ export default function CoursesPage() {
     }
   };
 
+  const filterTabs = ['all', 'active', 'draft', 'archived'];
+
   return (
-    <div className="space-y-10 pb-20">
-        {/* Toast Notification */}
-        <AnimatePresence>
-          {toast && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20, x: '-50%' }} 
-              animate={{ opacity: 1, y: 0, x: '-50%' }} 
-              exit={{ opacity: 0, y: -20, x: '-50%' }}
-              className={`fixed top-12 left-1/2 z-[100] px-6 py-4 rounded-2xl font-bold shadow-2xl border flex items-center gap-3 backdrop-blur-xl ${
-                toast.type === 'error' ? 'bg-red-50/90 text-red-700 border-red-200' : 'bg-emerald-50/90 text-emerald-700 border-emerald-200'
-              }`}
-            >
-              {toast.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
-              <span className="text-sm tracking-tight">{toast.msg}</span>
-            </motion.div>
+    <div className="space-y-5 pb-12">
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -12, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -12, x: '-50%' }}
+            className={`fixed top-4 left-1/2 z-[100] px-4 py-2.5 rounded-xl font-medium shadow-xl border flex items-center gap-2 text-sm ${
+              toast.type === 'error'
+                ? 'bg-red-50 text-red-700 border-red-200'
+                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            }`}
+          >
+            {toast.type === 'error' ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
+            {toast.msg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="page-title">
+            {isTeacher ? 'My Courses' : 'Course Library'}
+          </h1>
+          <p className="page-subtitle mt-0.5">
+            {isTeacher
+              ? 'Manage your curriculum and track student progress.'
+              : 'Explore and enroll in available courses.'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+            <input
+              type="text"
+              placeholder="Search courses..."
+              className="input-premium pl-8 pr-3 h-8 w-52 text-xs"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+
+          {user?.role === 'admin' && (
+            <Link href="/admin/courses/new" className="btn btn-primary gap-1.5">
+              <Plus size={14} strokeWidth={2.5} />
+              New Course
+            </Link>
           )}
-        </AnimatePresence>
+        </div>
+      </header>
 
-        {/* Header Section */}
-        <section className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-          <div className="space-y-2">
-            <h1 className="text-4xl md:text-5xl font-display font-extrabold text-slate-900 tracking-tight">
-              Course <span className="text-gradient">Library</span>
-            </h1>
-            <p className="text-slate-500 font-medium max-w-xl">
-              {isTeacher 
-                ? 'Manage your academic curriculum and track institutional impact.' 
-                : 'Accelerate your learning journey with our world-class curriculum.'}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative group min-w-[320px]">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" size={18} />
-              <input 
-                type="text" 
-                placeholder="Search modules..."
-                className="input-premium pl-11 pr-4 h-12 text-sm font-medium shadow-sm"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-0.5 border-b border-slate-100">
+        {filterTabs.map((status) => (
+          <button
+            key={status}
+            onClick={() => setStatusFilter(status)}
+            className={`relative px-3 py-2 text-[12px] font-medium capitalize transition-colors ${
+              statusFilter === status
+                ? 'text-primary-600'
+                : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            {status}
+            {statusFilter === status && (
+              <motion.div
+                layoutId="status-indicator"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 rounded-full"
               />
-            </div>
-            
-            <button className="btn btn-secondary h-12 px-4 gap-2">
-              <SlidersHorizontal size={18} /> Filters
-            </button>
-
-            {user?.role === 'admin' && (
-              <Link href="/admin/courses/new" className="btn btn-primary h-12 px-6 gap-2">
-                <Plus size={18} strokeWidth={3} /> Create Module
-              </Link>
             )}
+          </button>
+        ))}
+      </div>
+
+      {/* Courses Grid */}
+      <section>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-56 rounded-xl bg-slate-100 animate-pulse" />
+            ))}
           </div>
-        </section>
-
-        {/* Filter Tabs */}
-        <section className="flex items-center gap-2 border-b border-slate-100 pb-1 overflow-x-auto no-scrollbar">
-          {['all', 'active', 'draft', 'archived'].map((status) => (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-6 py-3 text-[11px] font-black uppercase tracking-[0.15em] transition-all relative ${
-                statusFilter === status ? 'text-primary-500' : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              {status}
-              {statusFilter === status && (
-                <motion.div layoutId="status-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500 rounded-full" />
-              )}
-            </button>
-          ))}
-        </section>
-
-        {/* Courses Grid */}
-        <section className="min-h-[400px]">
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="h-80 rounded-3xl bg-slate-50 animate-pulse border border-slate-100" />
-              ))}
+        ) : courses.length === 0 ? (
+          <div className="py-16 text-center border border-dashed border-slate-200 rounded-xl">
+            <div className="w-12 h-12 bg-slate-50 rounded-xl mx-auto flex items-center justify-center mb-3 border border-slate-100">
+              <BookOpen size={20} className="text-slate-300" />
             </div>
-          ) : courses.length === 0 ? (
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }}
-              className="py-20 text-center bg-slate-50/50 rounded-[32px] border border-dashed border-slate-200"
-            >
-              <div className="w-16 h-16 bg-white rounded-2xl shadow-sm mx-auto flex items-center justify-center mb-6 border border-slate-100">
-                <BookOpen size={28} className="text-slate-300" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">No Modules Found</h3>
-              <p className="text-slate-500 text-sm max-w-xs mx-auto font-medium">Try adjusting your search or filters to find what you&apos;re looking for.</p>
-            </motion.div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {courses.map((course, idx) => {
-                const isEnrolled = enrolled.has(course._id);
-                const status = statusColor[course.status] || statusColor.active;
-                const teacherName = typeof course.teacher === 'object' ? course.teacher?.name : 'Academic Faculty';
+            <h3 className="text-sm font-semibold text-slate-700 mb-1">No courses found</h3>
+            <p className="text-xs text-slate-400">Try adjusting your search or filters.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {courses.map((course, idx) => {
+              const isEnrolled = enrolled.has(course._id);
+              const status = statusColor[course.status] || statusColor.active;
+              const teacherName = typeof course.teacher === 'object'
+                ? course.teacher?.name
+                : 'Academic Faculty';
 
-                return (
-                  <motion.div
-                    key={course._id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="group card-premium card-premium-hover p-0 overflow-hidden flex flex-col h-full border-slate-100/50"
-                  >
-                    <div className="h-40 bg-slate-900 relative">
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-80 z-10" />
-                      <div className="absolute top-4 left-4 z-20 flex gap-2">
-                        <span className="px-2.5 py-1 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-black uppercase tracking-widest">
-                          {course.code}
-                        </span>
-                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${status.bg} ${status.text} ${status.border}`}>
-                          {course.status}
-                        </span>
+              return (
+                <motion.div
+                  key={course._id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.04 }}
+                  className="group bg-white border border-slate-100 rounded-xl overflow-hidden flex flex-col hover:shadow-md hover:border-slate-200 transition-all duration-200"
+                >
+                  {/* Card header bar */}
+                  <div className="h-24 bg-gradient-to-br from-slate-800 to-slate-900 relative shrink-0">
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded-md bg-white/10 border border-white/20 text-white text-[10px] font-semibold backdrop-blur-sm">
+                        {course.code}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${status.bg} ${status.text} ${status.border}`}>
+                        {course.status}
+                      </span>
+                    </div>
+                    <div className="absolute bottom-3 right-3">
+                      <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center">
+                        <BookOpen size={14} className="text-white/70" />
                       </div>
                     </div>
+                  </div>
 
-                    <div className="p-8 flex-1 flex flex-col">
-                      <h3 className="text-lg font-display font-extrabold text-slate-900 mb-3 group-hover:text-primary-500 transition-colors leading-tight line-clamp-2 min-h-[3rem]">
+                  {/* Content */}
+                  <div className="p-3 flex-1 flex flex-col gap-2">
+                    <div>
+                      <h3 className="text-[13px] font-semibold text-slate-900 leading-tight line-clamp-2 group-hover:text-primary-600 transition-colors">
                         {course.title}
                       </h3>
-                      <p className="text-slate-500 text-sm font-medium line-clamp-2 mb-8 leading-relaxed">
-                        {course.description || 'No description provided for this academic program.'}
+                      <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">
+                        {course.description || 'No description provided.'}
                       </p>
-
-                      <div className="mt-auto space-y-6">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 border border-slate-100 group-hover:border-primary-200 group-hover:bg-primary-50 transition-colors">
-                            <User size={16} />
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Faculty</p>
-                            <p className="text-sm font-bold text-slate-700 leading-none truncate" title={teacherName}>{teacherName}</p>
-                          </div>
-                        </div>
-
-                        {isStudent ? (
-                          isEnrolled ? (
-                            <Link 
-                              href={`/courses/${course._id}`}
-                              className="btn btn-primary w-full h-12 shadow-lg shadow-primary-500/20 group/btn"
-                            >
-                              Continue Workspace <ChevronRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
-                            </Link>
-                          ) : (
-                            <button 
-                              onClick={() => handleEnroll(course._id)}
-                              disabled={enrolling === course._id}
-                              className="btn btn-secondary w-full h-12 hover:border-primary-500 hover:text-primary-500 transition-all font-black"
-                            >
-                              {enrolling === course._id ? 'Provisioning...' : 'Enroll in Module'}
-                            </button>
-                          )
-                        ) : (
-                          <div className="flex gap-2">
-                            <Link 
-                              href={`/courses/${course._id}`}
-                              className="btn btn-secondary flex-1 h-12 hover:border-primary-500 hover:text-primary-500 transition-all font-black"
-                            >
-                              Enter Hub <ChevronRight size={16} />
-                            </Link>
-                            <button 
-                              onClick={() => handleDelete(course._id, course.title)}
-                              className="w-12 h-12 rounded-[0.75rem] border border-red-100 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0"
-                              title="Delete Course"
-                              aria-label={`Delete course ${course.title}`}
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
                     </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </div>
+
+                    <div className="flex items-center gap-1.5 mt-auto">
+                      <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center">
+                        <User size={10} className="text-slate-400" />
+                      </div>
+                      <p className="text-[11px] text-slate-500 truncate" title={teacherName}>{teacherName}</p>
+                    </div>
+
+                    {/* Action button */}
+                    {isStudent ? (
+                      isEnrolled ? (
+                        <Link
+                          href={`/courses/${course._id}`}
+                          className="btn btn-primary btn-sm w-full mt-1 gap-1"
+                        >
+                          Continue <ChevronRight size={12} className="group-hover/btn:translate-x-0.5 transition-transform" />
+                        </Link>
+                      ) : (
+                        <button
+                          onClick={() => handleEnroll(course._id)}
+                          disabled={enrolling === course._id}
+                          className="btn btn-secondary btn-sm w-full mt-1 hover:border-primary-500 hover:text-primary-600"
+                        >
+                          {enrolling === course._id ? 'Enrolling...' : 'Enroll'}
+                        </button>
+                      )
+                    ) : (
+                      <div className="flex gap-1.5 mt-1">
+                        <Link
+                          href={`/courses/${course._id}`}
+                          className="btn btn-secondary btn-sm flex-1 gap-1 hover:border-primary-500 hover:text-primary-600"
+                        >
+                          Open <ArrowUpRight size={11} />
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(course._id, course.title)}
+                          className="w-7 h-7 rounded-md border border-red-100 bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0"
+                          title="Delete Course"
+                          aria-label={`Delete course ${course.title}`}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
