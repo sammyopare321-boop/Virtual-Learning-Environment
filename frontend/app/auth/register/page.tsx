@@ -72,78 +72,103 @@ function RegisterContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
-        <div className="flex items-center gap-3 mb-6">
-          <GraduationCap size={32} className="text-blue-600" />
-          <h1 className="text-2xl font-bold text-slate-900">UniLearn Register</h1>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        {/* Brand */}
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
+            <GraduationCap size={16} className="text-white" />
+          </div>
+          <div>
+            <p className="text-[14px] font-bold text-slate-900 leading-none">UniLearn</p>
+            <p className="text-[10px] text-slate-400 leading-none">Intelligence Platform</p>
+          </div>
         </div>
-        {error && <p className="text-red-600 mb-4">{error}</p>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="name">Name</label>
-            <input
-              id="name"
-              type="text"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="email">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                id="email"
-                type="email"
-                className="w-full pl-10 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
-                required
-              />
+
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+          <h1 className="text-[18px] font-semibold text-slate-900 mb-1">Create an account</h1>
+          <p className="text-[13px] text-slate-500 mb-5">Enter your details to register.</p>
+
+          {error && (
+            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-100 text-red-700 text-[12px] font-medium">
+              {error}
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="password">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                id="password"
-                type="password"
-                className="w-full pl-10 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
-                required
-              />
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <label className="section-label block mb-1.5" htmlFor="name">Name</label>
+              <div className="relative">
+                <User className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                <input
+                  id="name" type="text" required
+                  className="input-premium pl-8"
+                  placeholder="John Doe"
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                />
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="role">Account Type</label>
-            <select
-              id="role"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              value={form.role}
-              onChange={e => setForm({ ...form, role: e.target.value as any })}
+            <div>
+              <label className="section-label block mb-1.5" htmlFor="email">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                <input
+                  id="email" type="email" required
+                  className="input-premium pl-8"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="section-label block mb-1.5" htmlFor="password">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                <input
+                  id="password" type="password" required
+                  className="input-premium pl-8"
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={e => setForm({ ...form, password: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="section-label block mb-1.5" htmlFor="role">Account Type</label>
+              <select
+                id="role"
+                className="input-premium bg-white"
+                value={form.role}
+                onChange={e => setForm({ ...form, role: e.target.value as any })}
+              >
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
+              </select>
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary w-full gap-2 mt-1"
             >
-              <option value="student">Student</option>
-              <option value="teacher">Teacher</option>
-            </select>
+              {loading ? <Loader2 className="animate-spin" size={14} /> : null}
+              {loading ? 'Creating Account...' : 'Create Account'}
+            </button>
+          </form>
+
+          <div className="my-4 flex items-center gap-3">
+            <div className="flex-1 h-px bg-slate-100" />
+            <span className="text-[11px] text-slate-400">or</span>
+            <div className="flex-1 h-px bg-slate-100" />
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="animate-spin" size={18} /> : 'Create Account'}
-          </button>
-        </form>
-        <div className="my-4 text-center text-slate-500">or</div>
-        <div id="google-signup-btn" className="flex justify-center" />
-        <p className="mt-6 text-center text-sm text-slate-600">
-          Already have an account? <Link href="/auth/login" className="text-blue-600 hover:underline">Sign In</Link>
-        </p>
+          <div id="google-signup-btn" className="flex justify-center" />
+
+          <p className="mt-5 text-center text-[12px] text-slate-500">
+            Already have an account?{' '}
+            <Link href="/auth/login" className="text-primary-600 font-medium hover:underline">Sign In</Link>
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -151,7 +176,11 @@ function RegisterContent() {
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center p-6"><Loader2 className="animate-spin text-blue-600" size={32} /></div>}>
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <Loader2 className="animate-spin text-primary-600" size={24} />
+      </div>
+    }>
       <RegisterContent />
     </Suspense>
   );

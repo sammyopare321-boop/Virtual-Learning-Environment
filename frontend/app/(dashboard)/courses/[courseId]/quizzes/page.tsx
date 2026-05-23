@@ -9,13 +9,14 @@ import { useCourseQuizzes } from '@/hooks/queries/useCourseResources';
 import { queryKeys } from '@/lib/queryKeys';
 import { useAuth } from '@/context/AuthContext';
 import { quizApi } from '@/utils/api/extraApis';
-import { 
-  FileText, Clock, ChevronRight, Plus, 
+import {
+  FileText, Clock, ChevronRight, Plus,
   Search, Filter, Sparkles, HelpCircle,
-  AlertCircle, CheckCircle2, Calendar, 
+  AlertCircle, CheckCircle2, Calendar,
   BarChart3, Loader2, Play, Star, ArrowRight,
   X, Save, Trash2, Globe, Lock, Target, Zap,
-  Activity, ShieldCheck, Cpu, Brain, Timer, Users
+  Activity, ShieldCheck, Cpu, Brain, Timer, Users,
+  Settings
 } from 'lucide-react';
 import Link from 'next/link';
 import { AxiosError } from 'axios';
@@ -25,7 +26,7 @@ interface Quiz {
   _id: string;
   title: string;
   description?: string;
-  duration: number; 
+  duration: number;
   totalMarks: number;
   startTime: string;
   endTime: string;
@@ -39,63 +40,63 @@ const getStatusMeta = (quiz: Quiz) => {
   const start = new Date(quiz.startTime);
   const end = new Date(quiz.endTime);
   const noQuestions = quiz.questionCount === 0 || !quiz.questionCount;
-  
-  if (!quiz.isPublished) return { 
-    label: noQuestions ? 'Awaiting Architecture' : 'Protocol Draft', 
-    bg: noQuestions ? 'bg-amber-50' : 'bg-slate-50', 
-    text: noQuestions ? 'text-amber-600' : 'text-slate-400', 
-    border: noQuestions ? 'border-amber-100' : 'border-slate-100', 
-    dot: noQuestions ? 'bg-amber-400' : 'bg-slate-300',
-    icon: noQuestions ? <AlertCircle size={12} /> : <Lock size={12} />
+
+  if (!quiz.isPublished) return {
+    label: noQuestions ? 'Awaiting Structure' : 'Draft',
+    bg: noQuestions ? 'bg-amber-50' : 'bg-slate-50',
+    text: noQuestions ? 'text-amber-600' : 'text-slate-500',
+    border: noQuestions ? 'border-amber-200' : 'border-slate-200',
+    dot: noQuestions ? 'bg-amber-400' : 'bg-slate-400',
+    icon: noQuestions ? <AlertCircle size={10} /> : <Lock size={10} />
   };
-  if (now < start) return { 
-    label: 'Scheduled Transmission', 
-    bg: 'bg-primary-50', 
-    text: 'text-primary-600', 
-    border: 'border-primary-100', 
-    dot: 'bg-primary-400',
-    icon: <Calendar size={12} />
+  if (now < start) return {
+    label: 'Scheduled',
+    bg: 'bg-primary-50',
+    text: 'text-primary-600',
+    border: 'border-primary-200',
+    dot: 'bg-primary-500',
+    icon: <Calendar size={10} />
   };
-  if (now > end) return { 
-    label: 'Archive State', 
-    bg: 'bg-slate-50', 
-    text: 'text-slate-500', 
-    border: 'border-slate-100', 
+  if (now > end) return {
+    label: 'Closed',
+    bg: 'bg-slate-50',
+    text: 'text-slate-500',
+    border: 'border-slate-200',
     dot: 'bg-slate-400',
-    icon: <ShieldCheck size={12} />
+    icon: <ShieldCheck size={10} />
   };
-  return { 
-    label: 'Live Broadcast', 
-    bg: 'bg-rose-50', 
-    text: 'text-rose-600', 
-    border: 'border-rose-100', 
+  return {
+    label: 'Live',
+    bg: 'bg-rose-50',
+    text: 'text-rose-600',
+    border: 'border-rose-200',
     dot: 'bg-rose-500 animate-pulse',
-    icon: <Activity size={12} />
+    icon: <Activity size={10} />
   };
 };
 
 export default function QuizzesPage() {
   const { courseId } = useParams() as { courseId: string };
   const { user } = useAuth();
-  
+
   const queryClient = useQueryClient();
   const { data: quizzesData = [], isLoading: loading } = useCourseQuizzes(courseId);
   const quizzes = quizzesData as Quiz[];
-  
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
   const handlePublish = async (quiz: Quiz) => {
     if (!quiz.questionCount || quiz.questionCount === 0) {
-      toast.error('Add at least one question before broadcasting.');
+      toast.error('Add at least one question before publishing.');
       return;
     }
     try {
       await quizApi.publishQuiz(quiz._id);
       await queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.list(courseId) });
-      toast.success('Assessment broadcasted to cohort.');
+      toast.success('Quiz published.');
     } catch (err) {
-      toast.error('Broadcast failed.');
+      toast.error('Failed to publish.');
     }
   };
 
@@ -111,155 +112,134 @@ export default function QuizzesPage() {
   const activeQuizzes = quizzes.filter(q => q.status === 'published').length;
 
   return (
-    <div className="space-y-6 pb-16 font-serif">
-      
-      {/* 🔷 TOP HEADER */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-3">
-          <h1 className="text-3xl font-serif font-extrabold text-slate-900 tracking-tight">
-            Quizzes
-          </h1>
-          <p className="text-slate-500 font-medium text-base">
-            Create interactive assessments and track student performance.
-          </p>
+    <div className="space-y-4 pb-10">
+
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="page-title">Quizzes</h1>
+          <p className="page-subtitle mt-0.5">Assessments and knowledge checks.</p>
         </div>
-        
+
         {(user?.role === 'teacher' || user?.role === 'admin') && (
-          <Link 
+          <Link
             href={`/courses/${courseId}/quizzes/new`}
-            className="btn btn-primary h-14 px-8 gap-3 text-sm font-bold uppercase tracking-wider shadow-lg shadow-primary-500/20 whitespace-nowrap inline-flex items-center justify-center rounded-xl transition-all hover:scale-105"
+            className="btn btn-primary btn-sm gap-1.5 self-start sm:self-auto"
           >
-            <Plus size={20} strokeWidth={2.5} /> Create Quiz
+            <Plus size={14} /> Create Quiz
           </Link>
         )}
       </header>
 
-      {/* 📊 QUIZ OVERVIEW CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col justify-center">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Quizzes</p>
-          <p className="text-2xl font-serif font-black text-slate-900">{quizzes.length} <span className="text-xs font-bold text-slate-400">Total</span></p>
+      {/* Stats row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="stat-card">
+          <p className="section-label mb-1">Total Quizzes</p>
+          <p className="text-xl font-bold text-slate-900">{quizzes.length}</p>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col justify-center">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Active Quizzes</p>
-          <p className="text-2xl font-serif font-black text-primary-500">{activeQuizzes} <span className="text-xs font-bold text-slate-400">Active</span></p>
+        <div className="stat-card">
+          <p className="section-label mb-1">Active</p>
+          <p className="text-xl font-bold text-primary-600">{activeQuizzes}</p>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col justify-center">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Average Score</p>
-          <p className="text-2xl font-serif font-black text-emerald-500">72% <span className="text-xs font-bold text-slate-400">Avg Score</span></p>
+        <div className="stat-card">
+          <p className="section-label mb-1">Avg Score</p>
+          <p className="text-xl font-bold text-emerald-600">72%</p>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col justify-center">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Pending Reviews</p>
-          <p className="text-2xl font-serif font-black text-amber-500">12 <span className="text-xs font-bold text-slate-400">Reviews</span></p>
+        <div className="stat-card">
+          <p className="section-label mb-1">To Review</p>
+          <p className="text-xl font-bold text-amber-600">12</p>
         </div>
       </div>
 
-      {/* 🔍 FILTERS & SEARCH */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col sm:flex-row items-center gap-4 shadow-sm">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-12 pr-4 h-12 text-sm font-semibold focus:bg-white focus:border-primary-500 outline-none transition-all"
+      {/* Controls */}
+      <div className="bg-white border border-slate-100 rounded-xl p-3 shadow-sm flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+          <input
+            className="input-premium pl-8 h-8 text-xs w-full"
             placeholder="Search quizzes..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <select aria-label="Filter by course" className="bg-slate-50 border border-slate-100 text-slate-600 text-sm font-bold rounded-xl h-12 px-4 focus:outline-none focus:border-primary-500 flex-1 sm:flex-none cursor-pointer">
-            <option value="all">Course ▼</option>
-          </select>
-          <select 
-            aria-label="Filter by status"
+        <div className="flex gap-2">
+          <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-slate-50 border border-slate-100 text-slate-600 text-sm font-bold rounded-xl h-12 px-4 focus:outline-none focus:border-primary-500 flex-1 sm:flex-none cursor-pointer"
+            className="input-premium h-8 py-0 text-xs w-32 cursor-pointer"
           >
-            <option value="all">Status ▼</option>
+            <option value="all">All Status</option>
             <option value="published">Active</option>
             <option value="draft">Draft</option>
             <option value="closed">Closed</option>
           </select>
-          <select aria-label="Sort quizzes" className="bg-slate-50 border border-slate-100 text-slate-600 text-sm font-bold rounded-xl h-12 px-4 focus:outline-none focus:border-primary-500 flex-1 sm:flex-none cursor-pointer hidden md:block">
-            <option value="all">Sort ▼</option>
-          </select>
         </div>
       </div>
 
-      {/* 📚 QUIZ CARDS */}
+      {/* Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => <div key={i} className="h-48 rounded-2xl bg-white border border-slate-100 animate-pulse" />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[1, 2, 3].map(i => <div key={i} className="h-32 rounded-xl bg-slate-100 animate-pulse" />)}
         </div>
       ) : filteredQuizzes.length === 0 ? (
-        <div className="py-16 text-center bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <div className="w-16 h-16 bg-slate-50 rounded-xl mx-auto flex items-center justify-center mb-4">
-            <FileText size={24} className="text-slate-300" />
-          </div>
-          <h3 className="text-lg font-bold text-slate-900 mb-1">No quizzes found</h3>
-          <p className="text-sm text-slate-500 font-medium">Adjust your filters or create a new assessment.</p>
+        <div className="py-12 text-center bg-white rounded-xl border border-dashed border-slate-200 shadow-sm">
+          <FileText size={20} className="text-slate-300 mx-auto mb-2" />
+          <h3 className="text-sm font-semibold text-slate-700">No quizzes found</h3>
+          <p className="text-[11px] text-slate-400 mt-1">Adjust filters or create a new assessment.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {filteredQuizzes.map((quiz) => {
-            const isActive = quiz.status === 'published';
-            
+            const status = getStatusMeta(quiz);
+
             return (
-              <div key={quiz._id} className="bg-white border border-slate-200 rounded-2xl p-4 hover:shadow-lg hover:border-primary-200 transition-all duration-300 flex flex-col">
-                <div className="mb-3">
-                  <h3 className="text-lg font-serif font-bold text-slate-900 line-clamp-1" title={quiz.title}>{quiz.title}</h3>
-                  <p className="text-xs font-semibold text-slate-500 mt-1">Course: Default View</p>
+              <div key={quiz._id} className="bg-white border border-slate-100 rounded-xl p-3 hover:border-slate-200 hover:shadow-sm transition-all flex flex-col group">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h3 className="text-[13px] font-semibold text-slate-900 line-clamp-1 group-hover:text-primary-600 transition-colors" title={quiz.title}>
+                    {quiz.title}
+                  </h3>
+                  <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold shrink-0 border ${status.bg} ${status.text} ${status.border}`}>
+                    <span className={`w-1 h-1 rounded-full ${status.dot}`} />
+                    {status.label}
+                  </span>
                 </div>
-                
-                <div className="space-y-2 mb-4 flex-1">
-                  <div className="flex items-center justify-between text-xs font-medium text-slate-600 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100">
-                    <span className="flex items-center gap-1.5"><FileText size={14} className="text-slate-400"/> Questions</span>
-                    <span className="font-bold text-slate-900">{quiz.questionCount || 0}</span>
+
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                    <FileText size={12} className="text-slate-400" />
+                    <span>{quiz.questionCount || 0} Qs</span>
                   </div>
-                  <div className="flex items-center justify-between text-xs font-medium text-slate-600 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100">
-                    <span className="flex items-center gap-1.5"><Clock size={14} className="text-slate-400"/> Duration</span>
-                    <span className="font-bold text-slate-900">{quiz.duration || 30} mins</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs font-medium text-slate-600 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100">
-                    <span className="flex items-center gap-1.5"><Users size={14} className="text-slate-400"/> Attempts</span>
-                    <span className="font-bold text-slate-900">0 / Unlimited</span>
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                    <Clock size={12} className="text-slate-400" />
+                    <span>{quiz.duration || 30} min</span>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-100 pt-3 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Status:</span>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} /> 
-                      {isActive ? 'Active' : 'Draft'}
-                    </span>
-                  </div>
+                <div className="mt-auto pt-3 border-t border-slate-100 flex items-center gap-1.5">
+                  <Link
+                    href={`/courses/${courseId}/quizzes/${quiz._id}`}
+                    className="btn btn-secondary btn-sm flex-1 justify-center gap-1 text-[11px]"
+                  >
+                    Open <ArrowRight size={10} />
+                  </Link>
 
-                  <div className="flex items-center gap-2">
-                    <Link 
-                      href={`/courses/${courseId}/quizzes/${quiz._id}`}
-                      className="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg text-center transition-colors"
-                    >
-                      Open
-                    </Link>
-                    {(user?.role === 'teacher' || user?.role === 'admin') && (
-                      <>
-                        <Link 
-                          href={`/courses/${courseId}/quizzes/${quiz._id}/edit`}
-                          className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg text-center transition-colors"
-                        >
-                          Edit
-                        </Link>
-                        <button 
-                          className="flex-1 bg-primary-50 hover:bg-primary-100 text-primary-700 border border-primary-200 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg text-center transition-colors"
-                        >
-                          Stats
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  {(user?.role === 'teacher' || user?.role === 'admin') && (
+                    <>
+                      <Link
+                        href={`/courses/${courseId}/quizzes/${quiz._id}/edit`}
+                        className="btn btn-ghost btn-sm px-2 text-[11px]"
+                        title="Edit"
+                      >
+                        <Settings size={12} />
+                      </Link>
+                      <button
+                        className="btn btn-ghost btn-sm px-2 text-[11px]"
+                        title="Analytics"
+                      >
+                        <BarChart3 size={12} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );

@@ -3,36 +3,28 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import { courseApi } from '@/utils/api/courseApi';
 import { useTeacherStats, useTeacherCourses } from '@/hooks/queries/useTeacherDashboard';
+import { courseApi } from '@/utils/api/courseApi';
 import { queryKeys } from '@/lib/queryKeys';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { 
-  BookOpen, Plus, Sparkles, TrendingUp, Users, Clock, Calendar, 
-  ArrowRight, Wand2, PenTool, CheckCircle2, ChevronRight, Activity, X, Loader2,
-  ListTodo, UserPlus, PlayCircle, FileText, Send, Bell
+import {
+  BookOpen, Plus, Sparkles, Users, Clock, Calendar,
+  ArrowRight, CheckCircle2, X, Loader2, Bell, Send,
+  Activity, UserPlus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Course {
-  _id: string;
-  code: string;
-  title: string;
-  status: string;
-  semester: string;
-  academicYear: string;
+  _id: string; code: string; title: string; status: string;
+  semester: string; academicYear: string;
   teacher?: { _id: string } | string;
   studentCount?: number;
 }
 
 interface UpcomingClass {
-  title: string;
-  type: string;
-  time: string;
-  courseId: string;
-  color: string;
+  title: string; type: string; time: string; courseId: string; color: string;
 }
 
 export default function TeacherDashboard() {
@@ -41,30 +33,23 @@ export default function TeacherDashboard() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ title:'', code:'', description:'', semester:'Semester 1', academicYear:'2025/2026' });
+  const [form, setForm] = useState({ title: '', code: '', description: '', semester: 'Semester 1', academicYear: '2025/2026' });
 
-  const { data: stats = { students: 0, attendance: 0, engagementData: [0,0,0,0,0,0,0], upcomingClasses: [] as UpcomingClass[] } } = useTeacherStats(Boolean(user));
+  const { data: stats = { students: 0, attendance: 0, engagementData: [], upcomingClasses: [] as UpcomingClass[] } } = useTeacherStats(Boolean(user));
   const { data: rawCourses = [], isLoading: loading } = useTeacherCourses(user?._id, Boolean(user));
   const courses = (rawCourses as Course[] || []).filter((c): c is Course => c !== null && c !== undefined);
 
-  const { students, attendance, engagementData } = stats;
+  const { students, attendance } = stats;
+  const isNewUser = !loading && courses.length === 0;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || !form.code) { toast.error('Title and code are required.'); return; }
-    
+    if (!form.title || !form.code) { toast.error('Title and code required.'); return; }
     setCreating(true);
-    
-    // Quick Start Modal redirects to the full-page Course Wizard builder
-    const params = new URLSearchParams({
-      title: form.title,
-      code: form.code
-    });
-    
+    const params = new URLSearchParams({ title: form.title, code: form.code });
     router.push(`/admin/courses/new?${params.toString()}`);
   };
 
-  const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const greeting = (() => {
     const h = new Date().getHours();
     if (h < 12) return 'Good morning';
@@ -72,369 +57,245 @@ export default function TeacherDashboard() {
     return 'Good evening';
   })();
 
-  const isNewUser = !loading && courses.length === 0;
-  const hasClassesToday = stats.upcomingClasses?.length > 0;
+  const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  const statCards = [
+    { label: 'Students', value: students, icon: Users,    color: 'text-blue-600',   bg: 'bg-blue-50',   sub: students === 0 ? 'No students yet' : '+12% this term' },
+    { label: 'Attendance', value: attendance > 0 ? `${attendance}%` : '—', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50', sub: 'Across all courses' },
+    { label: 'Courses', value: courses.length, icon: BookOpen, color: 'text-violet-600', bg: 'bg-violet-50', sub: courses.length === 0 ? 'Create your first' : 'Active courses' },
+  ];
+
+  const quickActions = [
+    { label: 'Create Course', icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50 hover:bg-blue-100', onClick: () => setShowForm(true) },
+    { label: 'Schedule Class', icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50 hover:bg-amber-100', onClick: () => {} },
+    { label: 'Add Students', icon: UserPlus, color: 'text-emerald-600', bg: 'bg-emerald-50 hover:bg-emerald-100', onClick: () => {} },
+    { label: 'AI Generator', icon: Sparkles, color: 'text-violet-600', bg: 'bg-violet-50 hover:bg-violet-100', onClick: () => router.push('/admin/courses/new?ai=true') },
+  ];
 
   return (
-    <div className="space-y-10 pb-16 max-w-7xl mx-auto">
-      
-      {/* 1. TOP BAR (Context + Control) */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div className="max-w-6xl mx-auto space-y-5 pb-10">
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 text-primary-600 text-xs font-bold uppercase tracking-wider mb-2">
-            <Calendar size={14} />
-            <span>{currentDate}</span>
+          <div className="flex items-center gap-1.5 text-primary-600 text-[11px] font-semibold uppercase tracking-wider mb-1">
+            <Calendar size={12} /><span>{currentDate}</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter mb-3 leading-none">
-            {greeting}, {user?.name?.split(' ')[0]} 👋
-          </h1>
-          <p className="text-slate-500 font-medium text-lg leading-relaxed">
-            {hasClassesToday 
-              ? <>You have <strong className="text-slate-900 font-bold">{stats.upcomingClasses.length} classes</strong> scheduled today.</>
-              : <>Your schedule is clear for today. Focus on planning and content creation.</>
-            }
+          <h1 className="page-title">{greeting}, {user?.name?.split(' ')[0]} 👋</h1>
+          <p className="page-subtitle mt-0.5">
+            {stats.upcomingClasses?.length > 0
+              ? `${stats.upcomingClasses.length} classes scheduled today.`
+              : 'Your schedule is clear today.'}
           </p>
         </div>
-        
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all shadow-sm">
-            <Sparkles size={18} className="text-amber-500" />
-            AI Assistant
-          </button>
-          <button 
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary-600 text-white font-bold hover:bg-primary-700 shadow-md shadow-primary-600/20 transition-all"
-          >
-            <Plus size={18} />
-            Create Course
-          </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button className="btn btn-secondary gap-1.5"><Sparkles size={13} className="text-amber-500" />AI Assistant</button>
+          <button onClick={() => setShowForm(true)} className="btn btn-primary gap-1.5"><Plus size={13} />Create Course</button>
         </div>
       </header>
 
-      {/* 2. ONBOARDING LAYER (First-Time User Experience) */}
+      {/* Onboarding (First-time) */}
       {isNewUser && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-white border-2 border-primary-100 rounded-[24px] p-8 shadow-sm relative overflow-hidden"
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-white border border-primary-100 rounded-xl p-5 shadow-sm"
         >
-          <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary-50 rounded-full blur-3xl opacity-50 pointer-events-none" />
-          <h2 className="text-2xl font-extrabold text-slate-900 mb-2">Welcome to UniLearn LMS 👋</h2>
-          <p className="text-slate-500 font-medium mb-8 max-w-xl">
-            Your academic workspace is ready. Let’s set up your classroom and get you ready for teaching. Complete these steps to launch:
-          </p>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-primary-50 border border-primary-100">
-              <div className="w-6 h-6 rounded-full bg-primary-600 text-white flex items-center justify-center shrink-0 mt-0.5"><CheckCircle2 size={14} /></div>
-              <div>
-                <h4 className="font-bold text-primary-900 text-sm">Create your first course</h4>
-                <p className="text-xs text-primary-700 font-medium mt-1">Initialize your syllabus and settings.</p>
-                <button onClick={() => setShowForm(true)} className="mt-3 text-xs font-bold text-primary-700 underline">Start now &rarr;</button>
+          <h2 className="text-[15px] font-semibold text-slate-900 mb-1">Welcome to UniLearn 👋</h2>
+          <p className="text-sm text-slate-500 mb-4">Let&apos;s get your workspace ready. Complete these steps to get started.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {[
+              { label: 'Create your first course', sub: 'Initialize syllabus & settings.', action: () => setShowForm(true), done: false },
+              { label: 'Add your students', sub: 'Invite via email or sync roster.', done: false },
+              { label: 'Schedule a class', sub: 'Set up a live lecture or sync.', done: false },
+              { label: 'Upload learning material', sub: 'Add slides, docs, and syllabus.', done: false },
+            ].map((step, i) => (
+              <div key={i} className={`flex items-start gap-3 p-3 rounded-lg border ${i === 0 ? 'border-primary-100 bg-primary-50' : 'border-slate-100 bg-slate-50 opacity-60'}`}>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${i === 0 ? 'bg-primary-600 text-white' : 'border-2 border-slate-300 bg-white'}`}>
+                  {i === 0 && <CheckCircle2 size={11} />}
+                </div>
+                <div>
+                  <p className="text-[12px] font-semibold text-slate-800">{step.label}</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{step.sub}</p>
+                  {step.action && <button onClick={step.action} className="mt-1.5 text-[11px] font-semibold text-primary-600 hover:underline">Start now →</button>}
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100 opacity-60">
-              <div className="w-6 h-6 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-bold text-slate-700 text-sm">Add your students</h4>
-                <p className="text-xs text-slate-500 font-medium mt-1">Invite learners via email or sync roster.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100 opacity-60">
-              <div className="w-6 h-6 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-bold text-slate-700 text-sm">Schedule a class</h4>
-                <p className="text-xs text-slate-500 font-medium mt-1">Set up your first live lecture or sync.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100 opacity-60">
-              <div className="w-6 h-6 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-bold text-slate-700 text-sm">Upload learning material</h4>
-                <p className="text-xs text-slate-500 font-medium mt-1">Add documents, slides, and syllabus.</p>
-              </div>
-            </div>
+            ))}
           </div>
         </motion.div>
       )}
 
-      {/* 3. PRIMARY ACTION ZONE */}
+      {/* Quick Actions */}
       {!isNewUser && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <button onClick={() => setShowForm(true)} className="flex flex-col items-center justify-center text-center p-6 rounded-2xl bg-white border border-slate-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-1 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center mb-4 group-hover:bg-primary-600 group-hover:text-white transition-colors">
-              <BookOpen size={24} />
-            </div>
-            <span className="font-extrabold text-slate-900 text-sm">Create Course</span>
-          </button>
-          <button className="flex flex-col items-center justify-center text-center p-6 rounded-2xl bg-white border border-slate-200 hover:border-amber-300 hover:shadow-md hover:-translate-y-1 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:bg-amber-500 group-hover:text-white transition-colors">
-              <Calendar size={24} />
-            </div>
-            <span className="font-extrabold text-slate-900 text-sm">Schedule Class</span>
-          </button>
-          <button className="flex flex-col items-center justify-center text-center p-6 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md hover:-translate-y-1 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
-              <UserPlus size={24} />
-            </div>
-            <span className="font-extrabold text-slate-900 text-sm">Add Students</span>
-          </button>
-          <button onClick={() => router.push('/admin/courses/new?ai=true')} className="flex flex-col items-center justify-center text-center p-6 rounded-2xl bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-md hover:-translate-y-1 transition-all group">
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-              <Sparkles size={24} />
-            </div>
-            <span className="font-extrabold text-slate-900 text-sm">AI Generator</span>
-          </button>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {quickActions.map(({ label, icon: Icon, color, bg, onClick }) => (
+            <button key={label} onClick={onClick}
+              className={`flex items-center gap-2.5 p-3 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all text-left group`}
+            >
+              <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center transition-colors shrink-0`}>
+                <Icon size={15} className={color} />
+              </div>
+              <span className="text-[12px] font-medium text-slate-700 group-hover:text-slate-900">{label}</span>
+            </button>
+          ))}
         </div>
       )}
 
-      {/* 4. SMART METRICS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="rounded-[24px] bg-white border border-slate-200 p-6 flex flex-col justify-between shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><Users size={20} /></div>
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Students</h3>
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {statCards.map(({ label, value, icon: Icon, color, bg, sub }) => (
+          <div key={label} className="stat-card flex items-start gap-3">
+            <div className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center shrink-0`}>
+              <Icon size={17} className={color} />
+            </div>
+            <div>
+              <p className="section-label mb-0.5">{label}</p>
+              <p className="text-2xl font-bold text-slate-900 leading-none tracking-tight">{value}</p>
+              <p className="text-[11px] text-slate-400 mt-1">{sub}</p>
+            </div>
           </div>
-          <div>
-            <div className="text-4xl font-extrabold text-slate-900 mb-2">{students}</div>
-            {students === 0 
-              ? <p className="text-sm font-medium text-blue-600 flex items-center gap-1 cursor-pointer hover:underline"><ArrowRight size={14}/> Add students to track engagement</p>
-              : <p className="text-sm font-medium text-emerald-600 bg-emerald-50 inline-flex px-2 py-1 rounded-md border border-emerald-100">+12% enrolled this term</p>
-            }
-          </div>
-        </div>
-
-        <div className="rounded-[24px] bg-white border border-slate-200 p-6 flex flex-col justify-between shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><Activity size={20} /></div>
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Avg. Attendance</h3>
-          </div>
-          <div>
-            <div className="text-4xl font-extrabold text-slate-900 mb-2">{attendance > 0 ? `${attendance}%` : '—'}</div>
-            {attendance === 0 
-              ? <p className="text-sm font-medium text-amber-600 flex items-center gap-1"><ArrowRight size={14}/> No classes held yet</p>
-              : <p className="text-sm font-medium text-slate-500">Across all active courses</p>
-            }
-          </div>
-        </div>
-
-        <div className="rounded-[24px] bg-white border border-slate-200 p-6 flex flex-col justify-between shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center"><BookOpen size={20} /></div>
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Active Courses</h3>
-          </div>
-          <div>
-            <div className="text-4xl font-extrabold text-slate-900 mb-2">{courses.length}</div>
-            {courses.length === 0 
-              ? <p className="text-sm font-medium text-indigo-600 flex items-center gap-1 cursor-pointer hover:underline" onClick={() => setShowForm(true)}><ArrowRight size={14}/> Create your first course</p>
-              : <p className="text-sm font-medium text-slate-500">Currently published</p>
-            }
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* 5. CORE WORKSPACE MODULE (Courses) */}
-        <div className="lg:col-span-2 space-y-6">
+      {/* Main content grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Courses */}
+        <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-              Your Courses
-            </h2>
-            <Link href="/courses" className="text-sm font-bold text-primary-600 hover:underline transition-colors flex items-center gap-1">
-              View all
-            </Link>
+            <h2 className="text-[13px] font-semibold text-slate-700">Your Courses</h2>
+            <Link href="/courses" className="text-[11px] text-primary-600 hover:underline font-medium flex items-center gap-0.5">View all <ArrowRight size={11} /></Link>
           </div>
-
           {loading ? (
-            <div className="space-y-4">
-              {[1,2].map(i => <div key={i} className="h-24 rounded-2xl bg-slate-100 animate-pulse border border-slate-200" />)}
-            </div>
-          ) : !isNewUser && (
-            <div className="grid gap-4">
-              {courses.slice(0, 5).map((course: Course, idx) => (
-                <div key={course._id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-[20px] bg-white border border-slate-200 hover:border-primary-200 hover:shadow-md transition-all">
-                  <div className="flex items-center gap-4 mb-4 sm:mb-0">
-                    <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
-                      <BookOpen size={20} className="text-slate-400 group-hover:text-primary-600 transition-colors" />
+            <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-14 rounded-xl bg-slate-100 animate-pulse" />)}</div>
+          ) : !isNewUser ? (
+            <div className="space-y-2">
+              {courses.slice(0, 5).map((course) => (
+                <div key={course._id} className="group flex items-center justify-between p-3 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-primary-50 transition-colors">
+                      <BookOpen size={14} className="text-slate-400 group-hover:text-primary-600 transition-colors" />
                     </div>
-                    <div>
-                      <h3 className="text-base font-extrabold text-slate-900 group-hover:text-primary-600 transition-colors">{course.title}</h3>
-                      <p className="text-xs font-medium text-slate-500 flex items-center gap-2 mt-1">
-                        <span className="font-bold text-slate-700">{course.studentCount || 0} Students</span>
-                        <span className="w-1 h-1 rounded-full bg-slate-300" />
-                        Next class: {hasClassesToday ? '2:00 PM' : 'Unscheduled'}
-                      </p>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold text-slate-900 truncate group-hover:text-primary-600 transition-colors">{course.title}</p>
+                      <p className="text-[11px] text-slate-400">{course.studentCount || 0} students · {course.code}</p>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Link href={`/courses/${course._id}/analytics`} className="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors">
-                      Analytics
-                    </Link>
-                    <Link href={`/courses/${course._id}`} className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 transition-colors">
-                      Open Course
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Link href={`/courses/${course._id}`} className="btn btn-secondary btn-sm gap-1">
+                      Open <ArrowRight size={11} />
                     </Link>
                   </div>
                 </div>
               ))}
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* RIGHT COLUMN: AI, ACTIVITY, SCHEDULE */}
-        <div className="space-y-6">
-          
-          {/* 6. AI INTEGRATION */}
-          <div className="rounded-[24px] bg-slate-900 border border-slate-800 p-6 shadow-xl relative overflow-hidden">
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-500 rounded-full blur-[60px] opacity-20" />
-            <h3 className="text-xs font-black text-primary-400 mb-5 uppercase tracking-[0.2em] flex items-center gap-2">
-              <Sparkles size={16} /> AI Assistant
-            </h3>
-            
-            <p className="text-slate-300 text-sm font-medium mb-4">What can I help you create today?</p>
-            <div className="space-y-2 mb-5">
-              <button className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 text-sm font-bold transition-colors">
-                Generate lesson plans <ArrowRight size={14} className="text-slate-500" />
-              </button>
-              <button className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 text-sm font-bold transition-colors">
-                Create a quiz draft <ArrowRight size={14} className="text-slate-500" />
-              </button>
-              <button className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 text-sm font-bold transition-colors">
-                Analyze student performance <ArrowRight size={14} className="text-slate-500" />
-              </button>
+        {/* Right column */}
+        <div className="space-y-3">
+          {/* AI Panel */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden">
+            <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary-500 rounded-full blur-3xl opacity-20 pointer-events-none" />
+            <div className="flex items-center gap-1.5 text-primary-400 text-[11px] font-semibold uppercase tracking-wider mb-3">
+              <Sparkles size={12} />AI Assistant
             </div>
-            
+            <p className="text-slate-300 text-[12px] mb-3">What can I help you create today?</p>
+            <div className="space-y-1.5 mb-3">
+              {['Generate lesson plans', 'Create a quiz draft', 'Analyze performance'].map(s => (
+                <button key={s} className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 text-[12px] transition-colors">
+                  {s} <ArrowRight size={11} className="text-slate-500" />
+                </button>
+              ))}
+            </div>
             <div className="relative">
-              <input type="text" placeholder="Ask AI..." className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-500 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all" />
-              <button 
-                type="button"
-                aria-label="Send query to AI"
-                title="Send query to AI"
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-primary-600 rounded-lg text-white hover:bg-primary-500 transition-colors"
-              >
-                <Send size={14} />
+              <input type="text" placeholder="Ask AI..." className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder:text-slate-500 text-[12px] outline-none focus:border-primary-500 transition-all" />
+              <button aria-label="Send query" className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center bg-primary-600 rounded-md text-white hover:bg-primary-500 transition-colors">
+                <Send size={11} />
               </button>
             </div>
           </div>
 
-          {/* 8. ACTIVITY FEED */}
-          <div className="rounded-[24px] bg-white border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-xs font-bold text-slate-500 mb-5 uppercase tracking-widest flex items-center gap-2">
-              <Bell size={16} className="text-slate-400" /> Recent Activity
-            </h3>
-            <div className="space-y-4">
-              {isNewUser ? (
-                <p className="text-sm font-medium text-slate-500 text-center py-4">No activity yet. Your feed will populate as students engage.</p>
-              ) : (
-                <>
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">5 students enrolled</p>
-                      <p className="text-xs text-slate-500">In Intro to Programming</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-primary-500 mt-1.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">AI drafted Quiz 1</p>
-                      <p className="text-xs text-slate-500">Ready for your review</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">System Maintenance</p>
-                      <p className="text-xs text-slate-500">Scheduled for tonight</p>
-                    </div>
-                  </div>
-                </>
-              )}
+          {/* Schedule */}
+          <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center gap-1.5 section-label mb-3">
+              <Clock size={12} className="text-amber-500" />Today&apos;s Schedule
             </div>
-          </div>
-
-          {/* 9. SCHEDULE PANEL */}
-          <div className="rounded-[24px] bg-white border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-xs font-bold text-slate-500 mb-5 uppercase tracking-widest flex items-center gap-2">
-              <Clock size={16} className="text-amber-500" /> {"Today's Schedule"}
-            </h3>
-            
             {stats.upcomingClasses?.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-1.5">
                 {stats.upcomingClasses.map((item, i) => (
-                  <Link key={i} href={`/courses/${item.courseId}/live`} className="block">
-                    <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors">
-                      <div className={`w-2.5 h-2.5 rounded-full ${item.color} mt-1.5`} />
-                      <div>
-                        <p className="text-sm font-extrabold text-slate-900 mb-0.5">{item.title}</p>
-                        <p className="text-xs font-bold text-slate-500">
-                          {new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} <span className="mx-1">•</span> {item.type}
-                        </p>
-                      </div>
+                  <Link key={i} href={`/courses/${item.courseId}/live`} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 transition-colors group">
+                    <div className={`w-2 h-2 rounded-full ${item.color} shrink-0`} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12px] font-medium text-slate-800 truncate">{item.title}</p>
+                      <p className="text-[10px] text-slate-400">{new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {item.type}</p>
                     </div>
                   </Link>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-6">
-                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-300">
-                  <Calendar size={20} />
-                </div>
-                <p className="text-sm font-bold text-slate-900 mb-1">No classes yet</p>
-                <p className="text-xs font-medium text-slate-500 mb-4">Your schedule is empty for today.</p>
-                <button className="text-xs font-bold text-primary-600 bg-primary-50 px-4 py-2 rounded-lg hover:bg-primary-100 transition-colors">
-                  + Schedule a Class
-                </button>
+              <div className="flex flex-col items-center py-5 text-center">
+                <Calendar size={20} className="text-slate-200 mb-2" />
+                <p className="text-[12px] text-slate-400">No classes today</p>
               </div>
             )}
           </div>
 
+          {/* Activity */}
+          <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center gap-1.5 section-label mb-3">
+              <Bell size={12} />Recent Activity
+            </div>
+            {isNewUser ? (
+              <p className="text-[12px] text-slate-400 text-center py-3">No activity yet.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {[
+                  { dot: 'bg-emerald-500', label: '5 students enrolled', sub: 'Intro to Programming' },
+                  { dot: 'bg-primary-500', label: 'AI drafted Quiz 1', sub: 'Ready for review' },
+                  { dot: 'bg-amber-500', label: 'System Maintenance', sub: 'Scheduled tonight' },
+                ].map((a, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <div className={`w-1.5 h-1.5 rounded-full ${a.dot} mt-1.5 shrink-0`} />
+                    <div>
+                      <p className="text-[12px] font-medium text-slate-800">{a.label}</p>
+                      <p className="text-[11px] text-slate-400">{a.sub}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Creation Modal Overlay */}
+      {/* Create Course Modal */}
       <AnimatePresence>
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowForm(false)} />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-[32px] shadow-2xl p-8 sm:p-10"
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowForm(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }}
+              className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl p-6"
             >
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex items-center justify-between mb-5">
                 <div>
-                  <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Create Course Quickly</h2>
-                  <p className="text-slate-500 font-medium">Start your new course environment.</p>
+                  <h2 className="text-[15px] font-semibold text-slate-900">Create Course</h2>
+                  <p className="text-[12px] text-slate-400 mt-0.5">Start a new course workspace.</p>
                 </div>
-                <button 
-                  type="button"
-                  aria-label="Close modal" 
-                  title="Close modal" 
-                  onClick={() => setShowForm(false)} 
-                  className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all"
-                >
-                  <X size={20} />
+                <button aria-label="Close" onClick={() => setShowForm(false)} className="w-7 h-7 flex items-center justify-center rounded-md bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all">
+                  <X size={15} />
                 </button>
               </div>
-
-              <form onSubmit={handleCreate} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Course Title</label>
-                    <input required placeholder="e.g. Intro to Programming" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 h-12 text-slate-900 focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all outline-none font-bold text-sm" value={form.title} onChange={e => setForm(p=>({...p,title:e.target.value}))} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Course Code</label>
-                    <input required placeholder="e.g. CS101" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 h-12 text-slate-900 focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all outline-none font-bold text-sm" value={form.code} onChange={e => setForm(p=>({...p,code:e.target.value}))} />
-                  </div>
+              <form onSubmit={handleCreate} className="space-y-3">
+                <div>
+                  <label className="section-label block mb-1.5">Course Title</label>
+                  <input required placeholder="e.g. Intro to Programming" className="input-premium" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} />
                 </div>
-
-                <div className="pt-6 mt-6 border-t border-slate-100 flex gap-4 justify-end">
-                  <button type="button" onClick={() => setShowForm(false)} className="px-6 h-12 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors">
-                    Cancel
-                  </button>
-                  <button type="submit" disabled={creating} className="flex items-center justify-center gap-2 px-8 h-12 rounded-xl bg-primary-600 text-white text-sm font-bold shadow-md shadow-primary-600/20 hover:bg-primary-700 disabled:opacity-50 transition-all">
-                    {creating ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+                <div>
+                  <label className="section-label block mb-1.5">Course Code</label>
+                  <input required placeholder="e.g. CS101" className="input-premium" value={form.code} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} />
+                </div>
+                <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                  <button type="button" onClick={() => setShowForm(false)} className="btn btn-ghost btn-sm">Cancel</button>
+                  <button type="submit" disabled={creating} className="btn btn-primary btn-sm gap-1.5">
+                    {creating ? <Loader2 size={13} className="animate-spin" /> : <ArrowRight size={13} />}
                     {creating ? 'Redirecting...' : 'Continue Setup'}
                   </button>
                 </div>
