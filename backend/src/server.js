@@ -136,7 +136,8 @@ app.get('/', (req, res) => {
   res.json({
     success: true,
     message: 'UniLearn API is running...',
-    version: '1.0.0',
+    version: '1.1.0',
+    timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV
   });
 });
