@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useReducer, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Sparkles, Calendar, Layout, Users, Settings, Clock, Plus, Trash2, 
   CheckCircle2, ArrowLeft, ArrowRight, Save, X,
-  AlertCircle, Sparkle, FileText, Video, HelpCircle, Search
+  AlertCircle, Sparkle, FileText, Video, HelpCircle, Search,
+  RefreshCw, Loader2 as SpinnerIcon
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -132,6 +133,10 @@ export default function CourseWizard() {
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
 
+  // Code uniqueness check
+  const [codeStatus, setCodeStatus] = useState<'idle' | 'checking' | 'taken' | 'available'>('idle');
+  const codeCheckTimer = useRef<NodeJS.Timeout | null>(null);
+
   // Fetch actual students from API
   useEffect(() => {
     const fetchStudents = async () => {
@@ -163,13 +168,51 @@ export default function CourseWizard() {
     try {
       localStorage.setItem('courseWizard_draft', JSON.stringify(form));
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      // Defer state update to avoid synchronous setState in effect
       const id = setTimeout(() => setAutoSaveStatus(`Draft saved at ${now}`), 0);
       return () => clearTimeout(id);
     } catch {
       // localStorage unavailable
     }
   }, [form]);
+
+  // Debounced course code uniqueness check
+  useEffect(() => {
+    if (!form.code || form.code.length < 2) {
+      setCodeStatus('idle');
+      return;
+    }
+    setCodeStatus('checking');
+    if (codeCheckTimer.current) clearTimeout(codeCheckTimer.current);
+    codeCheckTimer.current = setTimeout(async () => {
+      try {
+        const res = await courseApi.getAll();
+        const courses: { code: string }[] = res.data?.data ?? [];
+        const taken = courses.some(c => c.code.toLowerCase() === form.code.toLowerCase());
+        setCodeStatus(taken ? 'taken' : 'available');
+      } catch {
+        setCodeStatus('idle');
+      }
+    }, 600);
+    return () => { if (codeCheckTimer.current) clearTimeout(codeCheckTimer.current); };
+  }, [form.code]);
+
+  // Generate a unique code suggestion based on title
+  const suggestCode = useCallback(async () => {
+    const base = form.title
+      ? form.title.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 4)
+      : 'CRS';
+    let candidate = `${base}${Math.floor(100 + Math.random() * 900)}`;
+    try {
+      const res = await courseApi.getAll();
+      const codes = new Set((res.data?.data ?? []).map((c: { code: string }) => c.code.toLowerCase()));
+      let attempts = 0;
+      while (codes.has(candidate.toLowerCase()) && attempts < 10) {
+        candidate = `${base}${Math.floor(100 + Math.random() * 900)}`;
+        attempts++;
+      }
+    } catch { /* use candidate as-is */ }
+    setForm(p => ({ ...p, code: candidate }));
+  }, [form.title]);
 
 
 
@@ -180,6 +223,8 @@ export default function CourseWizard() {
       if (!form.title) activeWarnings.push('Please enter a course title to continue');
       else if (form.title.length < 5) activeWarnings.push('Course title should be at least 5 characters');
       if (!form.code) activeWarnings.push('Please enter a unique catalog code');
+      else if (codeStatus === 'taken') activeWarnings.push(`Course code "${form.code}" is already taken — use a different code or click Suggest`);
+      else if (codeStatus === 'checking') activeWarnings.push('Checking code availability...');
       if (!form.description) activeWarnings.push('Please provide a short course summary');
       else if (form.description.length < 10) activeWarnings.push('Course summary must be at least 10 characters');
       if (!form.category) activeWarnings.push('Please select a course category');
@@ -564,15 +609,44 @@ export default function CourseWizard() {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Course Code *</label>
-                        <input 
-                          type="text"
-                          required
-                          value={form.code}
-                          onChange={e => setForm(p => ({ ...p, code: e.target.value }))}
-                          placeholder="CS101"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 text-sm font-bold focus:bg-white focus:border-primary-500 transition-all outline-none"
-                        />
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Course Code *</label>
+                          <button
+                            type="button"
+                            onClick={suggestCode}
+                            className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors"
+                          >
+                            <RefreshCw size={11} /> Suggest
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <input 
+                            type="text"
+                            required
+                            value={form.code}
+                            onChange={e => setForm(p => ({ ...p, code: e.target.value.toUpperCase() }))}
+                            placeholder="CS101"
+                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 pr-10 text-slate-900 placeholder:text-slate-400 text-sm font-bold focus:bg-white transition-all outline-none ${
+                              codeStatus === 'taken'      ? 'border-red-400 focus:border-red-500' :
+                              codeStatus === 'available'  ? 'border-emerald-400 focus:border-emerald-500' :
+                              'border-slate-200 focus:border-primary-500'
+                            }`}
+                          />
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            {codeStatus === 'checking'  && <SpinnerIcon size={14} className="animate-spin text-slate-400" />}
+                            {codeStatus === 'available' && <CheckCircle2 size={14} className="text-emerald-500" />}
+                            {codeStatus === 'taken'     && <AlertCircle size={14} className="text-red-500" />}
+                          </div>
+                        </div>
+                        {codeStatus === 'taken' && (
+                          <p className="text-xs text-red-500 font-medium mt-1.5 flex items-center gap-1">
+                            <AlertCircle size={11} /> This code is taken.{' '}
+                            <button type="button" onClick={suggestCode} className="underline font-semibold">Suggest one</button>
+                          </p>
+                        )}
+                        {codeStatus === 'available' && (
+                          <p className="text-xs text-emerald-600 font-medium mt-1.5">✓ Code is available</p>
+                        )}
                       </div>
 
                       <div>
