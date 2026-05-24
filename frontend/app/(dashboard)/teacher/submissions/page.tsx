@@ -20,7 +20,7 @@ export default function TeacherSubmissionsPage() {
   const { data: submissions = [], isLoading } = useQuery({
     queryKey: ['teacher', 'pending-submissions'],
     queryFn: () => teacherApi.getPendingSubmissions(),
-    select: (res) => res.data,
+    select: (res) => res.data?.data ?? [],
     enabled: !!user,
   });
 

@@ -19,7 +19,7 @@ export default function TeacherCoursesPage() {
   const { data: courses = [], isLoading } = useQuery({
     queryKey: queryKeys.teacher.courses(user?._id || ''),
     queryFn: () => teacherApi.getMyCourses(),
-    select: (res) => res.data,
+    select: (res) => res.data?.data ?? [],
     enabled: !!user,
   });
 

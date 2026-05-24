@@ -21,21 +21,21 @@ export default function TeacherPortal() {
   const { data: stats = { students: 0, attendance: 0, engagementData: [], upcomingClasses: [] } } = useQuery({
     queryKey: ['teacher', 'stats'],
     queryFn: () => teacherApi.getStats(),
-    select: (res) => res.data,
+    select: (res) => res.data?.data ?? { students: 0, attendance: 0, engagementData: [], upcomingClasses: [] },
     enabled: !!user,
   });
 
   const { data: courses = [] } = useQuery({
     queryKey: queryKeys.teacher.courses(user?._id || ''),
     queryFn: () => teacherApi.getMyCourses(),
-    select: (res) => res.data,
+    select: (res) => res.data?.data ?? [],
     enabled: !!user,
   });
 
   const { data: pendingSubmissions = [] } = useQuery({
     queryKey: ['teacher', 'pending-submissions'],
     queryFn: () => teacherApi.getPendingSubmissions(),
-    select: (res) => res.data,
+    select: (res) => res.data?.data ?? [],
     enabled: !!user,
   });
 

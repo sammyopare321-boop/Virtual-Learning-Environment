@@ -8,11 +8,11 @@ import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import {
   BarChart3, TrendingUp, Users, AlertTriangle, ArrowRight,
-  Filter, Download, RefreshCw
+  Download, RefreshCw
 } from 'lucide-react';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 
 export default function TeacherAnalyticsPage() {
@@ -22,30 +22,29 @@ export default function TeacherAnalyticsPage() {
   const { data: courses = [] } = useQuery({
     queryKey: queryKeys.teacher.courses(user?._id || ''),
     queryFn: () => teacherApi.getMyCourses(),
-    select: (res) => res.data,
+    select: (res) => res.data?.data ?? [],
     enabled: !!user,
   });
 
   const { data: analytics = null, isLoading } = useQuery({
     queryKey: ['teacher', 'analytics', selectedCourse],
     queryFn: () => selectedCourse ? teacherApi.getCourseAnalytics(selectedCourse) : null,
-    select: (res) => res?.data,
+    select: (res) => res?.data?.data ?? null,
     enabled: !!selectedCourse,
   });
 
   const { data: atRiskStudents = [] } = useQuery({
     queryKey: ['teacher', 'at-risk', selectedCourse],
     queryFn: () => selectedCourse ? teacherApi.getAtRiskStudents(selectedCourse) : null,
-    select: (res) => res?.data || [],
+    select: (res) => res?.data?.data ?? [],
     enabled: !!selectedCourse,
   });
 
-  // Sample data for charts
   const gradeDistribution = analytics ? [
     { name: 'Below 50', value: analytics.distribution?.below50 || 0, fill: '#ef4444' },
-    { name: '50-69', value: analytics.distribution?.['50-69'] || 0, fill: '#f97316' },
-    { name: '70-89', value: analytics.distribution?.['70-89'] || 0, fill: '#eab308' },
-    { name: '90-100', value: analytics.distribution?.['90-100'] || 0, fill: '#22c55e' },
+    { name: '50-69',    value: analytics.distribution?.['50-69'] || 0, fill: '#f97316' },
+    { name: '70-89',    value: analytics.distribution?.['70-89'] || 0, fill: '#eab308' },
+    { name: '90-100',   value: analytics.distribution?.['90-100'] || 0, fill: '#22c55e' },
   ] : [];
 
   const performanceTrend = [
@@ -59,7 +58,6 @@ export default function TeacherAnalyticsPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Analytics</h1>
@@ -107,36 +105,36 @@ export default function TeacherAnalyticsPage() {
           {/* Key Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { label: 'Class Average', value: `${analytics?.classAverage || 0}%`, icon: TrendingUp, color: 'blue' },
-              { label: 'Highest Score', value: `${analytics?.highestScore || 0}%`, icon: TrendingUp, color: 'emerald' },
-              { label: 'Lowest Score', value: `${analytics?.lowestScore || 0}%`, icon: AlertTriangle, color: 'amber' },
-              { label: 'Completion Rate', value: `${analytics?.completionRate || 0}%`, icon: Users, color: 'violet' },
+              { label: 'Class Average',   value: `${analytics?.classAverage || 0}%`,    icon: TrendingUp,   color: 'blue' },
+              { label: 'Highest Score',   value: `${analytics?.highestScore || 0}%`,    icon: TrendingUp,   color: 'emerald' },
+              { label: 'Lowest Score',    value: `${analytics?.lowestScore || 0}%`,     icon: AlertTriangle,color: 'amber' },
+              { label: 'Completion Rate', value: `${analytics?.completionRate || 0}%`,  icon: Users,        color: 'violet' },
             ].map(({ label, value, icon: Icon, color }) => (
               <motion.div
                 key={label}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`rounded-xl border p-4 ${
-                  color === 'blue' ? 'bg-blue-50 border-blue-100' :
+                  color === 'blue'    ? 'bg-blue-50 border-blue-100' :
                   color === 'emerald' ? 'bg-emerald-50 border-emerald-100' :
-                  color === 'amber' ? 'bg-amber-50 border-amber-100' :
+                  color === 'amber'   ? 'bg-amber-50 border-amber-100' :
                   'bg-violet-50 border-violet-100'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className={`text-xs font-semibold uppercase tracking-wider ${
-                      color === 'blue' ? 'text-blue-600' :
+                      color === 'blue'    ? 'text-blue-600' :
                       color === 'emerald' ? 'text-emerald-600' :
-                      color === 'amber' ? 'text-amber-600' :
+                      color === 'amber'   ? 'text-amber-600' :
                       'text-violet-600'
                     }`}>{label}</p>
                     <p className="text-2xl font-black mt-1">{value}</p>
                   </div>
                   <Icon size={24} className={
-                    color === 'blue' ? 'text-blue-200' :
+                    color === 'blue'    ? 'text-blue-200' :
                     color === 'emerald' ? 'text-emerald-200' :
-                    color === 'amber' ? 'text-amber-200' :
+                    color === 'amber'   ? 'text-amber-200' :
                     'text-violet-200'
                   } />
                 </div>
@@ -146,21 +144,13 @@ export default function TeacherAnalyticsPage() {
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Grade Distribution */}
             <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm">
               <h3 className="text-sm font-semibold text-slate-900 mb-4">Grade Distribution</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie
-                    data={gradeDistribution}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
+                  <Pie data={gradeDistribution} cx="50%" cy="50%" labelLine={false}
                     label={({ name, value }) => `${name}: ${value}`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
+                    outerRadius={80} dataKey="value">
                     {gradeDistribution.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
@@ -170,7 +160,6 @@ export default function TeacherAnalyticsPage() {
               </ResponsiveContainer>
             </div>
 
-            {/* Performance Trend */}
             <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm">
               <h3 className="text-sm font-semibold text-slate-900 mb-4">Performance Trend</h3>
               <ResponsiveContainer width="100%" height={300}>
@@ -179,13 +168,7 @@ export default function TeacherAnalyticsPage() {
                   <XAxis dataKey="week" stroke="#94a3b8" />
                   <YAxis stroke="#94a3b8" />
                   <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="avg"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot={{ fill: '#3b82f6', r: 4 }}
-                  />
+                  <Line type="monotone" dataKey="avg" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6', r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -208,13 +191,9 @@ export default function TeacherAnalyticsPage() {
             ) : (
               <div className="space-y-2">
                 {atRiskStudents.map((student: any, idx: number) => (
-                  <motion.div
-                    key={student._id}
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
+                  <motion.div key={student._id} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="flex items-center justify-between p-3 rounded-lg bg-amber-50 border border-amber-100 hover:border-amber-200 transition-colors"
-                  >
+                    className="flex items-center justify-between p-3 rounded-lg bg-amber-50 border border-amber-100">
                     <div>
                       <p className="text-sm font-semibold text-slate-900">{student.student?.name}</p>
                       <p className="text-xs text-slate-500">{student.student?.email}</p>
