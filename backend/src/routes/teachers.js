@@ -16,6 +16,8 @@ const router = express.Router();
 
 const { protect, authorize } = require('../middleware/auth');
 
+console.log('[TEACHER ROUTES] Registering teacher routes...');
+
 // Test endpoint (no auth)
 router.get('/test', (req, res) => {
   res.json({ success: true, message: 'Teacher routes are working!' });
@@ -25,6 +27,8 @@ router.get('/test', (req, res) => {
 router.get('/me/stats', protect, authorize('teacher'), getMyStats);
 router.get('/me/courses', protect, authorize('teacher'), getMyCourses);
 router.get('/me/pending-submissions', protect, authorize('teacher'), getPendingSubmissions);
+
+console.log('[TEACHER ROUTES] Registered routes: /test, /me/stats, /me/courses, /me/pending-submissions');
 
 // Course-specific endpoints
 router.get('/me/courses/:courseId/gradebook', protect, authorize('teacher'), getCourseGradebook);
