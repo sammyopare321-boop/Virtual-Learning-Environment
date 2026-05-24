@@ -41,13 +41,13 @@ const studentLinks: NavSection[] = [
 
 const teacherLinks: NavSection[] = [
   { group: 'Core', items: [
-    { href: '/dashboard/teacher', label: 'Dashboard',     icon: LayoutDashboard },
-    { href: '/courses',           label: 'Courses',       icon: BookOpen },
-    { href: '/messages',          label: 'Messages',      icon: MessageSquare },
+    { href: '/teacher',           label: 'Dashboard',     icon: LayoutDashboard },
+    { href: '/teacher/courses',   label: 'My Courses',    icon: BookOpen },
+    { href: '/teacher/submissions', label: 'Submissions', icon: MessageSquare },
   ]},
   { group: 'Tools', items: [
-    { href: '/radar',             label: 'Analytics',     icon: Radar },
-    { href: '/ai-tutor',          label: 'AI Planner',    icon: Sparkles },
+    { href: '/teacher/analytics', label: 'Analytics',     icon: BarChart3 },
+    { href: '/teacher/students',  label: 'Students',      icon: Users },
     { href: '/notifications',     label: 'Notifications', icon: Bell },
   ]},
   { group: 'Account', items: [
