@@ -47,7 +47,6 @@ const teacherLinks: NavSection[] = [
   ]},
   { group: 'Tools', items: [
     { href: '/teacher/analytics', label: 'Analytics',     icon: BarChart3 },
-    { href: '/teacher/students',  label: 'Students',      icon: Users },
     { href: '/notifications',     label: 'Notifications', icon: Bell },
   ]},
   { group: 'Account', items: [

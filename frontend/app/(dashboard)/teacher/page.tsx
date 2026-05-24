@@ -60,7 +60,7 @@ export default function TeacherPortal() {
       value: stats.students,
       icon: Users,
       color: 'emerald',
-      href: '/teacher/students',
+      href: '/teacher/courses',
     },
     {
       label: 'Pending Submissions',
@@ -247,9 +247,8 @@ export default function TeacherPortal() {
             <div className="space-y-2">
               {[
                 { label: 'View Analytics', icon: BarChart3, href: '/teacher/analytics' },
-                { label: 'Manage Grades', icon: FileText, href: '/teacher/grades' },
-                { label: 'Create Assignment', icon: Zap, href: '/teacher/assignments/new' },
-                { label: 'Schedule Class', icon: Calendar, href: '/teacher/schedule' },
+                { label: 'My Courses', icon: BookOpen, href: '/teacher/courses' },
+                { label: 'Submissions', icon: FileText, href: '/teacher/submissions' },
               ].map(({ label, icon: Icon, href }) => (
                 <Link
                   key={label}
