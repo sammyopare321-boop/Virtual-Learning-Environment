@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 // Load env vars
 dotenv.config();
 
-// Deployment trigger: Teacher API endpoints v1.1 - Route ordering fix
+// Deployment trigger: Teacher API inline routes v1.1.2 - bypass route file caching
 
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -136,7 +136,7 @@ app.get('/', (req, res) => {
   res.json({
     success: true,
     message: 'UniLearn API is running...',
-    version: '1.1.1',
+    version: '1.1.2',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV
   });
@@ -144,6 +144,25 @@ app.get('/', (req, res) => {
 
 // ─── API ROUTES ──────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
+
+// ─── TEACHER ROUTES (inline to guarantee registration) ───────────────────────
+const { protect, authorize } = require('./middleware/auth');
+const teacherController = require('./controllers/teacherController');
+
+console.log('[SERVER] Registering inline teacher routes...');
+app.get('/api/teachers/test', (req, res) => res.json({ success: true, message: 'Teacher routes OK', version: '1.1.2' }));
+app.get('/api/teachers/me/stats',               protect, authorize('teacher'), teacherController.getMyStats);
+app.get('/api/teachers/me/courses',             protect, authorize('teacher'), teacherController.getMyCourses);
+app.get('/api/teachers/me/pending-submissions', protect, authorize('teacher'), teacherController.getPendingSubmissions);
+app.get('/api/teachers/me/courses/:courseId/gradebook',   protect, authorize('teacher'), teacherController.getCourseGradebook);
+app.get('/api/teachers/me/courses/:courseId/analytics',   protect, authorize('teacher'), teacherController.getCourseAnalytics);
+app.get('/api/teachers/me/courses/:courseId/at-risk',     protect, authorize('teacher'), teacherController.getAtRiskStudents);
+app.get('/api/teachers/me/courses/:courseId/assignments', protect, authorize('teacher'), teacherController.getCourseAssignments);
+app.get('/api/teachers/me/courses/:courseId/quizzes',     protect, authorize('teacher'), teacherController.getCourseQuizzes);
+app.get('/api/teachers/me/assignments/:assignmentId/submissions', protect, authorize('teacher'), teacherController.getAssignmentSubmissions);
+app.get('/api/teachers/me/quizzes/:quizId/attempts',      protect, authorize('teacher'), teacherController.getQuizAttempts);
+console.log('[SERVER] Inline teacher routes registered.');
+
 app.use('/api/teachers', teacherRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/admin', adminRoutes);
