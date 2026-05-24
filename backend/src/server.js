@@ -143,6 +143,9 @@ app.get('/', (req, res) => {
 
 // ─── API ROUTES ──────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
+app.use('/api/teachers', teacherRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/courses/:id', courseNestedRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
@@ -155,9 +158,6 @@ app.use('/api', quizRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/communication', communicationRoutes);
 app.use('/api/live-sessions', liveRoutes);
-app.use('/api/students', studentRoutes);
-app.use('/api/teachers', teacherRoutes);
-app.use('/api/admin', adminRoutes);
 
 // API Documentation
 app.use('/api-docs', require('./routes/docs'));
