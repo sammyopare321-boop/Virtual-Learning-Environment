@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 // Load env vars
 dotenv.config();
 
-// Deployment trigger: Teacher API endpoints v1.0
+// Deployment trigger: Teacher API endpoints v1.1 - Route ordering fix
 
 const mongoose = require('mongoose');
 const cors = require('cors');
