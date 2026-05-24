@@ -27,9 +27,38 @@ axiosInstance.interceptors.request.use((config) => {
 });
 
 // Handle 401 globally — redirect to login
+// Also capture errors with Sentry
 axiosInstance.interceptors.response.use(
   (res) => res,
   (error) => {
+    // Capture API errors with Sentry
+    if (typeof window !== 'undefined') {
+      try {
+        const { captureException, addSentryBreadcrumb } = require('@/lib/sentry');
+        const status = error.response?.status;
+        const message = error.response?.data?.message || error.message;
+        
+        // Add breadcrumb for debugging
+        addSentryBreadcrumb(
+          `API Error: ${error.config?.method?.toUpperCase()} ${error.config?.url}`,
+          'api',
+          status >= 500 ? 'error' : 'warning'
+        );
+
+        // Capture 5xx errors as exceptions
+        if (status >= 500) {
+          captureException(error, {
+            url: error.config?.url,
+            method: error.config?.method,
+            status,
+            message,
+          });
+        }
+      } catch {
+        // Sentry not available
+      }
+    }
+
     if (error.response?.status === 401 && typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
       setAuthToken(null);
       window.location.href = '/auth/login';

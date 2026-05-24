@@ -12,7 +12,7 @@ import { AxiosError } from 'axios';
 import {
   BookOpen, Plus, Sparkles, Users, Clock, Calendar,
   ArrowRight, CheckCircle2, X, Loader2, Bell, Send,
-  Activity, UserPlus
+  Activity, UserPlus, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -59,10 +59,38 @@ export default function TeacherDashboard() {
 
   const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-  const statCards = [
-    { label: 'Students', value: students, icon: Users,    color: 'text-blue-600',   bg: 'bg-blue-50',   sub: students === 0 ? 'No students yet' : '+12% this term' },
-    { label: 'Attendance', value: attendance > 0 ? `${attendance}%` : '—', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50', sub: 'Across all courses' },
-    { label: 'Courses', value: courses.length, icon: BookOpen, color: 'text-violet-600', bg: 'bg-violet-50', sub: courses.length === 0 ? 'Create your first' : 'Active courses' },
+  const statCards: Array<{
+    label: string;
+    value: number | string;
+    icon: React.ComponentType<any>;
+    color: 'blue' | 'emerald' | 'violet';
+    trend: string;
+    trendUp: boolean;
+  }> = [
+    {
+      label: 'Students',
+      value: students,
+      icon: Users,
+      color: 'blue',
+      trend: students === 0 ? 'No students yet' : '+12% this term',
+      trendUp: students > 0,
+    },
+    {
+      label: 'Attendance',
+      value: attendance > 0 ? `${attendance}%` : '—',
+      icon: Activity,
+      color: 'emerald',
+      trend: 'Across all courses',
+      trendUp: attendance > 85,
+    },
+    {
+      label: 'Courses',
+      value: courses.length,
+      icon: BookOpen,
+      color: 'violet',
+      trend: courses.length === 0 ? 'Create your first' : 'Active courses',
+      trendUp: courses.length > 0,
+    },
   ];
 
   const quickActions = [
@@ -140,17 +168,16 @@ export default function TeacherDashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {statCards.map(({ label, value, icon: Icon, color, bg, sub }) => (
-          <div key={label} className="stat-card flex items-start gap-3">
-            <div className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center shrink-0`}>
-              <Icon size={17} className={color} />
-            </div>
-            <div>
-              <p className="section-label mb-0.5">{label}</p>
-              <p className="text-2xl font-bold text-slate-900 leading-none tracking-tight">{value}</p>
-              <p className="text-[11px] text-slate-400 mt-1">{sub}</p>
-            </div>
-          </div>
+        {statCards.map(({ label, value, icon: Icon, color, trend, trendUp }) => (
+          <StatCard
+            key={label}
+            icon={<Icon size={17} />}
+            label={label}
+            value={value}
+            trend={trend}
+            trendUp={trendUp}
+            color={color}
+          />
         ))}
       </div>
 
@@ -205,7 +232,7 @@ export default function TeacherDashboard() {
               ))}
             </div>
             <div className="relative">
-              <input type="text" placeholder="Ask AI..." className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder:text-slate-500 text-[12px] outline-none focus:border-primary-500 transition-all" />
+              <input aria-label="Ask AI" type="text" placeholder="Ask AI..." className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder:text-slate-500 text-[12px] outline-none focus:border-primary-500 transition-all" />
               <button aria-label="Send query" className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center bg-primary-600 rounded-md text-white hover:bg-primary-500 transition-colors">
                 <Send size={11} />
               </button>
@@ -285,12 +312,12 @@ export default function TeacherDashboard() {
               </div>
               <form onSubmit={handleCreate} className="space-y-3">
                 <div>
-                  <label className="section-label block mb-1.5">Course Title</label>
-                  <input required placeholder="e.g. Intro to Programming" className="input-premium" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} />
+                  <label htmlFor="courseTitle" className="section-label block mb-1.5">Course Title</label>
+                  <input id="courseTitle" required placeholder="e.g. Intro to Programming" className="input-premium" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="section-label block mb-1.5">Course Code</label>
-                  <input required placeholder="e.g. CS101" className="input-premium" value={form.code} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} />
+                  <label htmlFor="courseCode" className="section-label block mb-1.5">Course Code</label>
+                  <input id="courseCode" required placeholder="e.g. CS101" className="input-premium" value={form.code} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} />
                 </div>
                 <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
                   <button type="button" onClick={() => setShowForm(false)} className="btn btn-ghost btn-sm">Cancel</button>
@@ -304,6 +331,40 @@ export default function TeacherDashboard() {
           </div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+
+function StatCard({ icon, label, value, trend, trendUp, color }: {
+  icon: React.ReactNode,
+  label: string,
+  value: string | number,
+  trend: string,
+  trendUp: boolean,
+  color: 'blue' | 'emerald' | 'violet'
+}) {
+  const colorMap: Record<string, string> = {
+    blue: 'text-blue-600 bg-blue-50',
+    emerald: 'text-emerald-600 bg-emerald-50',
+    violet: 'text-violet-600 bg-violet-50',
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm hover:shadow-md hover:border-slate-200 transition-all">
+      <div className="flex items-center justify-between mb-3">
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${colorMap[color]}`}>
+          {icon}
+        </div>
+        <div className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full ${trendUp ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+          {trendUp ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+          {trend}
+        </div>
+      </div>
+      <div className="space-y-1">
+        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{label}</span>
+        <h4 className="text-2xl font-black text-slate-900 tracking-tighter">{value}</h4>
+      </div>
     </div>
   );
 }

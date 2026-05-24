@@ -4,6 +4,8 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 
+export const dynamic = 'force-dynamic';
+
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
@@ -63,6 +65,7 @@ import CommandPalette from "@/components/shared/CommandPalette";
 import SentinelWrapper from "../components/shared/SentinelWrapper";
 import ImpersonationBanner from "@/components/shared/ImpersonationBanner";
 import QueryProvider from "@/components/providers/QueryProvider";
+import { SentryProvider } from "@/components/providers/SentryProvider";
 
 export default function RootLayout({
   children,
@@ -72,35 +75,37 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning data-scroll-behavior="smooth">
       <body className="font-sans antialiased" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <AuthProvider>
-          <QueryProvider>
-            <SocketProvider>
-              <ThemeProvider>
-                <SentinelProvider>
-                  <ImpersonationBanner />
-                  <ThemeToggle />
-                  <SentinelWrapper />
-                  <Toaster
-                    position="top-right"
-                    toastOptions={{
-                      className: 'react-hot-toast',
-                      style: {
-                        borderRadius: '12px',
-                        background: '#fff',
-                        color: '#0f172a',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        border: '1px solid #e2e8f0',
-                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                      },
-                    }}
-                  />
-                  {children}
-                </SentinelProvider>
-              </ThemeProvider>
-            </SocketProvider>
-          </QueryProvider>
-        </AuthProvider>
+        <SentryProvider>
+          <AuthProvider>
+            <QueryProvider>
+              <SocketProvider>
+                <ThemeProvider>
+                  <SentinelProvider>
+                    <ImpersonationBanner />
+                    <ThemeToggle />
+                    <SentinelWrapper />
+                    <Toaster
+                      position="top-right"
+                      toastOptions={{
+                        className: 'react-hot-toast',
+                        style: {
+                          borderRadius: '12px',
+                          background: '#fff',
+                          color: '#0f172a',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          border: '1px solid #e2e8f0',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                        },
+                      }}
+                    />
+                    {children}
+                  </SentinelProvider>
+                </ThemeProvider>
+              </SocketProvider>
+            </QueryProvider>
+          </AuthProvider>
+        </SentryProvider>
       </body>
     </html>
   );

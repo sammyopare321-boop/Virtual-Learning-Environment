@@ -3,9 +3,12 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '@/components/shared/Sidebar';
 import SentinelFeed from '@/components/shared/SentinelFeed';
+import CommandPalette from '@/components/shared/CommandPalette';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2 } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
 
 export default function AppShellLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -88,6 +91,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
 
       {/* Global Components */}
       <SentinelFeed isOpen={isSentinelOpen} onClose={() => setIsSentinelOpen(false)} />
+      <CommandPalette />
     </div>
   );
 }

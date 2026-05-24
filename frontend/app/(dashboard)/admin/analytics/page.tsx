@@ -6,6 +6,8 @@ import {
   TrendingUp, CalendarCheck, Target, Network 
 } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 interface OverviewData {
   totalUsers?: number;
   totalCourses?: number;
