@@ -12,7 +12,6 @@ const navItems = [
   { label: 'Courses', href: '/teacher/courses', icon: BookOpen },
   { label: 'Submissions', href: '/teacher/submissions', icon: FileText },
   { label: 'Analytics', href: '/teacher/analytics', icon: BarChart3 },
-  { label: 'Students', href: '/teacher/students', icon: Users },
 ];
 
 export function TeacherNav() {
