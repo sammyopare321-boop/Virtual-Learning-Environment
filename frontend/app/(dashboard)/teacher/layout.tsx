@@ -16,7 +16,7 @@ export default function TeacherLayout({
 
   useEffect(() => {
     if (!loading && user && user.role !== 'teacher' && user.role !== 'admin') {
-      router.push('/dashboard');
+      router.push(`/dashboard/${user.role}`);
     }
   }, [user, loading, router]);
 

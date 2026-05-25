@@ -14,7 +14,7 @@ export default function DashboardError({
       error={error}
       reset={reset}
       title="Dashboard unavailable"
-      backHref="/dashboard/student"
+      backHref="/dashboard"
       backLabel="Go to dashboard"
     />
   );

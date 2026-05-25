@@ -69,7 +69,9 @@ axiosInstance.interceptors.response.use(
       // Handle 403 - Forbidden (logged in but insufficient permissions)
       if (error.response?.status === 403) {
         // Redirect to dashboard if trying to access unauthorized routes
-        if (window.location.pathname.startsWith('/teacher') || 
+        if (window.location.pathname.startsWith('/dashboard/teacher') || 
+            window.location.pathname.startsWith('/dashboard/admin') ||
+            window.location.pathname.startsWith('/teacher') ||
             window.location.pathname.startsWith('/admin')) {
           window.location.href = '/dashboard';
         }

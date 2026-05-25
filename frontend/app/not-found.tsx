@@ -53,7 +53,7 @@ export default function NotFound() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/" className="flex items-center justify-center gap-2 h-14 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-lg shadow-xl shadow-blue-600/20 transition-all hover:-translate-y-1 active:scale-95">
+            <Link href="/dashboard" className="flex items-center justify-center gap-2 h-14 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-lg shadow-xl shadow-blue-600/20 transition-all hover:-translate-y-1 active:scale-95">
               <Home size={20} />
               Return to Workspace
             </Link>
