@@ -495,14 +495,22 @@ export default function QuizBuilder() {
         
         <div className="flex items-center gap-3">
            {step === 3 && (
-             <button 
-               onClick={handleSave} 
-               disabled={saving}
-               className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary-600 text-white font-semibold text-xs uppercase tracking-wide hover:bg-primary-700 disabled:opacity-50 transition-colors"
-             >
-                {saving ? <Loader2 size={14} className="animate-spin"/> : <Save size={14} />} 
-                {saving ? 'Saving...' : 'Create Quiz'}
-             </button>
+             <>
+               <button
+                 onClick={() => setAiPanelOpen(true)}
+                 className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 font-semibold text-xs hover:bg-violet-100 transition-colors"
+               >
+                 <Sparkles size={14} /> AI Generate
+               </button>
+               <button 
+                 onClick={handleSave} 
+                 disabled={saving}
+                 className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary-600 text-white font-semibold text-xs uppercase tracking-wide hover:bg-primary-700 disabled:opacity-50 transition-colors"
+               >
+                 {saving ? <Loader2 size={14} className="animate-spin"/> : <Save size={14} />} 
+                 {saving ? 'Saving...' : 'Create Quiz'}
+               </button>
+             </>
            )}
         </div>
       </header>
@@ -514,61 +522,157 @@ export default function QuizBuilder() {
          {/* AI GENERATION PANEL */}
          <AnimatePresence>
             {aiPanelOpen && (
-              <>
-                <motion.div 
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40"
-                  onClick={() => setAiPanelOpen(false)}
-                />
-                <motion.div 
-                  initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                  className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col border-l border-slate-200"
-                >
-                   <div className="h-14 border-b border-slate-200 flex items-center justify-between px-6 bg-gradient-to-r from-indigo-50 to-purple-50 shrink-0">
-                      <div className="flex items-center gap-2 text-indigo-600">
-                         <Brain size={18} />
-                         <span className="font-semibold text-sm uppercase tracking-wide">AI Generator</span>
-                      </div>
-                      <button onClick={() => setAiPanelOpen(false)} className="text-slate-400 hover:text-slate-900 transition-colors">
-                        <X size={18} />
-                      </button>
-                   </div>
-                   <div className="p-6 space-y-6 overflow-y-auto flex-1">
-                      <div className="space-y-2">
-                         <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Topic</label>
-                         <textarea className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm resize-none h-20" placeholder="E.g., Quantum Mechanics, Cell Biology..." />
-                      </div>
-                      <div className="space-y-2">
-                         <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Difficulty</label>
-                         <select className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm bg-white">
-                            <option>Introductory</option>
-                            <option>Intermediate</option>
-                            <option>Advanced</option>
-                         </select>
-                      </div>
-                      <div className="space-y-2">
-                         <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Number of Questions</label>
-                         <input type="number" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm" defaultValue={5} />
-                      </div>
-                   </div>
-                   <div className="p-6 border-t border-slate-200 bg-slate-50 shrink-0">
-                      <button 
-                        onClick={() => {
-                          toast.success('AI generation initiated (coming soon).');
-                          setAiPanelOpen(false);
-                        }}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-xs uppercase tracking-wide hover:opacity-90 transition-colors"
-                      >
-                         <Zap size={14} /> Generate Questions
-                      </button>
-                   </div>
-                </motion.div>
-              </>
+              <AIGeneratorPanel
+                onClose={() => setAiPanelOpen(false)}
+                onGenerated={(generated) => {
+                  const newQuestions: Question[] = generated.map((q: any, i: number) => ({
+                    id: `ai-${Date.now()}-${i}`,
+                    type: q.type === 'true_false' ? 'true_false' : q.type === 'short_answer' ? 'short_answer' : 'multiple_choice',
+                    text: q.question || q.text || '',
+                    marks: q.marks || 5,
+                    required: true,
+                    options: q.options || ['Option A', 'Option B', 'Option C', 'Option D'],
+                    correctAnswer: q.correctAnswer !== undefined ? String(q.correctAnswer) : '0',
+                  }));
+                  setQuestions(prev => [...prev, ...newQuestions]);
+                  if (newQuestions.length > 0) setActiveId(newQuestions[0].id);
+                  toast.success(`${newQuestions.length} question${newQuestions.length !== 1 ? 's' : ''} added`);
+                  setAiPanelOpen(false);
+                }}
+              />
             )}
          </AnimatePresence>
       </main>
 
     </div>
+  );
+}
+
+// --- AI GENERATOR PANEL ---
+function AIGeneratorPanel({ onClose, onGenerated }: { onClose: () => void; onGenerated: (questions: any[]) => void }) {
+  const [topic, setTopic] = useState('');
+  const [difficulty, setDifficulty] = useState('medium');
+  const [count, setCount] = useState(5);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleGenerate = async () => {
+    if (!topic.trim()) { setError('Please enter a topic'); return; }
+    setError('');
+    setGenerating(true);
+    try {
+      const res = await fetch('/api/ai/quiz-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, difficulty, count }),
+      });
+      if (!res.ok) throw new Error('Generation failed');
+      const data = await res.json();
+      const questions = Array.isArray(data.data) ? data.data : data.data?.questions || [];
+      if (!questions.length) throw new Error('No questions returned');
+      onGenerated(questions);
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate questions');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col border-l border-slate-200"
+      >
+        {/* Header */}
+        <div className="h-14 border-b border-slate-200 flex items-center justify-between px-6 bg-gradient-to-r from-violet-50 to-indigo-50 shrink-0">
+          <div className="flex items-center gap-2 text-violet-700">
+            <Brain size={18} />
+            <span className="font-bold text-sm">AI Question Generator</span>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-900 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-5 overflow-y-auto flex-1">
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Describe a topic and AI will generate ready-to-use quiz questions that are added directly to your quiz.
+          </p>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Topic *</label>
+            <textarea
+              rows={3}
+              placeholder="e.g. Photosynthesis, World War II, Recursion in Python..."
+              value={topic}
+              onChange={e => { setTopic(e.target.value); setError(''); }}
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none transition-all text-sm resize-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Difficulty</label>
+              <select
+                value={difficulty}
+                onChange={e => setDifficulty(e.target.value)}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none transition-all text-sm bg-white"
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Questions</label>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={count}
+                onChange={e => setCount(Math.min(20, Math.max(1, Number(e.target.value))))}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none transition-all text-sm"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
+              <AlertCircle size={14} /> {error}
+            </div>
+          )}
+
+          <div className="bg-violet-50 border border-violet-100 rounded-xl p-4 space-y-2">
+            <p className="text-xs font-bold text-violet-800">What you'll get</p>
+            <ul className="space-y-1 text-xs text-violet-700">
+              <li>• Multiple choice questions with correct answers</li>
+              <li>• Questions added directly to your quiz</li>
+              <li>• You can edit or delete any generated question</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-slate-200 bg-slate-50 shrink-0">
+          <button
+            onClick={handleGenerate}
+            disabled={generating || !topic.trim()}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm transition-all disabled:opacity-50"
+          >
+            {generating ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
+            {generating ? 'Generating...' : `Generate ${count} Question${count !== 1 ? 's' : ''}`}
+          </button>
+        </div>
+      </motion.div>
+    </>
   );
 }
 
