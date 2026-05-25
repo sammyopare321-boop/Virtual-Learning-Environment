@@ -8,10 +8,11 @@ import { courseApi } from '@/utils/api/courseApi';
 import { useCourseLiveSessions } from '@/hooks/queries/useCourseResources';
 import { queryKeys } from '@/lib/queryKeys';
 import { useAuth } from '@/context/AuthContext';
+import JitsiRoom from '@/components/live/JitsiRoom';
 import {
   Video, Radio, Plus, Calendar, Clock,
-  Play, Square, ExternalLink, Loader2, X,
-  CheckCircle2, Users
+  Play, Square, Loader2, X,
+  CheckCircle2, PhoneOff
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -44,8 +45,10 @@ export default function LivePage() {
   const [showForm, setShowForm] = useState(false);
   const [creating, setCreating] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
-  const [joiningId, setJoiningId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', scheduledAt: '', duration: 60, description: '' });
+
+  // Active Jitsi room state
+  const [activeRoom, setActiveRoom] = useState<{ roomId: string; sessionId: string; title: string } | null>(null);
 
   const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
 
@@ -69,11 +72,15 @@ export default function LivePage() {
     }
   };
 
-  const handleStart = async (sessionId: string) => {
-    setActingId(sessionId);
+  const handleStart = async (session: LiveSession) => {
+    setActingId(session._id);
     try {
-      await courseApi.startLiveSession(sessionId);
+      await courseApi.startLiveSession(session._id);
       await invalidateSessions();
+      // Teacher joins immediately after starting
+      if (session.providerRoomId) {
+        setActiveRoom({ roomId: session.providerRoomId, sessionId: session._id, title: session.title });
+      }
       toast.success('Session started.');
     } catch {
       toast.error('Failed to start session.');
@@ -87,6 +94,7 @@ export default function LivePage() {
     try {
       await courseApi.endLiveSession(sessionId);
       await invalidateSessions();
+      setActiveRoom(null);
       toast.success('Session ended.');
     } catch {
       toast.error('Failed to end session.');
@@ -95,23 +103,77 @@ export default function LivePage() {
     }
   };
 
-  const handleJoin = async (sessionId: string) => {
-    setJoiningId(sessionId);
+  const handleJoin = async (session: LiveSession) => {
+    setActingId(session._id);
     try {
-      const res = await courseApi.joinLiveSession(sessionId);
-      window.open(res.data.data.joinUrl, '_blank', 'noopener,noreferrer');
+      const res = await courseApi.joinLiveSession(session._id);
+      const roomId = res.data.data.roomId ?? session.providerRoomId;
+      if (!roomId) { toast.error('Room not available.'); return; }
+      setActiveRoom({ roomId, sessionId: session._id, title: session.title });
     } catch (e) {
       const err = e as { response?: { data?: { message?: string } } };
       toast.error(err?.response?.data?.message || 'Unable to join session.');
     } finally {
-      setJoiningId(null);
+      setActingId(null);
     }
+  };
+
+  const handleLeaveRoom = () => {
+    setActiveRoom(null);
   };
 
   const liveSessions      = sessions.filter(s => s.status === 'live');
   const scheduledSessions = sessions.filter(s => s.status === 'scheduled');
   const endedSessions     = sessions.filter(s => s.status === 'ended');
 
+  // ── ACTIVE ROOM VIEW ──────────────────────────────────────────────────────
+  if (activeRoom) {
+    const activeSession = sessions.find(s => s._id === activeRoom.sessionId);
+    return (
+      <div className="flex flex-col h-[calc(100vh-120px)] gap-3">
+        {/* Room header */}
+        <div className="flex items-center justify-between shrink-0">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              {activeRoom.title}
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">Live session in progress</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {isTeacher && activeSession && (
+              <button
+                onClick={() => handleEnd(activeRoom.sessionId)}
+                disabled={actingId === activeRoom.sessionId}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-semibold transition-all"
+              >
+                {actingId === activeRoom.sessionId ? <Loader2 size={12} className="animate-spin" /> : <Square size={12} />}
+                End for Everyone
+              </button>
+            )}
+            <button
+              onClick={handleLeaveRoom}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-all"
+            >
+              <PhoneOff size={12} /> Leave
+            </button>
+          </div>
+        </div>
+
+        {/* Jitsi embed */}
+        <div className="flex-1 min-h-0">
+          <JitsiRoom
+            roomId={activeRoom.roomId}
+            displayName={user?.name ?? 'User'}
+            onLeave={handleLeaveRoom}
+            isHost={isTeacher}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ── SESSIONS LIST VIEW ────────────────────────────────────────────────────
   return (
     <div className="space-y-5 pb-10">
 
@@ -188,16 +250,14 @@ export default function LivePage() {
                     animate={{ opacity: 1, scale: 1 }}
                     className="bg-slate-900 rounded-xl p-5 text-white shadow-lg border border-slate-800"
                   >
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex-1 min-w-0">
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-400 text-[10px] font-semibold border border-rose-500/30 mb-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" /> Live
-                        </span>
-                        <h3 className="text-sm font-semibold text-white truncate">{session.title}</h3>
-                        {session.description && (
-                          <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{session.description}</p>
-                        )}
-                      </div>
+                    <div className="mb-3">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-400 text-[10px] font-semibold border border-rose-500/30 mb-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" /> Live
+                      </span>
+                      <h3 className="text-sm font-semibold text-white">{session.title}</h3>
+                      {session.description && (
+                        <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{session.description}</p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-slate-400 mb-4">
                       <Clock size={12} /> {session.duration} min
@@ -205,33 +265,30 @@ export default function LivePage() {
                     <div className="flex gap-2">
                       {!isTeacher ? (
                         <button
-                          onClick={() => handleJoin(session._id)}
-                          disabled={joiningId === session._id}
+                          onClick={() => handleJoin(session)}
+                          disabled={actingId === session._id}
                           className="flex-1 btn btn-primary btn-sm gap-1.5"
                         >
-                          {joiningId === session._id ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
+                          {actingId === session._id ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
                           Join Session
                         </button>
                       ) : (
                         <>
                           <button
+                            onClick={() => handleJoin(session)}
+                            disabled={actingId === session._id}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold transition-all"
+                          >
+                            {actingId === session._id ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
+                            Rejoin
+                          </button>
+                          <button
                             onClick={() => handleEnd(session._id)}
                             disabled={actingId === session._id}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 text-xs font-semibold transition-all"
+                            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 text-xs font-semibold transition-all"
                           >
-                            {actingId === session._id ? <Loader2 size={13} className="animate-spin" /> : <Square size={13} />}
-                            End Session
+                            <Square size={13} /> End
                           </button>
-                          {session.joinUrl && (
-                            <a
-                              href={session.joinUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs font-semibold transition-all"
-                            >
-                              <ExternalLink size={13} /> Open
-                            </a>
-                          )}
                         </>
                       )}
                     </div>
@@ -265,11 +322,9 @@ export default function LivePage() {
                         Scheduled
                       </span>
                     </div>
-
                     {session.description && (
                       <p className="text-[11px] text-slate-500 mb-3 line-clamp-2">{session.description}</p>
                     )}
-
                     <div className="flex flex-col gap-1.5 mb-3 text-[11px] text-slate-500">
                       <div className="flex items-center gap-1.5">
                         <Calendar size={12} className="text-slate-400" />
@@ -280,11 +335,10 @@ export default function LivePage() {
                         <span>{session.duration} min</span>
                       </div>
                     </div>
-
                     <div className="mt-auto pt-3 border-t border-slate-100">
                       {isTeacher ? (
                         <button
-                          onClick={() => handleStart(session._id)}
+                          onClick={() => handleStart(session)}
                           disabled={actingId === session._id}
                           className="btn btn-primary btn-sm w-full justify-center gap-1.5 text-[11px]"
                         >
@@ -292,10 +346,7 @@ export default function LivePage() {
                           Start Session
                         </button>
                       ) : (
-                        <button
-                          disabled
-                          className="btn btn-secondary btn-sm w-full justify-center text-[11px] opacity-60 cursor-not-allowed"
-                        >
+                        <button disabled className="btn btn-secondary btn-sm w-full justify-center text-[11px] opacity-60 cursor-not-allowed">
                           Not started yet
                         </button>
                       )}
@@ -362,13 +413,9 @@ export default function LivePage() {
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div>
                   <h3 className="text-base font-semibold text-slate-900">Schedule Live Session</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Set up a new live class session.</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Powered by Jitsi Meet — no account needed.</p>
                 </div>
-                <button
-                  onClick={() => setShowForm(false)}
-                  aria-label="Close"
-                  className="text-slate-400 hover:text-slate-600 transition-colors"
-                >
+                <button onClick={() => setShowForm(false)} aria-label="Close" className="text-slate-400 hover:text-slate-600 transition-colors">
                   <X size={18} />
                 </button>
               </div>
@@ -377,22 +424,18 @@ export default function LivePage() {
                 <div className="space-y-1.5">
                   <label htmlFor="s-title" className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Session Title *</label>
                   <input
-                    id="s-title"
-                    required
+                    id="s-title" required
                     placeholder="e.g. Week 5 — Data Structures Review"
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm"
                     value={form.title}
                     onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
                   />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label htmlFor="s-start" className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Start Time *</label>
                     <input
-                      id="s-start"
-                      required
-                      type="datetime-local"
+                      id="s-start" required type="datetime-local"
                       className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm"
                       value={form.scheduledAt}
                       onChange={e => setForm(p => ({ ...p, scheduledAt: e.target.value }))}
@@ -401,34 +444,25 @@ export default function LivePage() {
                   <div className="space-y-1.5">
                     <label htmlFor="s-duration" className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Duration (min)</label>
                     <input
-                      id="s-duration"
-                      required
-                      type="number"
-                      min={15}
-                      step={15}
+                      id="s-duration" required type="number" min={15} step={15}
                       className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm"
                       value={form.duration}
                       onChange={e => setForm(p => ({ ...p, duration: Number(e.target.value) }))}
                     />
                   </div>
                 </div>
-
                 <div className="space-y-1.5">
                   <label htmlFor="s-desc" className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Description (Optional)</label>
                   <textarea
-                    id="s-desc"
-                    rows={3}
+                    id="s-desc" rows={3}
                     placeholder="What will be covered in this session?"
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm resize-none"
                     value={form.description}
                     onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
                   />
                 </div>
-
                 <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary flex-1 text-sm">
-                    Cancel
-                  </button>
+                  <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary flex-1 text-sm">Cancel</button>
                   <button type="submit" disabled={creating} className="btn btn-primary flex-[2] text-sm gap-1.5">
                     {creating ? <Loader2 size={13} className="animate-spin" /> : <Video size={13} />}
                     {creating ? 'Scheduling...' : 'Schedule Session'}

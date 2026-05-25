@@ -9,14 +9,16 @@ const { createNotification } = require('../utils/notificationHelper');
 // @route   POST /api/courses/:id/live-sessions
 // @access  Private (Teacher)
 exports.createLiveSession = asyncHandler(async (req, res, next) => {
-  const { title, scheduledAt, duration } = req.body;
+  const { title, scheduledAt, duration, description } = req.body;
 
-  // Integrate with Daily.co (simulated)
-  // In a real app, you'd call:
-  // const response = await axios.post('https://api.daily.co/v1/rooms', { ... }, { headers: { Authorization: `Bearer ${process.env.DAILY_API_KEY}` } });
-  
-  const providerRoomId = `room-${Math.random().toString(36).substr(2, 9)}`;
-  const joinUrl = `https://daily.co/${providerRoomId}`;
+  // Generate a unique Jitsi room ID — no API key needed, works with meet.jit.si
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 40);
+  const providerRoomId = `${slug}-${Math.random().toString(36).substr(2, 8)}`;
+  const joinUrl = `https://meet.jit.si/${providerRoomId}`;
 
   const session = await LiveSession.create({
     course: req.params.id,
@@ -24,6 +26,7 @@ exports.createLiveSession = asyncHandler(async (req, res, next) => {
     title,
     scheduledAt,
     duration,
+    description,
     providerRoomId,
     joinUrl
   });
@@ -92,7 +95,7 @@ exports.joinSession = asyncHandler(async (req, res, next) => {
   const earlyAccessTime = new Date(session.scheduledAt.getTime() - 5 * 60 * 1000);
 
   if (session.status === 'live' || now >= earlyAccessTime) {
-    res.status(200).json({ success: true, data: { joinUrl: session.joinUrl } });
+    res.status(200).json({ success: true, data: { joinUrl: session.joinUrl, roomId: session.providerRoomId } });
   } else {
     res.status(403).json({ success: false, message: 'Session has not started yet' });
   }
