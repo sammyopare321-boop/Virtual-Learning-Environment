@@ -14,15 +14,50 @@ exports.register = asyncHandler(async (req, res, next) => {
     role = 'student';
   }
 
-  const user = await User.create({
-    name,
-    email,
-    password,
-    role: role || 'student',
-    department,
-  });
+  // Check if user already exists
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    console.log(`[AUTH] Registration failed: Email already exists: ${email}`);
+    return res.status(400).json({
+      success: false,
+      message: 'An account with this email already exists. Please log in instead.',
+    });
+  }
 
-  sendTokenResponse(user, 201, res);
+  try {
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role: role || 'student',
+      department,
+    });
+
+    console.log(`[AUTH] Registration successful: ${email} (${user.role})`);
+    sendTokenResponse(user, 201, res);
+  } catch (error) {
+    console.error(`[AUTH] Registration error:`, error);
+    
+    // Handle duplicate key error (in case of race condition)
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this email already exists.',
+      });
+    }
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        details: messages
+      });
+    }
+    
+    throw error;
+  }
 });
 
 // @desc    Login user
