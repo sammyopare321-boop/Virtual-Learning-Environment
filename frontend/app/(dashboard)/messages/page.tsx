@@ -132,7 +132,7 @@ export default function MessagesPage() {
   );
 
   return (
-    <div className="flex w-full h-[calc(100vh-140px)] bg-white rounded-[40px] border border-slate-200 shadow-2xl shadow-slate-900/5 overflow-hidden">
+    <div className="flex w-full h-[calc(100vh-8rem)] bg-white rounded-[40px] border border-slate-200 shadow-2xl shadow-slate-900/5 overflow-hidden">
           
           {/* Chat List Sidebar */}
           <div className="w-80 border-r border-slate-100 flex flex-col bg-[#FDFDFD] shrink-0">
