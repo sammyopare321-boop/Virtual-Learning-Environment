@@ -59,10 +59,16 @@ exports.protect = asyncHandler(async (req, res, next) => {
 // Grant access to specific roles
 exports.authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    // Normalize role to lowercase and trim whitespace for comparison
+    const userRole = req.user.role?.toLowerCase().trim();
+    const normalizedRoles = roles.map(r => r.toLowerCase().trim());
+    
+    if (!normalizedRoles.includes(userRole)) {
       return res.status(403).json({
         success: false,
-        message: `User role ${req.user.role} is not authorized to access this route`,
+        message: `Access denied. This resource requires ${roles.join(' or ')} role.`,
+        requiredRoles: roles,
+        userRole: req.user.role
       });
     }
     next();

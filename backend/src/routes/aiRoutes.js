@@ -23,7 +23,21 @@ const Module = require('../models/Module');
 const QuizAttempt = require('../models/QuizAttempt');
 const AttendanceRecord = require('../models/AttendanceRecord');
 
-const teacherOnly = authorize(['teacher', 'admin']);
+const teacherOnly = authorize('teacher', 'admin');
+
+// Custom error handler for AI routes to provide better error messages
+const handleAIError = (res, error, defaultMessage) => {
+  if (error.message?.includes('API key')) {
+    return res.status(500).json({
+      success: false,
+      message: 'AI service is not configured. Please contact your administrator.'
+    });
+  }
+  return res.status(500).json({
+    success: false,
+    message: defaultMessage || 'An error occurred while processing your request.'
+  });
+};
 
 // ─── COURSE CONTENT GENERATION ───────────────────────────────────────────────
 

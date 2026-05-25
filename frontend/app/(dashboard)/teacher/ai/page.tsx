@@ -390,7 +390,12 @@ function QuizTool({ onResult, loading, setLoading }: any) {
         try {
           const res = await aiApi.generateQuizQuestions(v.topic, v.difficulty || 'medium', Number(v.count) || 5);
           onResult(res.data?.data);
-        } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed to generate questions'); }
+        } catch (e: any) { 
+          const errorMsg = e?.response?.status === 403 
+            ? 'Access denied. Only teachers can use this feature.' 
+            : e?.response?.data?.message || 'Failed to generate questions';
+          toast.error(errorMsg);
+        }
         finally { setLoading(false); }
       }}
     />

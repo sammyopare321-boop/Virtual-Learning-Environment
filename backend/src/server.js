@@ -15,6 +15,7 @@ const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 const requestLogger = require('./middleware/requestLogger');
+const securityLogger = require('./middleware/securityLogger');
 const timeoutHandler = require('./middleware/timeout');
 const logger = require('./utils/logger');
 
@@ -106,6 +107,9 @@ app.use(cookieParser());
 // Request logging (logs to ./logs with daily rotation)
 app.use(requestLogger);
 
+// Security event logging (403, 401 attempts)
+app.use(securityLogger);
+
 // Request timeout — 30 seconds globally
 app.use(timeoutHandler(30000));
 
@@ -134,8 +138,22 @@ const authLimiter = rateLimit({
   }
 });
 
+// Rate limiter for unauthorized access attempts (403 responses)
+const unauthorizedLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,   // 15 minutes
+  max: 10,                     // Only 10 unauthorized attempts per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req, res) => res.statusCode !== 403, // Only count 403 responses
+  message: {
+    success: false,
+    message: 'Too many unauthorized access attempts. Your IP has been temporarily blocked.'
+  }
+});
+
 if (!process.env.JEST_WORKER_ID) {
   app.use('/api', globalLimiter);
+  app.use('/api', unauthorizedLimiter);
   app.use('/api/auth', authLimiter);
 }
 

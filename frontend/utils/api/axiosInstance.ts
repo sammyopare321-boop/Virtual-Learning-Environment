@@ -26,7 +26,7 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 globally — redirect to login
+// Handle 401 and 403 globally — redirect to appropriate pages
 // Also capture errors with Sentry
 axiosInstance.interceptors.response.use(
   (res) => res,
@@ -59,9 +59,21 @@ axiosInstance.interceptors.response.use(
       }
     }
 
-    if (error.response?.status === 401 && typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
-      setAuthToken(null);
-      window.location.href = '/auth/login';
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
+      // Handle 401 - Unauthorized (not logged in)
+      if (error.response?.status === 401) {
+        setAuthToken(null);
+        window.location.href = '/auth/login';
+      }
+      
+      // Handle 403 - Forbidden (logged in but insufficient permissions)
+      if (error.response?.status === 403) {
+        // Redirect to dashboard if trying to access unauthorized routes
+        if (window.location.pathname.startsWith('/teacher') || 
+            window.location.pathname.startsWith('/admin')) {
+          window.location.href = '/dashboard';
+        }
+      }
     }
     return Promise.reject(error);
   }
