@@ -13,6 +13,7 @@ interface SearchResultsProps {
 
 const typeIcons: Record<SearchResult['type'], React.ReactNode> = {
   course: <BookOpen className="w-5 h-5" />,
+  material: <FileText className="w-5 h-5" />,
   assignment: <FileText className="w-5 h-5" />,
   user: <Users className="w-5 h-5" />,
   announcement: <Bell className="w-5 h-5" />,
@@ -21,6 +22,7 @@ const typeIcons: Record<SearchResult['type'], React.ReactNode> = {
 
 const typeColors: Record<SearchResult['type'], string> = {
   course: 'bg-blue-900 text-blue-200',
+  material: 'bg-indigo-900 text-indigo-200',
   assignment: 'bg-purple-900 text-purple-200',
   user: 'bg-green-900 text-green-200',
   announcement: 'bg-yellow-900 text-yellow-200',
@@ -29,6 +31,7 @@ const typeColors: Record<SearchResult['type'], string> = {
 
 const typeLabels: Record<SearchResult['type'], string> = {
   course: 'Course',
+  material: 'Material',
   assignment: 'Assignment',
   user: 'User',
   announcement: 'Announcement',
@@ -91,10 +94,10 @@ function ResultCard({ result }: { result: SearchResult }) {
             </div>
           )}
         </div>
-        {result.relevance && (
+        {result.relevanceScore && (
           <div className="text-right">
             <div className="text-xs text-gray-500">
-              {Math.round(result.relevance * 100)}% match
+              {Math.round(result.relevanceScore)}% match
             </div>
           </div>
         )}

@@ -1,159 +1,154 @@
 import axiosInstance from './axiosInstance';
 
-export interface SearchResult {
-  id: string;
-  type: 'course' | 'assignment' | 'user' | 'announcement' | 'discussion';
-  title: string;
-  description?: string;
-  metadata?: Record<string, any>;
-  relevance?: number;
-}
-
 export interface SearchParams {
   query: string;
-  type?: 'course' | 'assignment' | 'user' | 'announcement' | 'discussion' | 'all';
+  type?: string;
   page?: number;
   limit?: number;
   filters?: Record<string, any>;
 }
 
 export interface SearchResponse {
-  results: SearchResult[];
-  total: number;
-  page: number;
-  limit: number;
-  hasMore: boolean;
+  success: boolean;
+  data?: any;
+  results?: SearchResult[];
+  message: string;
+  hasMore?: boolean;
+  page?: number;
+  total?: number;
 }
 
-// Global search across all resources
+export interface SearchResult {
+  id: string;
+  title: string;
+  type: 'course' | 'material' | 'discussion' | 'assignment' | 'user' | 'announcement';
+  description: string;
+  relevanceScore: number;
+  matchedKeywords: string[];
+  preview: string;
+  url: string;
+  metadata: {
+    author?: string;
+    date?: string;
+    tags?: string[];
+    [key: string]: any;
+  };
+}
+
+/**
+ * Global search across all content
+ */
 export async function globalSearch(params: SearchParams): Promise<SearchResponse> {
-  const { query, type = 'all', page = 1, limit = 20, filters = {} } = params;
-
-  const response = await axiosInstance.get<SearchResponse>('/search', {
-    params: {
-      q: query,
-      type,
-      page,
-      limit,
-      ...filters,
-    },
+  const response = await axiosInstance.post(`/ai/search`, {
+    query: params.query,
+    type: params.type || 'all',
+    page: params.page || 1,
+    limit: params.limit || 20,
+    filters: params.filters || {},
   });
-
   return response.data;
 }
 
-// Search courses
-export async function searchCourses(
-  query: string,
-  page = 1,
-  limit = 20,
-  filters?: Record<string, any>
-): Promise<SearchResponse> {
-  const response = await axiosInstance.get<SearchResponse>('/courses/search', {
-    params: {
-      q: query,
-      page,
-      limit,
-      ...filters,
-    },
+/**
+ * Search courses
+ */
+export async function searchCourses(query: string, page: number = 1, limit: number = 20): Promise<SearchResponse> {
+  const response = await axiosInstance.post(`/ai/search`, {
+    query,
+    type: 'course',
+    page,
+    limit,
   });
-
   return response.data;
 }
 
-// Search assignments
-export async function searchAssignments(
-  query: string,
-  page = 1,
-  limit = 20,
-  filters?: Record<string, any>
-): Promise<SearchResponse> {
-  const response = await axiosInstance.get<SearchResponse>('/assignments/search', {
-    params: {
-      q: query,
-      page,
-      limit,
-      ...filters,
-    },
+/**
+ * Search assignments
+ */
+export async function searchAssignments(query: string, page: number = 1, limit: number = 20): Promise<SearchResponse> {
+  const response = await axiosInstance.post(`/ai/search`, {
+    query,
+    type: 'assignment',
+    page,
+    limit,
   });
-
   return response.data;
 }
 
-// Search users (admin only)
-export async function searchUsers(
-  query: string,
-  page = 1,
-  limit = 20,
-  filters?: Record<string, any>
-): Promise<SearchResponse> {
-  const response = await axiosInstance.get<SearchResponse>('/admin/users/search', {
-    params: {
-      q: query,
-      page,
-      limit,
-      ...filters,
-    },
+/**
+ * Search users (admin only)
+ */
+export async function searchUsers(query: string, page: number = 1, limit: number = 20): Promise<SearchResponse> {
+  const response = await axiosInstance.post(`/ai/search`, {
+    query,
+    type: 'user',
+    page,
+    limit,
   });
-
   return response.data;
 }
 
-// Search announcements
-export async function searchAnnouncements(
-  query: string,
-  page = 1,
-  limit = 20,
-  filters?: Record<string, any>
-): Promise<SearchResponse> {
-  const response = await axiosInstance.get<SearchResponse>('/announcements/search', {
-    params: {
-      q: query,
-      page,
-      limit,
-      ...filters,
-    },
+/**
+ * Search announcements
+ */
+export async function searchAnnouncements(query: string, page: number = 1, limit: number = 20): Promise<SearchResponse> {
+  const response = await axiosInstance.post(`/ai/search`, {
+    query,
+    type: 'announcement',
+    page,
+    limit,
   });
-
   return response.data;
 }
 
-// Search discussions
-export async function searchDiscussions(
-  query: string,
-  page = 1,
-  limit = 20,
-  filters?: Record<string, any>
-): Promise<SearchResponse> {
-  const response = await axiosInstance.get<SearchResponse>('/discussions/search', {
-    params: {
-      q: query,
-      page,
-      limit,
-      ...filters,
-    },
+/**
+ * Search discussions
+ */
+export async function searchDiscussions(query: string, page: number = 1, limit: number = 20): Promise<SearchResponse> {
+  const response = await axiosInstance.post(`/ai/search`, {
+    query,
+    type: 'discussion',
+    page,
+    limit,
   });
-
   return response.data;
 }
 
-// Get search suggestions (for autocomplete)
-export async function getSearchSuggestions(query: string, limit = 10): Promise<string[]> {
-  const response = await axiosInstance.get<{ suggestions: string[] }>('/search/suggestions', {
-    params: {
-      q: query,
-      limit,
-    },
+/**
+ * Get search suggestions
+ */
+export async function getSearchSuggestions(query: string, limit: number = 10): Promise<SearchResponse> {
+  const response = await axiosInstance.post(`/ai/search/suggestions`, {
+    query,
+    limit,
   });
-
-  return response.data.suggestions;
+  return response.data;
 }
 
-// Get trending searches
-export async function getTrendingSearches(limit = 10): Promise<string[]> {
-  const response = await axiosInstance.get<{ trending: string[] }>('/search/trending', {
+/**
+ * Get trending searches
+ */
+export async function getTrendingSearches(limit: number = 10): Promise<SearchResponse> {
+  const response = await axiosInstance.get(`/ai/search/trending`, {
     params: { limit },
   });
-
-  return response.data.trending;
+  return response.data;
 }
+
+/**
+ * Get search history
+ */
+export async function getSearchHistory(): Promise<SearchResponse> {
+  const response = await axiosInstance.get(`/ai/search/history`);
+  return response.data;
+}
+
+/**
+ * Clear search history
+ */
+export async function clearSearchHistory(): Promise<SearchResponse> {
+  const response = await axiosInstance.post(`/ai/search/history/clear`, {});
+  return response.data;
+}
+
+

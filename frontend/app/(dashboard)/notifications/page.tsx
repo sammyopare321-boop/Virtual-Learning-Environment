@@ -109,30 +109,38 @@ export default function NotificationsPage() {
   });
 
   return (
-    <div className="space-y-5 pb-10">
+    <div className="space-y-6 pb-12">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="page-title flex items-center gap-2">
-            <Bell size={20} className="text-slate-400" /> Notifications
-          </h1>
-          <p className="page-subtitle mt-0.5">
-            {unreadCount > 0
-              ? `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`
-              : 'You\'re all caught up'}
-          </p>
+      <section className="bg-white rounded-3xl border border-slate-200 p-6 lg:p-8 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-primary-600 font-bold text-[10px] uppercase tracking-widest">
+              <Bell size={14} /> Notifications & Updates
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              Your Notification Center
+            </h2>
+            <p className="text-slate-500 font-medium text-sm">
+              {unreadCount > 0
+                ? `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''} waiting for your attention`
+                : 'You\'re all caught up with your notifications'}
+            </p>
+          </div>
+
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllRead}
+              disabled={markingAll}
+              className="btn btn-secondary h-12 px-6 gap-2 text-xs font-bold shadow-sm transition-all rounded-xl self-start md:self-auto"
+            >
+              {markingAll ? <Loader2 size={16} className="animate-spin" /> : <CheckCheck size={16} />}
+              Mark all as read
+            </button>
+          )}
         </div>
-        {unreadCount > 0 && (
-          <button
-            onClick={markAllRead}
-            disabled={markingAll}
-            className="btn btn-secondary btn-sm gap-1.5 self-start sm:self-auto"
-          >
-            {markingAll ? <Loader2 size={13} className="animate-spin" /> : <CheckCheck size={13} />}
-            Mark all as read
-          </button>
-        )}
-      </header>
+      </section>
 
       {/* Filter tabs */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -140,15 +148,15 @@ export default function NotificationsPage() {
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
               filter === f.id
-                ? 'bg-slate-900 text-white'
+                ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20'
                 : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
             }`}
           >
             {f.label}
             {f.id === 'unread' && unreadCount > 0 && (
-              <span className={`w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center ${
+              <span className={`w-5 h-5 rounded-full text-[9px] font-black flex items-center justify-center ${
                 filter === f.id ? 'bg-white/20 text-white' : 'bg-primary-100 text-primary-700'
               }`}>
                 {unreadCount}
@@ -162,21 +170,30 @@ export default function NotificationsPage() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-20 bg-white rounded-xl border border-slate-100 animate-pulse" />
+            <div key={i} className="h-24 bg-white rounded-2xl border border-slate-200 animate-pulse shadow-sm" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="py-12 text-center bg-white rounded-xl border border-dashed border-slate-200 shadow-sm">
-          <Inbox size={20} className="text-slate-300 mx-auto mb-2" />
-          <h3 className="text-sm font-semibold text-slate-700">
-            {filter === 'unread' ? 'All caught up!' : 'No notifications'}
-          </h3>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {filter === 'unread' ? 'No unread notifications.' : 'Nothing here yet.'}
-          </p>
-        </div>
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-3xl border border-slate-200 p-16 text-center shadow-sm relative group overflow-hidden"
+        >
+          <div className="relative z-10 space-y-6">
+            <div className="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto border border-slate-100 shadow-inner">
+              <Inbox size={36} className="text-slate-300" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                {filter === 'unread' ? 'All caught up!' : 'No notifications'}
+              </h3>
+              <p className="text-slate-500 text-sm font-medium max-w-sm mx-auto leading-relaxed">
+                {filter === 'unread' ? 'No unread notifications.' : 'Nothing here yet.'}
+              </p>
+            </div>
+          </div>
+        </motion.div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <AnimatePresence>
             {filtered.map((n, idx) => {
               const cfg = typeConfig[n.type] ?? typeConfig.announcement;
@@ -189,39 +206,39 @@ export default function NotificationsPage() {
                   exit={{ opacity: 0, scale: 0.98 }}
                   transition={{ delay: idx * 0.03 }}
                   onClick={() => markRead(n._id)}
-                  className={`group relative flex items-start gap-3 p-4 rounded-xl cursor-pointer transition-all ${
+                  className={`group relative flex items-start gap-4 p-5 rounded-2xl cursor-pointer transition-all border ${
                     !n.isRead
-                      ? 'bg-primary-50/50 border border-primary-200 hover:border-primary-300'
-                      : 'bg-white border border-slate-200 hover:border-slate-300'
+                      ? 'bg-primary-50 border-primary-200 hover:border-primary-300 hover:shadow-lg hover:shadow-primary-500/10'
+                      : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-md hover:shadow-slate-900/5'
                   }`}
                 >
                   {/* Unread indicator */}
                   {!n.isRead && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-500 rounded-l-xl" />
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary-500 rounded-l-2xl" />
                   )}
 
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
-                    <Icon size={16} />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+                    <Icon size={18} />
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={`text-xs font-semibold ${!n.isRead ? 'text-slate-900' : 'text-slate-700'}`}>
+                      <p className={`text-xs font-bold ${!n.isRead ? 'text-slate-900' : 'text-slate-700'}`}>
                         {cfg.label}
                       </p>
                       <span className="text-[10px] text-slate-400 shrink-0">
                         {format(new Date(n.createdAt), 'MMM d · h:mm a')}
                       </span>
                     </div>
-                    <p className={`text-xs mt-0.5 leading-relaxed ${!n.isRead ? 'text-slate-700' : 'text-slate-500'}`}>
+                    <p className={`text-xs mt-1 leading-relaxed ${!n.isRead ? 'text-slate-700' : 'text-slate-500'}`}>
                       {n.message}
                     </p>
                   </div>
 
                   <div className="shrink-0 flex items-center self-center pl-2">
                     {!n.isRead
-                      ? <div className="w-2 h-2 rounded-full bg-primary-500" />
-                      : <Check size={14} className="text-slate-300" />
+                      ? <div className="w-2.5 h-2.5 rounded-full bg-primary-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]" />
+                      : <Check size={16} className="text-slate-300" />
                     }
                   </div>
                 </motion.div>

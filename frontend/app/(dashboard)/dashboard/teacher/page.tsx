@@ -9,6 +9,7 @@ import { courseApi } from '@/utils/api/courseApi';
 import { queryKeys } from '@/lib/queryKeys';
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
+import AIAssistant from '@/components/dashboard/AIAssistant';
 import {
   BookOpen, Plus, Sparkles, Users, Clock, Calendar,
   ArrowRight, CheckCircle2, X, Loader2, Bell, Send,
@@ -32,6 +33,7 @@ export default function TeacherDashboard() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [showAI, setShowAI] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ title: '', code: '', description: '', semester: 'Semester 1', academicYear: '2025/2026' });
 
@@ -97,7 +99,7 @@ export default function TeacherDashboard() {
     { label: 'Create Course', icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50 hover:bg-blue-100', onClick: () => setShowForm(true) },
     { label: 'Schedule Class', icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50 hover:bg-amber-100', onClick: () => {} },
     { label: 'Add Students', icon: UserPlus, color: 'text-emerald-600', bg: 'bg-emerald-50 hover:bg-emerald-100', onClick: () => {} },
-    { label: 'AI Generator', icon: Sparkles, color: 'text-violet-600', bg: 'bg-violet-50 hover:bg-violet-100', onClick: () => router.push('/admin/courses/new?ai=true') },
+    { label: 'AI Generator', icon: Sparkles, color: 'text-violet-600', bg: 'bg-violet-50 hover:bg-violet-100', onClick: () => setShowAI(true) },
   ];
 
   return (
@@ -330,6 +332,11 @@ export default function TeacherDashboard() {
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
+
+      {/* AI Assistant Modal */}
+      <AnimatePresence>
+        {showAI && <AIAssistant onClose={() => setShowAI(false)} />}
       </AnimatePresence>
     </div>
   );

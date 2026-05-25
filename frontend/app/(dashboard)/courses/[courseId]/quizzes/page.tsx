@@ -9,7 +9,7 @@ import { useCourseQuizzes } from '@/hooks/queries/useCourseResources';
 import {
   Clock, Trophy, Plus,
   ArrowRight, Inbox, Search,
-  Target, FlaskConical
+  Target, FlaskConical, CheckCircle2
 } from 'lucide-react';
 
 interface Quiz {
@@ -51,59 +51,109 @@ export default function QuizzesPage() {
   };
 
   return (
-    <div className="space-y-4 pb-10">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="page-title">Quizzes &amp; Assessments</h1>
-          <p className="page-subtitle mt-0.5">Take quizzes, track scores, and review performance.</p>
-        </div>
-        {isTeacher && (
-          <Link href={`/courses/${courseId}/quizzes/new`} className="btn btn-primary btn-sm gap-1.5 self-start sm:self-auto">
-            <Plus size={14} /> Create Quiz
-          </Link>
-        )}
-      </header>
+    <div className="space-y-8 pb-12 max-w-6xl mx-auto">
+      {/* Header Section */}
+      <section className="bg-white rounded-3xl border border-slate-200 p-6 lg:p-8 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-primary-600 font-bold text-[10px] uppercase tracking-widest">
+              <FlaskConical size={14} /> Assessments & Evaluations
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              Quizzes &amp; Assessments
+            </h2>
+            <p className="text-slate-500 font-medium text-sm">
+              Take quizzes, track scores, and review your performance across all assessments.
+            </p>
+          </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="stat-card">
-          <p className="section-label mb-1">Total Quizzes</p>
-          <p className="text-xl font-bold text-slate-900">{stats.total}</p>
+          {isTeacher && (
+            <Link 
+              href={`/courses/${courseId}/quizzes/new`} 
+              className="btn btn-primary h-12 px-6 gap-2 text-xs font-bold shadow-sm transition-all rounded-xl self-start md:self-auto"
+            >
+              <Plus size={16} /> Create Quiz
+            </Link>
+          )}
         </div>
-        <div className="stat-card">
-          <p className="section-label mb-1">Published</p>
-          <p className="text-xl font-bold text-emerald-600">{stats.published}</p>
+      </section>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center border border-primary-100">
+            <Trophy size={18} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Quizzes</p>
+            <p className="text-2xl font-extrabold text-slate-900">{stats.total}</p>
+          </div>
+          <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+            <div className="h-full bg-primary-500 rounded-full" style={{ width: '100%' }} />
+          </div>
         </div>
-        <div className="stat-card">
-          <p className="section-label mb-1">Drafts</p>
-          <p className="text-xl font-bold text-amber-600">{stats.total - stats.published}</p>
+
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+            <CheckCircle2 size={18} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Published</p>
+            <p className="text-2xl font-extrabold text-emerald-600">{stats.published}</p>
+          </div>
+          <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(stats.published / stats.total) * 100}%` }} />
+          </div>
         </div>
-        <div className="stat-card">
-          <p className="section-label mb-1">Questions</p>
-          <p className="text-xl font-bold text-blue-600">
-            {(quizzes as Quiz[]).reduce((s: number, q: Quiz) => s + (q.questions?.length ?? 0), 0)}
-          </p>
+
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+            <Clock size={18} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Drafts</p>
+            <p className="text-2xl font-extrabold text-amber-600">{stats.total - stats.published}</p>
+          </div>
+          <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+            <div className="h-full bg-amber-500 rounded-full" style={{ width: `${((stats.total - stats.published) / stats.total) * 100}%` }} />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+            <Target size={18} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Questions</p>
+            <p className="text-2xl font-extrabold text-blue-600">
+              {(quizzes as Quiz[]).reduce((s: number, q: Quiz) => s + (q.questions?.length ?? 0), 0)}
+            </p>
+          </div>
+          <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500 rounded-full" style={{ width: '100%' }} />
+          </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white border border-slate-100 rounded-xl p-3 shadow-sm flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-          <input
-            aria-label="Search quizzes"
-            className="input-premium pl-8 h-8 text-xs w-full"
+      {/* Search & Filter */}
+      <div className="flex gap-4">
+        <div className="relative flex-1 group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors" size={16} />
+          <input 
+            type="text" 
             placeholder="Search quizzes..."
             value={search}
             onChange={e => setSearch(e.target.value)}
+            className="w-full bg-white border border-slate-200 pl-12 pr-4 h-12 rounded-xl focus:border-primary-500 transition-all outline-none font-bold text-xs shadow-sm"
           />
         </div>
         {isTeacher && (
           <select
-            aria-label="Filter by status"
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="input-premium h-8 py-0 text-xs w-32 cursor-pointer"
+            className="bg-white border border-slate-200 px-4 h-12 rounded-xl focus:border-primary-500 transition-all outline-none font-bold text-xs shadow-sm cursor-pointer"
           >
             <option value="all">All Status</option>
             <option value="draft">Draft</option>
@@ -114,77 +164,115 @@ export default function QuizzesPage() {
 
       {/* Quiz List */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[1, 2, 3].map(i => <div key={i} className="h-32 rounded-xl bg-slate-100 animate-pulse" />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => <div key={i} className="h-64 bg-white rounded-3xl border border-slate-200 animate-pulse shadow-sm" />)}
         </div>
       ) : filteredQuizzes.length === 0 ? (
-        <div className="py-12 text-center bg-white rounded-xl border border-dashed border-slate-200 shadow-sm">
-          <Inbox size={20} className="text-slate-300 mx-auto mb-2" />
-          <h3 className="text-sm font-semibold text-slate-700">No Quizzes Yet</h3>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {search || statusFilter !== 'all' ? 'No quizzes match your filters.' : 'No quizzes have been created yet.'}
-          </p>
-        </div>
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-3xl border border-slate-200 p-16 text-center shadow-sm relative group overflow-hidden"
+        >
+          <div className="relative z-10 space-y-6">
+            <div className="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto border border-slate-100 shadow-inner">
+              <Inbox size={36} className="text-slate-300" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                {search || statusFilter !== 'all' ? 'No quizzes found' : 'No quizzes yet'}
+              </h3>
+              <p className="text-slate-500 text-sm font-medium max-w-sm mx-auto leading-relaxed">
+                {search || statusFilter !== 'all' ? 'No quizzes match your filters.' : 'No quizzes have been created yet.'}
+              </p>
+            </div>
+            {isTeacher && !search && statusFilter === 'all' && (
+              <Link href={`/courses/${courseId}/quizzes/new`} className="btn btn-primary h-12 px-6 text-xs font-bold shadow-sm">
+                Create First Quiz
+              </Link>
+            )}
+          </div>
+        </motion.div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredQuizzes.map((q, idx) => (
             <motion.div
               key={q._id}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
-              className="bg-white border border-slate-100 rounded-xl p-4 hover:border-slate-200 hover:shadow-sm transition-all flex flex-col group"
+              className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:border-primary-200 hover:shadow-lg transition-all flex flex-col group"
             >
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <h3 className="text-[13px] font-semibold text-slate-900 line-clamp-2 group-hover:text-primary-600 transition-colors flex-1">
-                  {q.title}
-                </h3>
-                <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider shrink-0 ${
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-slate-900 group-hover:text-primary-600 transition-colors tracking-tight line-clamp-2">
+                    {q.title}
+                  </h3>
+                  {q.description && (
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">{q.description}</p>
+                  )}
+                </div>
+                <span className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider shrink-0 border shadow-sm ${
                   q.isPublished
-                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                    : 'bg-slate-50 text-slate-500 border border-slate-100'
+                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                    : 'bg-amber-50 text-amber-600 border-amber-100'
                 }`}>
-                  {q.isPublished ? 'Live' : 'Draft'}
+                  {q.isPublished ? 'Published' : 'Draft'}
                 </span>
               </div>
 
-              {q.description && (
-                <p className="text-[11px] text-slate-500 mb-3 line-clamp-2">{q.description}</p>
-              )}
-
-              <div className="grid grid-cols-2 gap-2 mb-3 text-[11px]">
-                <div className="flex items-center gap-1 text-slate-500">
-                  <Target size={12} className="text-slate-400" />
-                  <span>{q.questions?.length ?? 0} Questions</span>
+              <div className="grid grid-cols-2 gap-3 mb-6 py-4 border-y border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                    <Target size={14} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Questions</p>
+                    <p className="text-sm font-bold text-slate-900">{q.questions?.length ?? 0}</p>
+                  </div>
                 </div>
+
                 {q.duration && (
-                  <div className="flex items-center gap-1 text-slate-500">
-                    <Clock size={12} className="text-slate-400" />
-                    <span>{q.duration} min</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                      <Clock size={14} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Duration</p>
+                      <p className="text-sm font-bold text-slate-900">{q.duration} min</p>
+                    </div>
                   </div>
                 )}
+
                 {q.totalMarks && (
-                  <div className="flex items-center gap-1 text-slate-500">
-                    <Trophy size={12} className="text-slate-400" />
-                    <span>{q.totalMarks} pts</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                      <Trophy size={14} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Points</p>
+                      <p className="text-sm font-bold text-slate-900">{q.totalMarks}</p>
+                    </div>
                   </div>
                 )}
+
                 {q.startTime && (
-                  <div className="flex items-center gap-1 text-slate-500">
-                    <FlaskConical size={12} className="text-slate-400" />
-                    <span>{new Date(q.startTime).toLocaleDateString()}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                      <FlaskConical size={14} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Starts</p>
+                      <p className="text-sm font-bold text-slate-900">{new Date(q.startTime).toLocaleDateString()}</p>
+                    </div>
                   </div>
                 )}
               </div>
 
-              <div className="mt-auto pt-3 border-t border-slate-100">
-                <Link
-                  href={`/courses/${courseId}/quizzes/${q._id}`}
-                  className="btn btn-secondary btn-sm w-full justify-center gap-1 text-[11px]"
-                >
-                  {isTeacher ? 'Manage' : isStudent ? 'Start' : 'View'} <ArrowRight size={10} />
-                </Link>
-              </div>
+              <Link
+                href={`/courses/${courseId}/quizzes/${q._id}`}
+                className="btn btn-primary w-full justify-center gap-2 text-xs font-bold shadow-sm mt-auto"
+              >
+                {isTeacher ? 'Manage' : isStudent ? 'Start Quiz' : 'View'} <ArrowRight size={14} />
+              </Link>
             </motion.div>
           ))}
         </div>

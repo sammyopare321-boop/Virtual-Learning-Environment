@@ -35,6 +35,7 @@ const liveRoutes = require('./routes/liveSessions');
 const studentRoutes = require('./routes/students');
 const teacherRoutes = require('./routes/teachers');
 const adminRoutes = require('./routes/admin');
+const aiRoutes = require('./routes/aiRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -185,6 +186,7 @@ app.use('/api', quizRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/communication', communicationRoutes);
 app.use('/api/live-sessions', liveRoutes);
+app.use('/api/ai', aiRoutes);
 
 // API Documentation
 app.use('/api-docs', require('./routes/docs'));

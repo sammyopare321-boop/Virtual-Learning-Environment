@@ -25,8 +25,11 @@ export default function SearchBar({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { data: suggestions = [] } = useSearchSuggestions(query, 10, showSuggestions);
-  const { data: trending = [] } = useTrendingSearches(5, showTrending && !query);
+  const { data: suggestionsData } = useSearchSuggestions(query, 10, showSuggestions);
+  const { data: trendingData } = useTrendingSearches(5, showTrending && !query);
+
+  const suggestions = suggestionsData?.data || [];
+  const trending = trendingData?.data || [];
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -59,7 +62,7 @@ export default function SearchBar({
   };
 
   const displayItems = query ? suggestions : trending;
-  const showDropdown = isOpen && displayItems.length > 0;
+  const showDropdown = isOpen && Array.isArray(displayItems) && displayItems.length > 0;
 
   return (
     <div ref={containerRef} className={`relative w-full ${className}`}>
@@ -96,14 +99,14 @@ export default function SearchBar({
                 <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">
                   Suggestions
                 </div>
-                {suggestions.map((suggestion, idx) => (
+                {suggestions.map((suggestion: any, idx: number) => (
                   <button
                     key={idx}
-                    onClick={() => handleSearch(suggestion)}
+                    onClick={() => handleSearch(typeof suggestion === 'string' ? suggestion : suggestion.suggestion || suggestion.title)}
                     className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-200 text-sm transition-colors"
                   >
                     <Search className="inline w-4 h-4 mr-2 text-gray-400" />
-                    {suggestion}
+                    {typeof suggestion === 'string' ? suggestion : suggestion.suggestion || suggestion.title}
                   </button>
                 ))}
               </>
@@ -113,14 +116,14 @@ export default function SearchBar({
                   <TrendingUp className="w-4 h-4" />
                   Trending
                 </div>
-                {trending.map((trend, idx) => (
+                {trending.map((trend: any, idx: number) => (
                   <button
                     key={idx}
-                    onClick={() => handleSearch(trend)}
+                    onClick={() => handleSearch(typeof trend === 'string' ? trend : trend.topic || trend.title)}
                     className="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-200 text-sm transition-colors"
                   >
                     <TrendingUp className="inline w-4 h-4 mr-2 text-gray-400" />
-                    {trend}
+                    {typeof trend === 'string' ? trend : trend.topic || trend.title}
                   </button>
                 ))}
               </>

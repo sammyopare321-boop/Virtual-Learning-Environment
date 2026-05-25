@@ -79,7 +79,7 @@ export default function CoursesPage() {
   const filterTabs = ['all', 'active', 'draft', 'archived'];
 
   return (
-    <div className="space-y-5 pb-12">
+    <div className="space-y-8 pb-12 max-w-7xl mx-auto">
       {/* Toast */}
       <AnimatePresence>
         {toast && (
@@ -99,47 +99,54 @@ export default function CoursesPage() {
         )}
       </AnimatePresence>
 
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="page-title">
-            {isTeacher ? 'My Courses' : 'Course Library'}
-          </h1>
-          <p className="page-subtitle mt-0.5">
-            {isTeacher
-              ? 'Manage your curriculum and track student progress.'
-              : 'Explore and enroll in available courses.'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-            <input
-              type="text"
-              placeholder="Search courses..."
-              className="input-premium pl-8 pr-3 h-8 w-52 text-xs"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+      {/* Header Section */}
+      <section className="bg-white rounded-3xl border border-slate-200 p-6 lg:p-8 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-primary-600 font-bold text-[10px] uppercase tracking-widest">
+              <BookOpen size={14} /> {isTeacher ? 'Teaching' : 'Learning'}
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              {isTeacher ? 'My Courses' : 'Course Library'}
+            </h2>
+            <p className="text-slate-500 font-medium text-sm">
+              {isTeacher
+                ? 'Manage your curriculum and track student progress'
+                : 'Explore and enroll in available courses'}
+            </p>
           </div>
 
-          {user?.role === 'admin' && (
-            <Link href="/admin/courses/new" className="btn btn-primary gap-1.5">
-              <Plus size={14} strokeWidth={2.5} />
-              New Course
-            </Link>
-          )}
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search courses..."
+                className="pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm w-56"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+
+            {user?.role === 'admin' && (
+              <Link href="/admin/courses/new" className="btn btn-primary h-10 px-4 gap-2 text-xs font-bold rounded-xl">
+                <Plus size={16} />
+                New Course
+              </Link>
+            )}
+          </div>
         </div>
-      </header>
+      </section>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-0.5 border-b border-slate-100">
+      <div className="flex items-center gap-1 border-b border-slate-200 px-1">
         {filterTabs.map((status) => (
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
-            className={`relative px-3 py-2 text-[12px] font-medium capitalize transition-colors ${
+            className={`relative px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors ${
               statusFilter === status
                 ? 'text-primary-600'
                 : 'text-slate-400 hover:text-slate-600'
@@ -149,7 +156,7 @@ export default function CoursesPage() {
             {statusFilter === status && (
               <motion.div
                 layoutId="status-indicator"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 rounded-full"
+                className="absolute bottom-0 left-0 right-0 h-1 bg-primary-600 rounded-full"
               />
             )}
           </button>
@@ -159,21 +166,21 @@ export default function CoursesPage() {
       {/* Courses Grid */}
       <section>
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="h-56 rounded-xl bg-slate-100 animate-pulse" />
+              <div key={i} className="h-64 rounded-2xl bg-slate-100 animate-pulse" />
             ))}
           </div>
         ) : courses.length === 0 ? (
-          <div className="py-16 text-center border border-dashed border-slate-200 rounded-xl">
-            <div className="w-12 h-12 bg-slate-50 rounded-xl mx-auto flex items-center justify-center mb-3 border border-slate-100">
-              <BookOpen size={20} className="text-slate-300" />
+          <div className="py-16 text-center bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm">
+            <div className="w-16 h-16 bg-slate-50 rounded-2xl mx-auto flex items-center justify-center mb-4 border border-slate-100">
+              <BookOpen size={32} className="text-slate-300" />
             </div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-1">No courses found</h3>
-            <p className="text-xs text-slate-400">Try adjusting your search or filters.</p>
+            <h3 className="text-base font-bold text-slate-900 mb-1.5">No courses found</h3>
+            <p className="text-sm text-slate-500">Try adjusting your search or filters.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {courses.map((course, idx) => {
               const isEnrolled = enrolled.has(course._id);
               const status = statusColor[course.status] || statusColor.active;
@@ -184,44 +191,44 @@ export default function CoursesPage() {
               return (
                 <motion.div
                   key={course._id}
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.04 }}
-                  className="group bg-white border border-slate-100 rounded-xl overflow-hidden flex flex-col hover:shadow-md hover:border-slate-200 transition-all duration-200"
+                  className="group bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col hover:border-primary-200 hover:shadow-lg transition-all duration-200"
                 >
                   {/* Card header bar */}
-                  <div className="h-24 bg-gradient-to-br from-slate-800 to-slate-900 relative shrink-0">
-                    <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                      <span className="px-2 py-0.5 rounded-md bg-white/10 border border-white/20 text-white text-[10px] font-semibold backdrop-blur-sm">
+                  <div className="h-28 bg-gradient-to-br from-primary-600 to-primary-700 relative shrink-0">
+                    <div className="absolute top-4 left-4 flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-white/15 border border-white/30 text-white text-[10px] font-bold backdrop-blur-sm">
                         {course.code}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${status.bg} ${status.text} ${status.border}`}>
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${status.bg} ${status.text} ${status.border}`}>
                         {course.status}
                       </span>
                     </div>
-                    <div className="absolute bottom-3 right-3">
-                      <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center">
-                        <BookOpen size={14} className="text-white/70" />
+                    <div className="absolute bottom-4 right-4">
+                      <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/30 flex items-center justify-center">
+                        <BookOpen size={18} className="text-white/80" />
                       </div>
                     </div>
                   </div>
 
                   {/* Content */}
-                  <div className="p-3 flex-1 flex flex-col gap-2">
+                  <div className="p-5 flex-1 flex flex-col gap-3">
                     <div>
-                      <h3 className="text-[13px] font-semibold text-slate-900 leading-tight line-clamp-2 group-hover:text-primary-600 transition-colors">
+                      <h3 className="text-sm font-bold text-slate-900 leading-tight line-clamp-2 group-hover:text-primary-600 transition-colors">
                         {course.title}
                       </h3>
-                      <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">
                         {course.description || 'No description provided.'}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1.5 mt-auto">
-                      <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center">
-                        <User size={10} className="text-slate-400" />
+                    <div className="flex items-center gap-2 mt-auto pt-3 border-t border-slate-100">
+                      <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                        <User size={12} className="text-primary-600" />
                       </div>
-                      <p className="text-[11px] text-slate-500 truncate" title={teacherName}>{teacherName}</p>
+                      <p className="text-xs text-slate-600 font-medium truncate" title={teacherName}>{teacherName}</p>
                     </div>
 
                     {/* Action button */}
@@ -229,34 +236,34 @@ export default function CoursesPage() {
                       isEnrolled ? (
                         <Link
                           href={`/courses/${course._id}`}
-                          className="btn btn-primary btn-sm w-full mt-1 gap-1"
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold transition-all mt-2"
                         >
-                          Continue <ChevronRight size={12} className="group-hover/btn:translate-x-0.5 transition-transform" />
+                          Continue <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                         </Link>
                       ) : (
                         <button
                           onClick={() => handleEnroll(course._id)}
                           disabled={enrolling === course._id}
-                          className="btn btn-secondary btn-sm w-full mt-1 hover:border-primary-500 hover:text-primary-600"
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 hover:border-primary-500 hover:text-primary-600 text-slate-700 text-xs font-bold transition-all mt-2 disabled:opacity-60"
                         >
                           {enrolling === course._id ? 'Enrolling...' : 'Enroll'}
                         </button>
                       )
                     ) : (
-                      <div className="flex gap-1.5 mt-1">
+                      <div className="flex gap-2 mt-2">
                         <Link
                           href={`/courses/${course._id}`}
-                          className="btn btn-secondary btn-sm flex-1 gap-1 hover:border-primary-500 hover:text-primary-600"
+                          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 hover:border-primary-500 hover:text-primary-600 text-slate-700 text-xs font-bold transition-all"
                         >
-                          Open <ArrowUpRight size={11} />
+                          Open <ArrowUpRight size={12} />
                         </Link>
                         <button
                           onClick={() => handleDelete(course._id, course.title)}
-                          className="w-7 h-7 rounded-md border border-red-100 bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0"
+                          className="w-10 h-10 rounded-xl border border-rose-200 bg-rose-50 text-rose-400 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center shrink-0"
                           title="Delete Course"
                           aria-label={`Delete course ${course.title}`}
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     )}

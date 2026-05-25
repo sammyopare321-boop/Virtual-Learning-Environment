@@ -85,21 +85,37 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-5 pb-10">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-1.5 text-primary-600 text-[11px] font-semibold uppercase tracking-wider mb-1">
-            <Calendar size={12} /><span>{currentDate}</span>
+    <div className="max-w-6xl mx-auto space-y-8 pb-12">
+      {/* Header Section */}
+      <section className="bg-white rounded-3xl border border-slate-200 p-6 lg:p-8 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-primary-600 font-bold text-[10px] uppercase tracking-widest mb-2">
+              <Calendar size={14} />
+              <span>{currentDate}</span>
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              {greeting}, {user?.name?.split(' ')[0]} 👋
+            </h2>
+            <p className="text-slate-500 font-medium text-sm">
+              Platform overview and system management
+            </p>
           </div>
-          <h1 className="page-title">{greeting}, {user?.name?.split(' ')[0]} 👋</h1>
-          <p className="page-subtitle mt-0.5">Platform overview and system management.</p>
+
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            <button className="btn btn-secondary h-10 px-4 gap-2 text-xs font-bold rounded-xl">
+              <Settings size={14} />
+              Settings
+            </button>
+            <Link href="/admin/users" className="btn btn-primary h-10 px-4 gap-2 text-xs font-bold rounded-xl">
+              <Plus size={14} />
+              Add User
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <button className="btn btn-secondary gap-1.5"><Settings size={13} />Settings</button>
-          <Link href="/admin/users" className="btn btn-primary gap-1.5"><Plus size={13} />Add User</Link>
-        </div>
-      </header>
+      </section>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

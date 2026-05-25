@@ -31,7 +31,7 @@ export function useGlobalSearchInfinite(params: Omit<SearchParams, 'page'>, enab
         ...params,
         page: pageParam,
       }),
-    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.page + 1 : undefined),
+    getNextPageParam: (lastPage) => (lastPage.hasMore && lastPage.page ? lastPage.page + 1 : undefined),
     initialPageParam: 1,
     enabled: enabled && params.query.length > 0,
     staleTime: 5 * 60 * 1000,
