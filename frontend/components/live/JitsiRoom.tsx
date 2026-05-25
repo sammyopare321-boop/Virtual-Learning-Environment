@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Mic, MicOff, Video, VideoOff, PhoneOff, Users, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, PhoneOff, ExternalLink } from 'lucide-react';
 
 interface JitsiRoomProps {
   roomId: string;
@@ -14,7 +14,6 @@ interface JitsiAPI {
   dispose: () => void;
   executeCommand: (command: string, ...args: unknown[]) => void;
   addEventListeners: (listeners: Record<string, () => void>) => void;
-  getNumberOfParticipants: () => number;
 }
 
 declare global {
@@ -23,70 +22,72 @@ declare global {
   }
 }
 
-export default function JitsiRoom({ roomId, displayName, onLeave, isHost = false }: JitsiRoomProps) {
+export default function JitsiRoom({ roomId, displayName, onLeave }: JitsiRoomProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<JitsiAPI | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [muted, setMuted] = useState(false);
-  const [videoOff, setVideoOff] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
-  const [participants, setParticipants] = useState(1);
+  const [status, setStatus] = useState<'loading' | 'connected' | 'error'>('loading');
+  const jitsiUrl = `https://meet.jit.si/${roomId}`;
 
   useEffect(() => {
-    // Load Jitsi External API script
     const scriptId = 'jitsi-api-script';
-    const existing = document.getElementById(scriptId);
 
     const initJitsi = () => {
-      if (!containerRef.current || !window.JitsiMeetExternalAPI) return;
+      if (!containerRef.current || !window.JitsiMeetExternalAPI) {
+        setStatus('error');
+        return;
+      }
 
-      apiRef.current = new window.JitsiMeetExternalAPI('meet.jit.si', {
-        roomName: roomId,
-        parentNode: containerRef.current,
-        width: '100%',
-        height: '100%',
-        userInfo: { displayName },
-        configOverwrite: {
-          startWithAudioMuted: false,
-          startWithVideoMuted: false,
-          disableDeepLinking: true,
-          prejoinPageEnabled: false,
-          disableInviteFunctions: true,
-          toolbarButtons: [], // hide default toolbar — we use our own
-          hideConferenceSubject: true,
-          hideConferenceTimer: false,
-          disableThirdPartyRequests: true,
-        },
-        interfaceConfigOverwrite: {
-          SHOW_JITSI_WATERMARK: false,
-          SHOW_WATERMARK_FOR_GUESTS: false,
-          SHOW_BRAND_WATERMARK: false,
-          SHOW_POWERED_BY: false,
-          TOOLBAR_ALWAYS_VISIBLE: false,
-          HIDE_INVITE_MORE_HEADER: true,
-          MOBILE_APP_PROMO: false,
-          DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
-        },
-      });
+      try {
+        apiRef.current = new window.JitsiMeetExternalAPI('meet.jit.si', {
+          roomName: roomId,
+          parentNode: containerRef.current,
+          width: '100%',
+          height: '100%',
+          userInfo: { displayName },
+          configOverwrite: {
+            startWithAudioMuted: false,
+            startWithVideoMuted: false,
+            disableDeepLinking: true,
+            prejoinPageEnabled: false,
+          },
+          interfaceConfigOverwrite: {
+            SHOW_JITSI_WATERMARK: false,
+            SHOW_WATERMARK_FOR_GUESTS: false,
+            SHOW_BRAND_WATERMARK: false,
+            SHOW_POWERED_BY: false,
+            MOBILE_APP_PROMO: false,
+          },
+        });
 
-      apiRef.current.addEventListeners({
-        videoConferenceJoined: () => setLoading(false),
-        videoConferenceLeft: () => onLeave(),
-        participantJoined: () => setParticipants(p => p + 1),
-        participantLeft: () => setParticipants(p => Math.max(1, p - 1)),
-      });
+        apiRef.current.addEventListeners({
+          videoConferenceJoined: () => setStatus('connected'),
+          videoConferenceLeft: () => onLeave(),
+          errorOccurred: () => setStatus('error'),
+        });
+
+        // Fallback: if not connected after 15s, assume connected anyway
+        // (some browsers fire the event late)
+        const fallback = setTimeout(() => setStatus('connected'), 15000);
+        return () => clearTimeout(fallback);
+      } catch {
+        setStatus('error');
+      }
     };
 
+    const existing = document.getElementById(scriptId);
     if (existing) {
-      // Script already loaded
-      if (window.JitsiMeetExternalAPI) initJitsi();
-      else existing.addEventListener('load', initJitsi);
+      if (window.JitsiMeetExternalAPI) {
+        initJitsi();
+      } else {
+        existing.addEventListener('load', initJitsi);
+      }
     } else {
       const script = document.createElement('script');
       script.id = scriptId;
       script.src = 'https://meet.jit.si/external_api.js';
       script.async = true;
       script.onload = initJitsi;
+      script.onerror = () => setStatus('error');
       document.head.appendChild(script);
     }
 
@@ -97,92 +98,66 @@ export default function JitsiRoom({ roomId, displayName, onLeave, isHost = false
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
 
-  const toggleMute = () => {
-    apiRef.current?.executeCommand('toggleAudio');
-    setMuted(m => !m);
-  };
-
-  const toggleVideo = () => {
-    apiRef.current?.executeCommand('toggleVideo');
-    setVideoOff(v => !v);
-  };
-
-  const handleLeave = () => {
-    apiRef.current?.executeCommand('hangup');
-    onLeave();
-  };
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.parentElement?.requestFullscreen();
-      setFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setFullscreen(false);
-    }
-  };
-
   return (
     <div className="flex flex-col h-full bg-slate-900 rounded-xl overflow-hidden border border-slate-800">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-          <span className="text-xs font-semibold text-white">Live</span>
+          <span className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-emerald-500' : status === 'error' ? 'bg-rose-500' : 'bg-amber-500 animate-pulse'}`} />
+          <span className="text-xs font-semibold text-white">
+            {status === 'connected' ? 'Live' : status === 'error' ? 'Connection failed' : 'Connecting...'}
+          </span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-slate-400">
-          <Users size={13} />
-          <span>{participants}</span>
+        <div className="flex items-center gap-2">
+          {/* Fallback: open in new tab if embed fails */}
+          <a
+            href={jitsiUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors"
+            title="Open in new tab"
+          >
+            <ExternalLink size={13} /> Open in tab
+          </a>
+          <button
+            onClick={() => { apiRef.current?.executeCommand('hangup'); onLeave(); }}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition-all"
+            title="Leave session"
+          >
+            <PhoneOff size={12} /> Leave
+          </button>
         </div>
-        <button
-          onClick={toggleFullscreen}
-          className="text-slate-400 hover:text-white transition-colors"
-          title="Toggle fullscreen"
-        >
-          {fullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-        </button>
       </div>
 
-      {/* Jitsi iframe container */}
+      {/* Jitsi container */}
       <div className="relative flex-1 min-h-0">
-        {loading && (
+        {status === 'loading' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 z-10 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-primary-400" />
             <p className="text-sm text-slate-400">Connecting to room...</p>
+            <p className="text-xs text-slate-500">Allow camera & microphone when prompted</p>
           </div>
         )}
+
+        {status === 'error' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 z-10 gap-4 p-6 text-center">
+            <p className="text-sm text-slate-300 font-semibold">Could not embed the video room</p>
+            <p className="text-xs text-slate-500">This can happen due to browser security settings or extensions blocking the connection.</p>
+            <a
+              href={jitsiUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary btn-sm gap-1.5"
+            >
+              <ExternalLink size={13} /> Join in New Tab
+            </a>
+            <button onClick={onLeave} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+              Go back
+            </button>
+          </div>
+        )}
+
         <div ref={containerRef} className="w-full h-full" />
-      </div>
-
-      {/* Controls */}
-      <div className="flex items-center justify-center gap-3 px-4 py-3 bg-slate-900 border-t border-slate-800 shrink-0">
-        <button
-          onClick={toggleMute}
-          title={muted ? 'Unmute' : 'Mute'}
-          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-            muted ? 'bg-rose-500 text-white' : 'bg-slate-700 text-white hover:bg-slate-600'
-          }`}
-        >
-          {muted ? <MicOff size={16} /> : <Mic size={16} />}
-        </button>
-
-        <button
-          onClick={toggleVideo}
-          title={videoOff ? 'Turn on camera' : 'Turn off camera'}
-          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-            videoOff ? 'bg-rose-500 text-white' : 'bg-slate-700 text-white hover:bg-slate-600'
-          }`}
-        >
-          {videoOff ? <VideoOff size={16} /> : <Video size={16} />}
-        </button>
-
-        <button
-          onClick={handleLeave}
-          title="Leave session"
-          className="w-12 h-10 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center transition-all"
-        >
-          <PhoneOff size={16} />
-        </button>
       </div>
     </div>
   );
