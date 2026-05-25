@@ -159,6 +159,8 @@ export default function QuizDetailPage() {
       showToast('Failed to update status.', 'error');
     }
   };
+
+  const handleAddQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddingQ(true);
     try {
