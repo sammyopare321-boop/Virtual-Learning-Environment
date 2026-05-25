@@ -60,7 +60,7 @@ Format your response as JSON:
 }`;
 
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -144,7 +144,7 @@ async function gradeSubmissionsBatch(submissions, rubricCriteria, totalPoints, a
 async function generateRubric(assignmentDescription, totalPoints = 100) {
   try {
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -215,7 +215,7 @@ async function compareGrades(aiGrade, teacherGrade, submissionId) {
     const percentDifference = (difference / aiGrade.totalScore) * 100;
 
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -273,7 +273,7 @@ Provide analysis in JSON format:
 async function generatePersonalizedFeedback(gradingResult, studentName) {
   try {
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -338,4 +338,6 @@ module.exports = {
   compareGrades,
   generatePersonalizedFeedback,
 };
+
+
 

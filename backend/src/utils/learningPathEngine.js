@@ -41,7 +41,7 @@ Provide analysis in JSON format:
 }`;
 
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -125,7 +125,7 @@ Format response as JSON:
 }`;
 
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -182,7 +182,7 @@ Format response as JSON:
 async function getRecommendedResources(topic, learningStyle, difficultyLevel) {
   try {
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -236,7 +236,7 @@ Format response as JSON array:
 async function updateLearningPath(currentPath, progressData) {
   try {
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -293,7 +293,7 @@ Format response as JSON:
 async function generateLearningRecommendations(studentData, performanceAnalysis) {
   try {
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -351,4 +351,6 @@ module.exports = {
   updateLearningPath,
   generateLearningRecommendations,
 };
+
+
 

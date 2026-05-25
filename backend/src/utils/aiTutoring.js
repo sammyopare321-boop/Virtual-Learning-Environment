@@ -45,7 +45,7 @@ Format your response as JSON with the following structure:
 }`;
 
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -93,7 +93,7 @@ Format your response as JSON with the following structure:
 async function generatePracticeProblems(topic, difficulty = 'medium', count = 5) {
   try {
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -144,7 +144,7 @@ Format your response as a JSON array with the following structure:
 async function analyzeStudentAnswer(question, studentAnswer, topic) {
   try {
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -210,7 +210,7 @@ Format your response as JSON:
 async function explainConcept(concept, courseContext, studentLevel = 'intermediate') {
   try {
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -270,4 +270,6 @@ module.exports = {
   analyzeStudentAnswer,
   explainConcept,
 };
+
+
 

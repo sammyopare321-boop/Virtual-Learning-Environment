@@ -50,7 +50,7 @@ Provide a detailed plagiarism report in JSON format:
 }`;
 
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -107,7 +107,7 @@ async function compareWithPreviousSubmissions(submissionContent, previousSubmiss
       .join('\n\n---\n\n');
 
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -174,7 +174,7 @@ async function analyzeWritingPatterns(submissionContent, previousSubmissions = [
       .join('\n\n---\n\n');
 
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -243,7 +243,7 @@ Provide analysis in JSON format:
 async function generatePlagiarismReport(plagiarismResult, writingAnalysis, comparisonResult) {
   try {
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -338,4 +338,6 @@ module.exports = {
   generatePlagiarismReport,
   batchCheckPlagiarism,
 };
+
+
 

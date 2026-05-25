@@ -43,7 +43,7 @@ Format response as JSON array:
 ]`;
 
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -82,7 +82,7 @@ Format response as JSON array:
 async function generateSearchSuggestions(query, searchHistory = [], courseContent = []) {
   try {
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -131,7 +131,7 @@ Format response as JSON array:
 async function analyzeSearchQuery(query) {
   try {
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -223,7 +223,7 @@ Format response as JSON array:
       .join(', ');
 
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -261,7 +261,7 @@ Format response as JSON array:
 async function getTrendingTopics(searchHistory = [], timeRange = 'week') {
   try {
     const response = await getClient().chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_API_KEY ? 'gpt-4o' : 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -310,4 +310,6 @@ module.exports = {
   advancedSearch,
   getTrendingTopics,
 };
+
+
 
