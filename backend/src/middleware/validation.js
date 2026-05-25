@@ -135,7 +135,12 @@ const createQuizSchema = Joi.object({
     }),
   totalMarks: Joi.number().integer().min(1).required()
     .messages({ 'any.required': 'Total marks is required' })
-});
+}).custom((value, helpers) => {
+  if (new Date(value.endTime) <= new Date(value.startTime)) {
+    return helpers.error('any.invalid');
+  }
+  return value;
+}).messages({ 'any.invalid': 'End time must be after start time' });
 
 const updateQuizSchema = Joi.object({
   title: Joi.string().min(3).max(150).optional(),
