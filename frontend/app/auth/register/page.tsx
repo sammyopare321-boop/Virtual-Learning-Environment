@@ -11,7 +11,6 @@ import { AxiosError } from 'axios';
 import { motion } from 'framer-motion';
 
 function RegisterContent() {
-  const { updateUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'student' as const });
@@ -27,17 +26,16 @@ function RegisterContent() {
           setLoading(true);
           try {
             const { authApi } = await import('@/utils/api/authApi');
-            const { setAuthToken } = await import('@/utils/api/axiosInstance');
             const { applySessionToken } = await import('@/utils/auth/session');
             
             const res = await authApi.googleLogin({ token: response.credential, role: form.role });
             const { data: user, token } = res.data;
             
             applySessionToken(token);
-            updateUser(user);
             
             toast.success('Welcome!');
-            router.push(`/dashboard`);
+            // Redirect and let the page reload to fetch user
+            window.location.href = '/dashboard';
           } catch (e) {
             const msg = (e as AxiosError<{ message: string }>).response?.data?.message || 'Google sign‑up failed';
             setError(msg);
@@ -52,7 +50,7 @@ function RegisterContent() {
         { theme: 'outline', size: 'large', shape: 'rectangular', text: 'signup_with', width: 200 }
       );
     }
-  }, [form.role, router, updateUser]);
+  }, [form.role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +76,6 @@ function RegisterContent() {
     try {
       // Use the proper auth API with axios instance
       const { authApi } = await import('@/utils/api/authApi');
-      const { setAuthToken } = await import('@/utils/api/axiosInstance');
       const { applySessionToken } = await import('@/utils/auth/session');
       
       const response = await authApi.register({
@@ -89,14 +86,14 @@ function RegisterContent() {
       });
       
       // Registration successful - token is in response
-      const { token, data: user } = response.data;
+      const { token } = response.data;
       
-      // Store token and update user context
+      // Store token
       applySessionToken(token);
-      updateUser(user);
       
       toast.success('Account created successfully!');
-      router.push(`/dashboard`);
+      // Use window.location to force a full page reload and fetch user
+      window.location.href = '/dashboard';
     } catch (e: any) {
       console.error('Registration error:', e);
       const msg = e?.response?.data?.message || 
