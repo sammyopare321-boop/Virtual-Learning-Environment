@@ -1,53 +1,34 @@
-const axios = require('axios');
+const OpenAI = require('openai');
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_BASE_URL = 'https://api.openai.com/v1';
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+/**
+ * Safely parse JSON from AI response — handles markdown code fences
+ */
+function parseJSON(content) {
+  // Strip markdown code fences if present
+  const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  return JSON.parse(cleaned);
+}
 
 /**
  * Generate course outline using AI
  */
 async function generateCourseOutline(courseTitle, courseDescription, duration) {
   try {
-    const response = await axios.post(`${OPENAI_BASE_URL}/chat/completions`, {
+    const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        {
-          role: 'system',
-          content: 'You are an expert course designer. Generate detailed, structured course outlines.'
-        },
-        {
-          role: 'user',
-          content: `Create a detailed course outline for:
-Title: ${courseTitle}
-Description: ${courseDescription}
-Duration: ${duration} weeks
-
-Format the response as a JSON object with:
-{
-  "modules": [
-    {
-      "week": number,
-      "title": string,
-      "topics": [string],
-      "learningOutcomes": [string],
-      "activities": [string]
-    }
-  ],
-  "assessments": [string],
-  "resources": [string]
-}`
-        }
+        { role: 'system', content: 'You are an expert course designer. Generate detailed, structured course outlines. Always respond with valid JSON only, no markdown.' },
+        { role: 'user', content: `Create a detailed course outline for:\nTitle: ${courseTitle}\nDescription: ${courseDescription}\nDuration: ${duration} weeks\n\nFormat as JSON:\n{\n  "modules": [{"week": number, "title": string, "topics": [string], "learningOutcomes": [string], "activities": [string]}],\n  "assessments": [string],\n  "resources": [string]\n}` }
       ],
       temperature: 0.7,
-      max_tokens: 2000
-    }, {
-      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` }
+      max_tokens: 2000,
+      response_format: { type: 'json_object' }
     });
-
-    const content = response.data.choices[0].message.content;
-    return JSON.parse(content);
+    return parseJSON(response.choices[0].message.content);
   } catch (error) {
-    console.error('Error generating course outline:', error);
+    console.error('Error generating course outline:', error.message);
     throw new Error('Failed to generate course outline');
   }
 }
@@ -57,42 +38,19 @@ Format the response as a JSON object with:
  */
 async function generateQuizQuestions(topic, difficulty = 'medium', count = 5) {
   try {
-    const response = await axios.post(`${OPENAI_BASE_URL}/chat/completions`, {
+    const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        {
-          role: 'system',
-          content: 'You are an expert educator. Generate high-quality quiz questions with correct answers and explanations.'
-        },
-        {
-          role: 'user',
-          content: `Generate ${count} ${difficulty} quiz questions about: ${topic}
-
-Format as JSON:
-{
-  "questions": [
-    {
-      "question": string,
-      "type": "multiple_choice",
-      "options": [string, string, string, string],
-      "correctAnswer": number (0-3),
-      "explanation": string,
-      "difficulty": "${difficulty}"
-    }
-  ]
-}`
-        }
+        { role: 'system', content: 'You are an expert educator. Generate high-quality quiz questions. Always respond with valid JSON only, no markdown.' },
+        { role: 'user', content: `Generate ${count} ${difficulty} quiz questions about: ${topic}\n\nFormat as JSON:\n{\n  "questions": [\n    {\n      "question": string,\n      "type": "multiple_choice",\n      "options": [string, string, string, string],\n      "correctAnswer": number (0-3 index),\n      "explanation": string,\n      "difficulty": "${difficulty}"\n    }\n  ]\n}` }
       ],
       temperature: 0.7,
-      max_tokens: 2000
-    }, {
-      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` }
+      max_tokens: 2000,
+      response_format: { type: 'json_object' }
     });
-
-    const content = response.data.choices[0].message.content;
-    return JSON.parse(content);
+    return parseJSON(response.choices[0].message.content);
   } catch (error) {
-    console.error('Error generating quiz questions:', error);
+    console.error('Error generating quiz questions:', error.message);
     throw new Error('Failed to generate quiz questions');
   }
 }
@@ -102,91 +60,40 @@ Format as JSON:
  */
 async function generateAssignmentPrompt(topic, learningOutcomes, difficulty = 'medium') {
   try {
-    const response = await axios.post(`${OPENAI_BASE_URL}/chat/completions`, {
+    const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        {
-          role: 'system',
-          content: 'You are an expert course designer. Create engaging, clear assignment prompts.'
-        },
-        {
-          role: 'user',
-          content: `Create an assignment prompt for:
-Topic: ${topic}
-Learning Outcomes: ${learningOutcomes.join(', ')}
-Difficulty: ${difficulty}
-
-Format as JSON:
-{
-  "title": string,
-  "description": string,
-  "objectives": [string],
-  "requirements": [string],
-  "rubric": {
-    "criteria": [
-      {
-        "name": string,
-        "description": string,
-        "points": number
-      }
-    ],
-    "totalPoints": number
-  },
-  "dueDate": "2 weeks",
-  "resources": [string]
-}`
-        }
+        { role: 'system', content: 'You are an expert course designer. Create engaging assignment prompts. Always respond with valid JSON only, no markdown.' },
+        { role: 'user', content: `Create an assignment prompt for:\nTopic: ${topic}\nLearning Outcomes: ${learningOutcomes.join(', ')}\nDifficulty: ${difficulty}\n\nFormat as JSON:\n{\n  "title": string,\n  "description": string,\n  "objectives": [string],\n  "requirements": [string],\n  "rubric": {"criteria": [{"name": string, "description": string, "points": number}], "totalPoints": number},\n  "dueDate": "2 weeks",\n  "resources": [string]\n}` }
       ],
       temperature: 0.7,
-      max_tokens: 2000
-    }, {
-      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` }
+      max_tokens: 2000,
+      response_format: { type: 'json_object' }
     });
-
-    const content = response.data.choices[0].message.content;
-    return JSON.parse(content);
+    return parseJSON(response.choices[0].message.content);
   } catch (error) {
-    console.error('Error generating assignment:', error);
+    console.error('Error generating assignment:', error.message);
     throw new Error('Failed to generate assignment');
   }
 }
 
 /**
- * Generate lecture notes summary using AI
+ * Generate lecture notes using AI
  */
 async function generateLectureNotes(topic, subtopics = []) {
   try {
-    const response = await axios.post(`${OPENAI_BASE_URL}/chat/completions`, {
+    const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        {
-          role: 'system',
-          content: 'You are an expert educator. Create comprehensive, well-structured lecture notes.'
-        },
-        {
-          role: 'user',
-          content: `Create detailed lecture notes for:
-Topic: ${topic}
-${subtopics.length > 0 ? `Subtopics: ${subtopics.join(', ')}` : ''}
-
-Format as markdown with:
-- Clear headings and subheadings
-- Key concepts highlighted
-- Examples and real-world applications
-- Summary points
-- Discussion questions
-- Further reading suggestions`
-        }
+        { role: 'system', content: 'You are an expert educator. Create comprehensive, well-structured lecture notes.' },
+        { role: 'user', content: `Create detailed lecture notes for:\nTopic: ${topic}\n${subtopics.length > 0 ? `Subtopics: ${subtopics.join(', ')}` : ''}\n\nInclude clear headings, key concepts, examples, summary points, discussion questions, and further reading.` }
       ],
       temperature: 0.7,
       max_tokens: 3000
-    }, {
-      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` }
     });
-
-    return response.data.choices[0].message.content;
+    return response.choices[0].message.content;
   } catch (error) {
-    console.error('Error generating lecture notes:', error);
+    console.error('Error generating lecture notes:', error.message);
     throw new Error('Failed to generate lecture notes');
   }
 }
@@ -196,40 +103,19 @@ Format as markdown with:
  */
 async function generateStudentFeedback(submissionContent, rubricCriteria, score) {
   try {
-    const response = await axios.post(`${OPENAI_BASE_URL}/chat/completions`, {
+    const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        {
-          role: 'system',
-          content: 'You are an expert educator providing constructive, encouraging feedback to students.'
-        },
-        {
-          role: 'user',
-          content: `Provide constructive feedback for a student submission:
-Submission: ${submissionContent.substring(0, 500)}...
-Rubric Criteria: ${rubricCriteria.join(', ')}
-Score: ${score}/100
-
-Provide feedback in JSON format:
-{
-  "strengths": [string],
-  "areasForImprovement": [string],
-  "suggestions": [string],
-  "encouragement": string,
-  "nextSteps": [string]
-}`
-        }
+        { role: 'system', content: 'You are an expert educator providing constructive feedback. Always respond with valid JSON only, no markdown.' },
+        { role: 'user', content: `Provide feedback for a student submission:\nSubmission: ${String(submissionContent).substring(0, 500)}\nRubric: ${rubricCriteria}\nScore: ${score}/100\n\nFormat as JSON:\n{\n  "strengths": [string],\n  "areasForImprovement": [string],\n  "suggestions": [string],\n  "encouragement": string,\n  "nextSteps": [string]\n}` }
       ],
       temperature: 0.7,
-      max_tokens: 1500
-    }, {
-      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` }
+      max_tokens: 1500,
+      response_format: { type: 'json_object' }
     });
-
-    const content = response.data.choices[0].message.content;
-    return JSON.parse(content);
+    return parseJSON(response.choices[0].message.content);
   } catch (error) {
-    console.error('Error generating feedback:', error);
+    console.error('Error generating feedback:', error.message);
     throw new Error('Failed to generate feedback');
   }
 }
@@ -239,45 +125,18 @@ Provide feedback in JSON format:
  */
 async function generateSyllabus(courseInfo) {
   try {
-    const response = await axios.post(`${OPENAI_BASE_URL}/chat/completions`, {
+    const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        {
-          role: 'system',
-          content: 'You are an expert course designer. Create comprehensive, professional course syllabi.'
-        },
-        {
-          role: 'user',
-          content: `Create a complete course syllabus for:
-Course Title: ${courseInfo.title}
-Course Code: ${courseInfo.code}
-Instructor: ${courseInfo.instructor}
-Duration: ${courseInfo.duration} weeks
-Level: ${courseInfo.level}
-Description: ${courseInfo.description}
-
-Include:
-- Course overview and objectives
-- Learning outcomes
-- Course requirements and grading
-- Weekly schedule
-- Policies (attendance, late work, etc.)
-- Academic integrity statement
-- Accessibility information
-- Contact information
-
-Format as professional markdown.`
-        }
+        { role: 'system', content: 'You are an expert course designer. Create comprehensive, professional course syllabi.' },
+        { role: 'user', content: `Create a complete course syllabus for:\nCourse Title: ${courseInfo.title}\nCourse Code: ${courseInfo.code}\nInstructor: ${courseInfo.instructor}\nDuration: ${courseInfo.duration} weeks\nLevel: ${courseInfo.level}\nDescription: ${courseInfo.description}\n\nInclude course overview, objectives, learning outcomes, grading, weekly schedule, policies, and academic integrity statement. Format as professional markdown.` }
       ],
       temperature: 0.7,
       max_tokens: 3000
-    }, {
-      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` }
     });
-
-    return response.data.choices[0].message.content;
+    return response.choices[0].message.content;
   } catch (error) {
-    console.error('Error generating syllabus:', error);
+    console.error('Error generating syllabus:', error.message);
     throw new Error('Failed to generate syllabus');
   }
 }

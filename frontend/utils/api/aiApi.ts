@@ -1,73 +1,30 @@
-import axios from 'axios';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+import axiosInstance from './axiosInstance';
 
 export const aiApi = {
-  /**
-   * Generate course outline
-   */
-  generateCourseOutline: async (courseTitle: string, courseDescription: string, duration: number) => {
-    return axios.post(`${API_BASE_URL}/ai/course-outline`, {
-      courseTitle,
-      courseDescription,
-      duration
-    });
-  },
+  generateCourseOutline: (courseTitle: string, courseDescription: string, duration: number) =>
+    axiosInstance.post('/api/ai/course-outline', { courseTitle, courseDescription, duration }),
 
-  /**
-   * Generate quiz questions
-   */
-  generateQuizQuestions: async (topic: string, difficulty: string = 'medium', count: number = 5) => {
-    return axios.post(`${API_BASE_URL}/ai/quiz-questions`, {
-      topic,
-      difficulty,
-      count
-    });
-  },
+  generateQuizQuestions: (topic: string, difficulty = 'medium', count = 5) =>
+    axiosInstance.post('/api/ai/quiz-questions', { topic, difficulty, count }),
 
-  /**
-   * Generate assignment prompt
-   */
-  generateAssignmentPrompt: async (topic: string, learningOutcomes: string[], difficulty: string = 'medium') => {
-    return axios.post(`${API_BASE_URL}/ai/assignment-prompt`, {
-      topic,
-      learningOutcomes,
-      difficulty
-    });
-  },
+  generateAssignmentPrompt: (topic: string, learningOutcomes: string[], difficulty = 'medium') =>
+    axiosInstance.post('/api/ai/assignment-prompt', { topic, learningOutcomes, difficulty }),
 
-  /**
-   * Generate lecture notes
-   */
-  generateLectureNotes: async (topic: string, subtopics: string[] = []) => {
-    return axios.post(`${API_BASE_URL}/ai/lecture-notes`, {
-      topic,
-      subtopics
-    });
-  },
+  generateLectureNotes: (topic: string, subtopics: string[] = []) =>
+    axiosInstance.post('/api/ai/lecture-notes', { topic, subtopics }),
 
-  /**
-   * Generate student feedback
-   */
-  generateStudentFeedback: async (submissionContent: string, rubricCriteria: string[], score: number) => {
-    return axios.post(`${API_BASE_URL}/ai/student-feedback`, {
-      submissionContent,
-      rubricCriteria,
-      score
-    });
-  },
+  generateStudentFeedback: (submissionContent: string, rubricCriteria: string, score: number) =>
+    axiosInstance.post('/api/ai/student-feedback', { submissionContent, rubricCriteria, score }),
 
-  /**
-   * Generate complete syllabus
-   */
-  generateSyllabus: async (courseInfo: {
-    title: string;
-    code: string;
-    instructor: string;
-    duration: number;
-    level: string;
-    description: string;
-  }) => {
-    return axios.post(`${API_BASE_URL}/ai/syllabus`, courseInfo);
-  }
+  generateSyllabus: (courseInfo: { title: string; code: string; instructor: string; duration: number; level: string; description: string }) =>
+    axiosInstance.post('/api/ai/syllabus', courseInfo),
+
+  getTutoringResponse: (question: string, courseTitle: string, topic: string, studentLevel = 'intermediate') =>
+    axiosInstance.post('/api/ai/tutoring', { question, courseTitle, topic, studentLevel }),
+
+  explainConcept: (concept: string, courseContext: string, studentLevel = 'intermediate') =>
+    axiosInstance.post('/api/ai/explain-concept', { concept, courseContext, studentLevel }),
+
+  generateRubric: (assignmentDescription: string, totalPoints = 100) =>
+    axiosInstance.post('/api/ai/generate-rubric', { assignmentDescription, totalPoints }),
 };

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useCourse } from '@/hooks/queries/useCourse';
+import CourseAIPanel from '@/components/ai/CourseAIPanel';
 import {
   Home, BookOpen, FileText, FlaskConical, BarChart3,
   CheckSquare, MessageSquare, Bell, Video, ChevronRight,
@@ -165,6 +166,20 @@ export default function CourseLayout({ children }: { children: React.ReactNode }
       >
         {children}
       </motion.div>
+
+      {/* Contextual AI panel — teachers & admins only */}
+      {isOwner && (
+        <CourseAIPanel
+          courseTitle={course.title}
+          defaultMode={
+            pathname.includes('/quizzes') ? 'quiz' :
+            pathname.includes('/assignments') ? 'assignment' :
+            pathname.includes('/modules') ? 'lecture' :
+            pathname.includes('/discussions') ? 'feedback' :
+            'quiz'
+          }
+        />
+      )}
     </div>
   );
 }

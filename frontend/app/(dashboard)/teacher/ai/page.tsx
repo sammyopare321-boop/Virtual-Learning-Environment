@@ -10,6 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import gradingApi from '@/utils/api/gradingApi';
 import plagiarismApi from '@/utils/api/plagiarismApi';
+import { aiApi } from '@/utils/api/aiApi';
 
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 
@@ -365,14 +366,9 @@ function OutlineTool({ onResult, loading, setLoading }: any) {
       onSubmit={async (v) => {
         setLoading(true);
         try {
-          const res = await fetch('/api/ai/course-outline', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(v),
-          });
-          const data = await res.json();
-          onResult(data.data);
-        } catch { toast.error('Failed to generate outline'); }
+          const res = await aiApi.generateCourseOutline(v.courseTitle, v.courseDescription, Number(v.duration) || 12);
+          onResult(res.data?.data);
+        } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed to generate outline'); }
         finally { setLoading(false); }
       }}
     />
@@ -392,14 +388,9 @@ function QuizTool({ onResult, loading, setLoading }: any) {
       onSubmit={async (v) => {
         setLoading(true);
         try {
-          const res = await fetch('/api/ai/quiz-questions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topic: v.topic, difficulty: v.difficulty || 'medium', count: Number(v.count) || 5 }),
-          });
-          const data = await res.json();
-          onResult(data.data);
-        } catch { toast.error('Failed to generate questions'); }
+          const res = await aiApi.generateQuizQuestions(v.topic, v.difficulty || 'medium', Number(v.count) || 5);
+          onResult(res.data?.data);
+        } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed to generate questions'); }
         finally { setLoading(false); }
       }}
     />
@@ -419,14 +410,10 @@ function AssignmentTool({ onResult, loading, setLoading }: any) {
       onSubmit={async (v) => {
         setLoading(true);
         try {
-          const res = await fetch('/api/ai/assignment-prompt', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topic: v.topic, learningOutcomes: v.learningOutcomes.split(',').map((s: string) => s.trim()), difficulty: v.difficulty || 'medium' }),
-          });
-          const data = await res.json();
-          onResult(data.data);
-        } catch { toast.error('Failed to generate assignment'); }
+          const outcomes = v.learningOutcomes.split(',').map((s: string) => s.trim()).filter(Boolean);
+          const res = await aiApi.generateAssignmentPrompt(v.topic, outcomes, v.difficulty || 'medium');
+          onResult(res.data?.data);
+        } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed to generate assignment'); }
         finally { setLoading(false); }
       }}
     />
@@ -447,14 +434,9 @@ function FeedbackTool({ onResult, loading, setLoading }: any) {
       onSubmit={async (v) => {
         setLoading(true);
         try {
-          const res = await fetch('/api/ai/student-feedback', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ submissionContent: v.submissionContent, rubricCriteria: v.rubricCriteria, score: Number(v.score) }),
-          });
-          const data = await res.json();
-          onResult(data.data);
-        } catch { toast.error('Failed to generate feedback'); }
+          const res = await aiApi.generateStudentFeedback(v.submissionContent, v.rubricCriteria, Number(v.score));
+          onResult(res.data?.data);
+        } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed to generate feedback'); }
         finally { setLoading(false); }
       }}
     />
@@ -473,14 +455,10 @@ function LectureTool({ onResult, loading, setLoading }: any) {
       onSubmit={async (v) => {
         setLoading(true);
         try {
-          const res = await fetch('/api/ai/lecture-notes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topic: v.topic, subtopics: v.subtopics ? v.subtopics.split(',').map((s: string) => s.trim()) : [] }),
-          });
-          const data = await res.json();
-          onResult(data.data);
-        } catch { toast.error('Failed to generate lecture notes'); }
+          const subtopics = v.subtopics ? v.subtopics.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+          const res = await aiApi.generateLectureNotes(v.topic, subtopics);
+          onResult(res.data?.data);
+        } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed to generate lecture notes'); }
         finally { setLoading(false); }
       }}
     />

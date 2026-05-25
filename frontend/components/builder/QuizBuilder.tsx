@@ -27,6 +27,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import toast from 'react-hot-toast';
 import { quizApi } from '@/utils/api/extraApis';
+import { aiApi } from '@/utils/api/aiApi';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 
@@ -561,18 +562,13 @@ function AIGeneratorPanel({ onClose, onGenerated }: { onClose: () => void; onGen
     setError('');
     setGenerating(true);
     try {
-      const res = await fetch('/api/ai/quiz-questions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, difficulty, count }),
-      });
-      if (!res.ok) throw new Error('Generation failed');
-      const data = await res.json();
+      const res = await aiApi.generateQuizQuestions(topic, difficulty, count);
+      const data = res.data;
       const questions = Array.isArray(data.data) ? data.data : data.data?.questions || [];
       if (!questions.length) throw new Error('No questions returned');
       onGenerated(questions);
     } catch (err: any) {
-      setError(err.message || 'Failed to generate questions');
+      setError(err?.response?.data?.message || err.message || 'Failed to generate questions');
     } finally {
       setGenerating(false);
     }
