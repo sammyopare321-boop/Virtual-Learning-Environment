@@ -65,22 +65,28 @@ exports.getMyCourses = asyncHandler(async (req, res, next) => {
     populate: { path: 'teacher', select: 'name email' }
   });
 
-  const courseData = await Promise.all(enrollments.map(async (e) => {
+  // Filter out enrollments where the course was deleted
+  const validEnrollments = enrollments.filter(e => e.course != null);
+
+  const courseData = await Promise.all(validEnrollments.map(async (e) => {
     const course = e.course.toObject();
-    
+
+    // Get quiz IDs for this course first
+    const quizIds = await Quiz.find({ course: course._id }).distinct('_id');
+
     // Calculate progress
     const [totalAssignments, totalQuizzes, submissions, quizAttempts] = await Promise.all([
       Assignment.countDocuments({ course: course._id }),
       Quiz.countDocuments({ course: course._id, isPublished: true }),
-      Submission.countDocuments({ course: course._id, student: req.user.id }),
-      QuizAttempt.countDocuments({ quiz: { $in: await Quiz.find({ course: course._id }).distinct('_id') }, student: req.user.id })
+      Submission.countDocuments({ assignment: { $in: await Assignment.find({ course: course._id }).distinct('_id') }, student: req.user.id }),
+      QuizAttempt.countDocuments({ quiz: { $in: quizIds }, student: req.user.id })
     ]);
 
     const totalItems = totalAssignments + totalQuizzes;
     const completedItems = submissions + quizAttempts;
-    
+
     course.progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-    
+
     return course;
   }));
 
