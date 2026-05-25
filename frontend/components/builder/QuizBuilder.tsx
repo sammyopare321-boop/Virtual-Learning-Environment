@@ -112,7 +112,7 @@ export default function QuizBuilder() {
   const [activeId, setActiveId] = useState('q1');
   const activeQuestion = questions.find(q => q.id === activeId) || questions[0];
 
-  const sensors = useSensors(useSensor(PointerSensor, { distance: 8 }));
+  const sensors = useSensors(useSensor(PointerSensor, { distance: 8 } as any));
 
   const handleDragEnd = (event: DragEndEvent) => {
     setDraggedId(null);
