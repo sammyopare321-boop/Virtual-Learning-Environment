@@ -43,6 +43,7 @@ exports.login = asyncHandler(async (req, res, next) => {
   const user = await User.findOne({ email }).select('+password');
 
   if (!user) {
+    console.log(`[AUTH] Login failed: User not found for email: ${email}`);
     return res.status(401).json({
       success: false,
       message: 'Invalid credentials',
@@ -51,6 +52,7 @@ exports.login = asyncHandler(async (req, res, next) => {
 
   // Prevent Google users from logging in manually (they don't know their random password)
   if (user.authProvider === 'google') {
+    console.log(`[AUTH] Login failed: Google user attempting password login: ${email}`);
     return res.status(401).json({
       success: false,
       message: 'This account was created using Google Sign-In. Please click the Google button to log in.',
@@ -61,12 +63,14 @@ exports.login = asyncHandler(async (req, res, next) => {
   const isMatch = await user.matchPassword(password);
 
   if (!isMatch) {
+    console.log(`[AUTH] Login failed: Invalid password for email: ${email}`);
     return res.status(401).json({
       success: false,
       message: 'Invalid credentials',
     });
   }
 
+  console.log(`[AUTH] Login successful: ${email} (${user.role})`);
   sendTokenResponse(user, 200, res);
 });
 

@@ -330,7 +330,7 @@ exports.exitImpersonation = asyncHandler(async (req, res, next) => {
   const adminToken = jwt.sign(
     { id: admin._id, role: admin.role },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    { expiresIn: process.env.JWT_EXPIRE || process.env.JWT_EXPIRES_IN || '7d' }
   );
 
   await logAdminAction(admin._id, 'IMPERSONATE_EXIT', 'User', req.user.id, {}, req);
