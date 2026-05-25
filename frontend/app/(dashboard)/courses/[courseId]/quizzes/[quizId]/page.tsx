@@ -139,7 +139,26 @@ export default function QuizDetailPage() {
     return () => clearInterval(tick);
   }, [attempt, quiz, handleFinalSubmit]);
 
-  const handleAddQuestion = async (e: React.FormEvent) => {
+  const handleDeleteQuestion = async (questionId: string) => {
+    try {
+      await quizApi.deleteQuestion(questionId);
+      setQuestions(p => p.filter(q => q._id !== questionId));
+      invalidateQuiz();
+      showToast('Question removed.');
+    } catch {
+      showToast('Failed to remove question.', 'error');
+    }
+  };
+
+  const handlePublishToggle = async () => {
+    try {
+      await quizApi.publishQuiz(quizId);
+      invalidateQuiz();
+      showToast('Quiz status updated.');
+    } catch {
+      showToast('Failed to update status.', 'error');
+    }
+  };
     e.preventDefault();
     setAddingQ(true);
     try {
@@ -443,6 +462,7 @@ export default function QuizDetailPage() {
                          <button 
                            aria-label={`Delete question: ${q.text.substring(0, 20)}`}
                            title="Delete Question"
+                           onClick={() => handleDeleteQuestion(q._id)}
                            className="w-10 h-10 rounded-xl bg-slate-50 text-slate-300 flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all border border-slate-100"
                          >
                             <Trash2 size={18} />
@@ -464,6 +484,18 @@ export default function QuizDetailPage() {
                    <TechnicalRow icon={<Target size={16} />} label="Max Yield" value={quiz?.totalMarks} />
                    <TechnicalRow icon={<Zap size={16} />} label="System State" value={quiz?.isPublished ? 'Live' : 'Draft'} color={quiz?.isPublished ? 'text-emerald-500' : 'text-amber-500'} />
                 </div>
+                {isOwner && (
+                  <button
+                    onClick={handlePublishToggle}
+                    className={`w-full mt-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                      quiz?.isPublished
+                        ? 'bg-amber-50 border-amber-100 text-amber-600 hover:bg-amber-100'
+                        : 'bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-100'
+                    }`}
+                  >
+                    {quiz?.isPublished ? 'Unpublish' : 'Publish Quiz'}
+                  </button>
+                )}
              </div>
 
              {isTeacher && allAttempts.length > 0 && (
@@ -474,14 +506,14 @@ export default function QuizDetailPage() {
                      <Users size={16} className="text-slate-600" />
                    </div>
                    <div className="space-y-6 relative z-10">
-                      {allAttempts.slice(0, 5).map((a, idx) => (
+                      {allAttempts.slice(0, 5).map((a) => (
                          <div key={a._id} className="flex items-center justify-between group">
                             <div className="flex items-center gap-4">
                                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-xs font-black group-hover:bg-primary-500 transition-all">
-                                  {a.student?.name?.charAt(0)}
+                                  {a.student?.name?.charAt(0) ?? '?'}
                                </div>
                                <div className="min-w-0 space-y-0.5">
-                                  <p className="text-sm font-bold truncate">{a.student?.name}</p>
+                                  <p className="text-sm font-bold truncate">{a.student?.name ?? 'Student'}</p>
                                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{a.status}</p>
                                </div>
                             </div>
