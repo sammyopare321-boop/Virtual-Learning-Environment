@@ -46,8 +46,15 @@ app.set('trust proxy', 1);
 
 // ─── GLOBAL MIDDLEWARE ────────────────────────────────────────────────────────
 
-// Security headers
-app.use(helmet());
+// Security headers — configure helmet to allow Jitsi embedding
+app.use(helmet({
+  // Allow Jitsi to be framed inside our app
+  frameguard: false,
+  // Allow Jitsi's cross-origin scripts/media
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+}));
 
 // CORS
 const allowedOrigins = [
