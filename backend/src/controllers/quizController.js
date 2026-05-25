@@ -52,11 +52,12 @@ exports.deleteQuiz = asyncHandler(async (req, res, next) => {
 // @route   PATCH /api/quizzes/:id/publish
 // @access  Private (Teacher)
 exports.publishQuiz = asyncHandler(async (req, res, next) => {
-  const quiz = await Quiz.findByIdAndUpdate(
-    req.params.id,
-    { status: 'published' },
-    { new: true, runValidators: true }
-  );
+  const quiz = await Quiz.findById(req.params.id);
   if (!quiz) return res.status(404).json({ success: false, message: 'Quiz not found' });
+
+  // Toggle isPublished
+  quiz.isPublished = !quiz.isPublished;
+  await quiz.save();
+
   res.status(200).json({ success: true, data: quiz });
 });

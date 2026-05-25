@@ -47,7 +47,18 @@ const createCourseSchema = Joi.object({
     .required()
     .messages({ 'string.pattern.base': 'Academic year must be in format YYYY/YYYY e.g. 2025/2026' }),
   status: Joi.string().valid('draft', 'active', 'archived').default('draft'),
-  teacher: Joi.string().hex().length(24).optional()
+  teacher: Joi.string().hex().length(24).optional(),
+  // Extended wizard fields
+  category: Joi.string().max(100).optional().allow(''),
+  level: Joi.string().valid('beginner', 'intermediate', 'advanced').optional(),
+  startDate: Joi.date().iso().optional().allow('', null),
+  endDate: Joi.date().iso().optional().allow('', null),
+  enrollmentType: Joi.string().valid('open', 'invite').optional(),
+  maxStudents: Joi.number().integer().min(1).optional(),
+  gradingSystem: Joi.string().valid('percentage', 'passfail').optional(),
+  assignmentsEnabled: Joi.boolean().optional(),
+  certificateEnabled: Joi.boolean().optional(),
+  schedule: Joi.array().items(Joi.object({ day: Joi.string(), time: Joi.string() })).optional(),
 });
 
 const updateCourseSchema = Joi.object({

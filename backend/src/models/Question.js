@@ -20,7 +20,7 @@ const QuestionSchema = new mongoose.Schema({
   },
   correctAnswer: {
     type: String,
-    required: true,
+    required: false, // Not required for short_answer type
     select: false, // Security: never expose to students
   },
   marks: {
