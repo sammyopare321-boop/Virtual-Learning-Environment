@@ -46,6 +46,7 @@ const teacherLinks: NavSection[] = [
     { href: '/teacher/submissions', label: 'Submissions', icon: MessageSquare },
   ]},
   { group: 'Tools', items: [
+    { href: '/teacher/ai',        label: 'AI Suite',      icon: Sparkles },
     { href: '/teacher/analytics', label: 'Analytics',     icon: BarChart3 },
     { href: '/notifications',     label: 'Notifications', icon: Bell },
   ]},

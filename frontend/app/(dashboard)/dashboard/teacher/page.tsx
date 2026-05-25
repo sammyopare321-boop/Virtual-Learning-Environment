@@ -99,7 +99,7 @@ export default function TeacherDashboard() {
     { label: 'Create Course', icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50 hover:bg-blue-100', onClick: () => setShowForm(true) },
     { label: 'Schedule Class', icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50 hover:bg-amber-100', onClick: () => {} },
     { label: 'Add Students', icon: UserPlus, color: 'text-emerald-600', bg: 'bg-emerald-50 hover:bg-emerald-100', onClick: () => {} },
-    { label: 'AI Generator', icon: Sparkles, color: 'text-violet-600', bg: 'bg-violet-50 hover:bg-violet-100', onClick: () => setShowAI(true) },
+    { label: 'AI Generator', icon: Sparkles, color: 'text-violet-600', bg: 'bg-violet-50 hover:bg-violet-100', onClick: () => router.push('/teacher/ai') },
   ];
 
   return (
@@ -118,7 +118,7 @@ export default function TeacherDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <button className="btn btn-secondary gap-1.5"><Sparkles size={13} className="text-amber-500" />AI Assistant</button>
+          <button onClick={() => router.push('/teacher/ai')} className="btn btn-secondary gap-1.5"><Sparkles size={13} className="text-amber-500" />AI Assistant</button>
           <button onClick={() => setShowForm(true)} className="btn btn-primary gap-1.5"><Plus size={13} />Create Course</button>
         </div>
       </header>
