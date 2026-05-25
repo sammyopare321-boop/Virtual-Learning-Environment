@@ -7,7 +7,7 @@ import {
   Plus, GripVertical, Trash2, Settings, Target,
   Save, HelpCircle, CheckSquare,
   Type, Sparkles, Loader2,
-  FileText, Clock, ArrowRight, Brain, Zap, X
+  FileText, Clock, ArrowRight, Brain, Zap, X, AlertCircle
 } from 'lucide-react';
 import { 
   DndContext, 
@@ -15,7 +15,8 @@ import {
   useSensor,
   useSensors,
   PointerSensor,
-  DragEndEvent 
+  DragEndEvent,
+  DragOverlay
 } from '@dnd-kit/core';
 import { 
   arrayMove, 
@@ -43,29 +44,40 @@ interface Question {
 }
 
 // --- SORTABLE QUESTION ITEM ---
-function QuestionSidebarItem({ question, isActive, onClick, index }: { question: Question, isActive: boolean, onClick: () => void, index: number }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: question.id });
+function QuestionSidebarItem({ question, isActive, onClick, onDelete, index }: { question: Question, isActive: boolean, onClick: () => void, onDelete: () => void, index: number }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: question.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
 
   return (
     <div 
       ref={setNodeRef} 
       style={style}
-      className={`group flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer mb-3 ${
-        isActive 
-          ? 'bg-primary-600 border-primary-400 text-white shadow-xl shadow-primary-600/20' 
-          : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200 shadow-sm'
+      className={`group flex items-center gap-2 p-3 rounded-lg border transition-all cursor-pointer mb-2 ${
+        isDragging
+          ? 'opacity-50 bg-primary-50 border-primary-300'
+          : isActive 
+            ? 'bg-primary-50 border-primary-300 shadow-sm' 
+            : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
       }`}
       onClick={onClick}
     >
-      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing opacity-50"><GripVertical size={16}/></div>
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 flex-shrink-0">
+        <GripVertical size={14}/>
+      </div>
       <div className="flex-1 min-w-0">
-         <h5 className="font-bold text-xs truncate leading-none mb-1">{question.text || `Question ${index + 1}`}</h5>
-         <span className={`text-[8px] font-black uppercase tracking-widest opacity-60`}>{question.type.replace('_', ' ')}</span>
+        <p className="text-xs font-semibold text-slate-900 truncate">{question.text || `Question ${index + 1}`}</p>
+        <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wide">{question.type.replace('_', ' ')} • {question.marks}pts</span>
       </div>
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-         <Trash2 size={14} className={isActive ? 'text-white/70' : 'text-slate-300'} />
-      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 flex-shrink-0"
+        title="Delete question"
+      >
+        <Trash2 size={14} />
+      </button>
     </div>
   );
 }
@@ -77,9 +89,9 @@ export default function QuizBuilder() {
   const queryClient = useQueryClient();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [previewMode, setPreviewMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
   
   // Form State
   const [quizDetails, setQuizDetails] = useState({
@@ -100,9 +112,10 @@ export default function QuizBuilder() {
   const [activeId, setActiveId] = useState('q1');
   const activeQuestion = questions.find(q => q.id === activeId) || questions[0];
 
-  const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(useSensor(PointerSensor, { distance: 8 }));
 
   const handleDragEnd = (event: DragEndEvent) => {
+    setDraggedId(null);
     const { active, over } = event;
     if (over && active.id !== over.id) {
       setQuestions((items) => {
@@ -119,22 +132,59 @@ export default function QuizBuilder() {
     setActiveId(newId);
   };
 
+  const deleteQuestion = (id: string) => {
+    if (questions.length === 1) {
+      toast.error('You must have at least one question');
+      return;
+    }
+    setQuestions(questions.filter(q => q.id !== id));
+    if (activeId === id) {
+      setActiveId(questions[0].id === id ? questions[1].id : questions[0].id);
+    }
+    toast.success('Question deleted');
+  };
+
   const updateQuestion = (id: string, updates: Partial<Question>) => {
     setQuestions(questions.map(q => q.id === id ? { ...q, ...updates } : q));
   };
 
+  // Validation
+  const getErrors = () => {
+    const errors: string[] = [];
+    if (!quizDetails.title.trim()) errors.push('Quiz title is required');
+    if (!quizSettings.startTime) errors.push('Start time is required');
+    if (!quizSettings.endTime) errors.push('End time is required');
+    if (quizSettings.startTime && quizSettings.endTime && new Date(quizSettings.startTime) >= new Date(quizSettings.endTime)) {
+      errors.push('End time must be after start time');
+    }
+    if (quizSettings.duration <= 0) errors.push('Duration must be greater than 0');
+    if (quizSettings.totalMarks <= 0) errors.push('Total marks must be greater than 0');
+    if (questions.some(q => !q.text.trim())) errors.push('All questions must have text');
+    if (questions.some(q => q.type === 'multiple_choice' && q.options.filter(o => o.trim()).length < 2)) {
+      errors.push('Multiple choice questions need at least 2 options');
+    }
+    const totalMarks = questions.reduce((sum, q) => sum + q.marks, 0);
+    if (totalMarks !== quizSettings.totalMarks) {
+      errors.push(`Question marks (${totalMarks}) must equal total marks (${quizSettings.totalMarks})`);
+    }
+    return errors;
+  };
+
   const handleSave = async () => {
-    if (!quizDetails.title) return toast.error("Title is required.");
-    if (!quizSettings.startTime || !quizSettings.endTime) return toast.error("Start and End times are required.");
+    const errors = getErrors();
+    if (errors.length > 0) {
+      errors.forEach(err => toast.error(err));
+      return;
+    }
 
     setSaving(true);
     try {
-      // 1. Create Quiz — convert datetime-local to ISO strings
+      // 1. Create Quiz
       const res = await quizApi.createQuiz(courseId, {
         ...quizDetails,
         ...quizSettings,
-        startTime: quizSettings.startTime ? new Date(quizSettings.startTime).toISOString() : '',
-        endTime: quizSettings.endTime ? new Date(quizSettings.endTime).toISOString() : '',
+        startTime: new Date(quizSettings.startTime).toISOString(),
+        endTime: new Date(quizSettings.endTime).toISOString(),
       });
       const newQuiz = res.data.data;
       
@@ -142,7 +192,7 @@ export default function QuizBuilder() {
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         const payload: Record<string, unknown> = {
-          text: q.text || `Question ${i + 1}`,
+          text: q.text,
           type: q.type,
           marks: q.marks,
           order: i + 1,
@@ -152,20 +202,17 @@ export default function QuizBuilder() {
           payload.correctAnswer = q.correctAnswer;
         } else if (q.type === 'true_false') {
           payload.correctAnswer = q.correctAnswer;
-        } else {
-          // short_answer
-          payload.options = [];
         }
         await quizApi.addQuestion(newQuiz._id, payload);
       }
 
       await queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.list(courseId) });
-      toast.success('Assessment successfully configured.');
+      toast.success('Quiz created successfully!');
       router.push(`/courses/${courseId}/quizzes/${newQuiz._id}`);
       
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Configuration failed.');
+      toast.error(error.response?.data?.message || 'Failed to create quiz');
     } finally {
       setSaving(false);
     }
@@ -174,40 +221,40 @@ export default function QuizBuilder() {
   const renderStepContent = () => {
     if (step === 1) {
       return (
-        <div className="max-w-2xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 py-12">
-           <div className="text-center space-y-4 mb-12">
-             <div className="w-16 h-16 rounded-2xl bg-primary-50 text-primary-500 flex items-center justify-center mx-auto border border-primary-100 shadow-inner mb-6">
-                <FileText size={28} />
+        <div className="max-w-2xl mx-auto animate-in fade-in duration-300 py-8">
+           <div className="text-center space-y-3 mb-10">
+             <div className="w-14 h-14 rounded-xl bg-primary-100 text-primary-600 flex items-center justify-center mx-auto mb-4">
+                <FileText size={24} />
              </div>
-             <h2 className="text-4xl font-display font-extrabold text-slate-900 tracking-tight">Quiz Details</h2>
-             <p className="text-slate-500 font-medium">Define the core identity of this assessment.</p>
+             <h2 className="text-3xl font-display font-bold text-slate-900">Quiz Details</h2>
+             <p className="text-sm text-slate-600">Give your quiz a title and add instructions for students.</p>
            </div>
            
-           <div className="space-y-8 bg-white p-10 rounded-[32px] border border-slate-100 shadow-sm">
-              <div className="space-y-3">
-                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Assessment Title</label>
+           <div className="space-y-6 bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
+              <div className="space-y-2">
+                 <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Quiz Title *</label>
                  <input 
                    autoFocus
-                   className="input-premium h-16 text-lg" 
-                   placeholder="e.g. Advanced Midterm Protocol"
+                   className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm" 
+                   placeholder="e.g., Midterm Exam - Chapter 5"
                    value={quizDetails.title}
                    onChange={e => setQuizDetails({...quizDetails, title: e.target.value})}
                  />
               </div>
-              <div className="space-y-3">
-                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Description / Instructions</label>
+              <div className="space-y-2">
+                 <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Instructions (Optional)</label>
                  <textarea 
-                   className="input-premium py-6 resize-none h-40 text-lg" 
-                   placeholder="Provide context or instructions for students..."
+                   className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm resize-none h-32" 
+                   placeholder="Add any instructions or context for students..."
                    value={quizDetails.description}
                    onChange={e => setQuizDetails({...quizDetails, description: e.target.value})}
                  />
               </div>
               <button 
                 onClick={() => setStep(2)}
-                className="btn btn-primary w-full h-16 text-xs font-black uppercase tracking-widest shadow-xl shadow-primary-500/20 gap-2"
+                className="w-full btn btn-primary py-3 text-sm font-semibold gap-2 rounded-lg"
               >
-                Proceed to Settings <ArrowRight size={16} />
+                Continue to Settings <ArrowRight size={16} />
               </button>
            </div>
         </div>
@@ -215,76 +262,76 @@ export default function QuizBuilder() {
     }
     if (step === 2) {
       return (
-        <div className="max-w-2xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 py-12">
-           <div className="text-center space-y-4 mb-12">
-             <div className="w-16 h-16 rounded-2xl bg-primary-50 text-primary-500 flex items-center justify-center mx-auto border border-primary-100 shadow-inner mb-6">
-                <Settings size={28} />
+        <div className="max-w-2xl mx-auto animate-in fade-in duration-300 py-8">
+           <div className="text-center space-y-3 mb-10">
+             <div className="w-14 h-14 rounded-xl bg-primary-100 text-primary-600 flex items-center justify-center mx-auto mb-4">
+                <Settings size={24} />
              </div>
-             <h2 className="text-4xl font-display font-extrabold text-slate-900 tracking-tight">Quiz Settings</h2>
-             <p className="text-slate-500 font-medium">Establish constraints and scheduling.</p>
+             <h2 className="text-3xl font-display font-bold text-slate-900">Quiz Settings</h2>
+             <p className="text-sm text-slate-600">Configure timing, duration, and total marks.</p>
            </div>
            
-           <div className="space-y-8 bg-white p-10 rounded-[32px] border border-slate-100 shadow-sm">
-              <div className="grid grid-cols-2 gap-8">
-                 <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1 flex items-center gap-2">
-                      <Clock size={14}/> Duration (Mins)
+           <div className="space-y-6 bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                      <Clock size={14}/> Duration (mins) *
                     </label>
                     <input 
                       type="number"
-                      className="input-premium h-16 text-lg" 
+                      className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm" 
                       value={quizSettings.duration}
                       onChange={e => setQuizSettings({...quizSettings, duration: parseInt(e.target.value) || 0})}
                     />
                  </div>
-                 <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1 flex items-center gap-2">
-                      <Target size={14}/> Total Marks
+                 <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                      <Target size={14}/> Total Marks *
                     </label>
                     <input 
                       type="number"
-                      className="input-premium h-16 text-lg" 
+                      className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm" 
                       value={quizSettings.totalMarks}
                       onChange={e => setQuizSettings({...quizSettings, totalMarks: parseInt(e.target.value) || 0})}
                     />
                  </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-8">
-                 <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1 flex items-center gap-2">
-                      <Clock size={14}/> Start Time
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                      <Clock size={14}/> Start Time *
                     </label>
                     <input 
                       type="datetime-local"
-                      className="input-premium h-16 text-sm" 
+                      className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm" 
                       value={quizSettings.startTime}
                       onChange={e => setQuizSettings({...quizSettings, startTime: e.target.value})}
                     />
                  </div>
-                 <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1 flex items-center gap-2">
-                      <Clock size={14}/> End Time
+                 <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                      <Clock size={14}/> End Time *
                     </label>
                     <input 
                       type="datetime-local"
-                      className="input-premium h-16 text-sm" 
+                      className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm" 
                       value={quizSettings.endTime}
                       onChange={e => setQuizSettings({...quizSettings, endTime: e.target.value})}
                     />
                  </div>
               </div>
 
-              <div className="flex gap-4 pt-4">
+              <div className="flex gap-3 pt-4">
                  <button 
                    onClick={() => setStep(1)}
-                   className="btn btn-secondary flex-1 h-16 text-xs font-black uppercase tracking-widest gap-2"
+                   className="flex-1 btn btn-secondary py-3 text-sm font-semibold rounded-lg"
                  >
                    Back
                  </button>
                  <button 
                    onClick={() => setStep(3)}
-                   className="btn btn-primary flex-[2] h-16 text-xs font-black uppercase tracking-widest shadow-xl shadow-primary-500/20 gap-2"
+                   className="flex-[2] btn btn-primary py-3 text-sm font-semibold gap-2 rounded-lg"
                  >
                    Build Questions <ArrowRight size={16} />
                  </button>
@@ -294,26 +341,20 @@ export default function QuizBuilder() {
       );
     }
     return (
-      <div className="flex h-full animate-in fade-in duration-500 w-full relative">
-        {/* LEFT PANEL: Blueprint */}
-        <aside className="w-80 bg-white border-r border-slate-200 flex flex-col shadow-sm">
-           <div className="p-6 border-b border-slate-100 space-y-4">
-              <button 
-                onClick={() => setAiPanelOpen(true)}
-                className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-purple-500/20"
-              >
-                 <Sparkles size={16} /> AI Generator
-              </button>
+      <div className="flex h-full animate-in fade-in duration-300 w-full relative gap-0">
+        {/* LEFT SIDEBAR: Question List */}
+        <aside className="w-72 bg-white border-r border-slate-200 flex flex-col shadow-sm overflow-hidden">
+           <div className="p-4 border-b border-slate-200 space-y-3 shrink-0">
               <button 
                 onClick={() => addQuestion('multiple_choice')}
-                className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-primary-50 text-primary-600 font-black text-xs uppercase tracking-widest hover:bg-primary-100 transition-all active:scale-95 border-2 border-primary-100"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary-600 text-white font-semibold text-xs uppercase tracking-wide hover:bg-primary-700 transition-colors"
               >
-                 <Plus size={16} /> Add Question
+                 <Plus size={14} /> Add Question
               </button>
            </div>
 
-           <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+           <div className="flex-1 overflow-y-auto p-4 scrollbar-premium">
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} onDragStart={(e) => setDraggedId(e.active.id as string)}>
                  <SortableContext items={questions.map(q => q.id)} strategy={verticalListSortingStrategy}>
                     {questions.map((q, idx) => (
                       <QuestionSidebarItem 
@@ -321,76 +362,79 @@ export default function QuizBuilder() {
                         question={q} 
                         index={idx}
                         isActive={activeId === q.id} 
-                        onClick={() => setActiveId(q.id)} 
+                        onClick={() => setActiveId(q.id)}
+                        onDelete={() => deleteQuestion(q.id)}
                       />
                     ))}
                  </SortableContext>
               </DndContext>
            </div>
 
-           <div className="p-6 bg-slate-50 border-t border-slate-100">
-              <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                 <span>Total Questions</span>
+           <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-2 shrink-0">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+                 <span>Questions</span>
                  <span className="text-slate-900">{questions.length}</span>
               </div>
-              <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
                  <span>Total Points</span>
-                 <span className="text-primary-600">{questions.reduce((acc, q) => acc + q.marks, 0)}</span>
+                 <span className="text-primary-600">{questions.reduce((acc, q) => acc + q.marks, 0)} / {quizSettings.totalMarks}</span>
               </div>
            </div>
         </aside>
 
-        {/* CENTER: The Canvas */}
-        <div className="flex-1 overflow-y-auto p-8 lg:p-12 bg-slate-50 relative">
+        {/* CENTER: Question Editor */}
+        <div className="flex-1 overflow-y-auto p-8 bg-slate-50 relative">
            <div className="max-w-3xl mx-auto">
               <AnimatePresence mode="wait">
                  {activeQuestion ? (
                    <motion.div
                      key={activeId}
-                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                     className="space-y-12"
+                     initial={{ opacity: 0, y: 10 }} 
+                     animate={{ opacity: 1, y: 0 }} 
+                     exit={{ opacity: 0, y: -10 }}
+                     className="space-y-8"
                    >
-                      <div className="space-y-4">
-                         <label className="text-[10px] font-black text-primary-600 uppercase tracking-[0.3em]">Question Statement</label>
+                      <div className="space-y-3">
+                         <label className="text-xs font-semibold text-primary-600 uppercase tracking-wide">Question Text *</label>
                          <textarea 
-                           className="w-full bg-transparent border-none text-3xl lg:text-4xl font-black text-slate-900 placeholder:text-slate-300 outline-none resize-none tracking-tight leading-tight min-h-[120px]"
-                           placeholder="Type your question here..."
+                           className="w-full px-4 py-4 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-lg font-medium resize-none min-h-[100px]"
+                           placeholder="Enter your question here..."
                            value={activeQuestion.text}
                            onChange={(e) => updateQuestion(activeId, { text: e.target.value })}
                          />
                       </div>
 
-                      <div className="space-y-8">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Interactive Canvas</label>
+                      <div className="space-y-4">
+                         <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Answer Options</label>
                          {renderQuestionCanvas(activeQuestion, updateQuestion)}
                       </div>
                    </motion.div>
                  ) : (
-                   <div className="h-64 flex items-center justify-center text-slate-400 font-bold">Select or add a question</div>
+                   <div className="h-64 flex items-center justify-center text-slate-400 font-medium">Select or add a question</div>
                  )}
               </AnimatePresence>
            </div>
         </div>
 
-        {/* RIGHT PANEL: Settings Hub */}
+        {/* RIGHT SIDEBAR: Question Settings */}
         {activeQuestion && (
-          <aside className="w-80 bg-white border-l border-slate-200 p-8 shadow-inner overflow-y-auto z-10">
-             <div className="flex items-center gap-3 mb-10">
-                <Settings size={18} className="text-slate-400" />
-                <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Logic Hub</h3>
+          <aside className="w-64 bg-white border-l border-slate-200 p-6 shadow-sm overflow-y-auto scrollbar-premium">
+             <div className="flex items-center gap-2 mb-6">
+                <Settings size={16} className="text-slate-400" />
+                <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wide">Settings</h3>
              </div>
 
-             <div className="space-y-10">
+             <div className="space-y-6">
                 <section>
-                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Question Type</label>
-                   <div className="grid grid-cols-1 gap-2">
+                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-3">Type</label>
+                   <div className="space-y-2">
                       {['multiple_choice', 'true_false', 'short_answer'].map((type) => (
                         <button 
                           key={type}
                           onClick={() => updateQuestion(activeId, { type: type as QuestionType })}
-                          className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-xs font-bold ${activeQuestion.type === type ? 'bg-white border-primary-600 text-primary-600 shadow-lg shadow-primary-600/5' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                          className={`w-full flex items-center gap-2 p-2.5 rounded-lg border transition-all text-xs font-semibold ${activeQuestion.type === type ? 'bg-primary-50 border-primary-300 text-primary-700' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
                         >
-                           <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-slate-400 border border-slate-100 shadow-sm">
+                           <div className="w-5 h-5 rounded flex items-center justify-center text-slate-400">
                               {getItemIcon(type as QuestionType)}
                            </div>
                            <span className="capitalize">{type.replace('_', ' ')}</span>
@@ -399,16 +443,15 @@ export default function QuizBuilder() {
                    </div>
                 </section>
 
-                <section className="space-y-6 pt-10 border-t border-slate-200">
-                   <div>
-                      <label htmlFor="points" className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Yield Weight (Marks)</label>
-                      <input 
-                        id="points" type="number" placeholder="e.g. 5"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 h-12 text-slate-900 font-black focus:border-primary-600 outline-none transition-all"
-                        value={activeQuestion.marks}
-                        onChange={(e) => updateQuestion(activeId, { marks: parseInt(e.target.value) || 0 })}
-                      />
-                   </div>
+                <section className="pt-4 border-t border-slate-200">
+                   <label htmlFor="marks" className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-3">Marks</label>
+                   <input 
+                     id="marks" 
+                     type="number" 
+                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm font-semibold"
+                     value={activeQuestion.marks}
+                     onChange={(e) => updateQuestion(activeId, { marks: parseInt(e.target.value) || 0 })}
+                   />
                 </section>
              </div>
           </aside>
@@ -418,34 +461,47 @@ export default function QuizBuilder() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#F8FAFC] overflow-hidden font-sans">
+    <div className="flex flex-col h-screen bg-slate-50 overflow-hidden font-sans">
       
       {/* HEADER */}
-      <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0 z-30">
-        <div className="flex items-center gap-8">
-           <button onClick={() => router.push(`/courses/${courseId}/quizzes`)} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary-500 transition-colors">
-              Close
+      <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 z-30">
+        <div className="flex items-center gap-6">
+           <button 
+             onClick={() => router.push(`/courses/${courseId}/quizzes`)} 
+             className="text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+           >
+              ← Back
            </button>
-           <div className="flex items-center gap-2">
+           <div className="flex items-center gap-3">
               {[1, 2, 3].map(num => (
                 <React.Fragment key={num}>
                   <div 
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all ${
-                      step >= num ? 'bg-primary-500 text-white' : 'bg-slate-100 text-slate-400'
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                      step >= num ? 'bg-primary-600 text-white' : 'bg-slate-200 text-slate-600'
                     }`}
                   >
                     {num}
                   </div>
-                  {num < 3 && <div className={`w-8 h-0.5 rounded-full ${step > num ? 'bg-primary-500' : 'bg-slate-100'}`} />}
+                  {num < 3 && <div className={`w-6 h-0.5 rounded-full ${step > num ? 'bg-primary-600' : 'bg-slate-200'}`} />}
                 </React.Fragment>
               ))}
            </div>
+           <span className="text-xs font-medium text-slate-600">
+             {step === 1 && 'Quiz Details'}
+             {step === 2 && 'Quiz Settings'}
+             {step === 3 && 'Build Questions'}
+           </span>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
            {step === 3 && (
-             <button onClick={handleSave} className="flex items-center gap-2 px-8 py-3 rounded-xl bg-primary-600 text-white font-black text-xs uppercase tracking-widest hover:bg-primary-700 shadow-xl shadow-primary-600/20 transition-all active:scale-95">
-                {saving ? <Loader2 size={16} className="animate-spin"/> : <><Save size={16} /> Finalize Assessment</>}
+             <button 
+               onClick={handleSave} 
+               disabled={saving}
+               className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary-600 text-white font-semibold text-xs uppercase tracking-wide hover:bg-primary-700 disabled:opacity-50 transition-colors"
+             >
+                {saving ? <Loader2 size={14} className="animate-spin"/> : <Save size={14} />} 
+                {saving ? 'Saving...' : 'Create Quiz'}
              </button>
            )}
         </div>
@@ -455,7 +511,7 @@ export default function QuizBuilder() {
       <main className="flex-1 flex overflow-hidden relative w-full">
          {renderStepContent()}
 
-         {/* AI GENERATION PANEL (Slide-over) */}
+         {/* AI GENERATION PANEL */}
          <AnimatePresence>
             {aiPanelOpen && (
               <>
@@ -466,44 +522,44 @@ export default function QuizBuilder() {
                 />
                 <motion.div 
                   initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                  className="fixed top-0 right-0 h-full w-[400px] bg-white shadow-2xl z-50 flex flex-col border-l border-slate-100"
+                  className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col border-l border-slate-200"
                 >
-                   <div className="h-20 border-b border-slate-100 flex items-center justify-between px-8 bg-gradient-to-r from-indigo-50 to-purple-50 shrink-0">
-                      <div className="flex items-center gap-3 text-indigo-600">
-                         <Brain size={20} />
-                         <span className="font-black text-sm uppercase tracking-widest">AI Architect</span>
+                   <div className="h-14 border-b border-slate-200 flex items-center justify-between px-6 bg-gradient-to-r from-indigo-50 to-purple-50 shrink-0">
+                      <div className="flex items-center gap-2 text-indigo-600">
+                         <Brain size={18} />
+                         <span className="font-semibold text-sm uppercase tracking-wide">AI Generator</span>
                       </div>
                       <button onClick={() => setAiPanelOpen(false)} className="text-slate-400 hover:text-slate-900 transition-colors">
-                        <X size={20} />
+                        <X size={18} />
                       </button>
                    </div>
-                   <div className="p-8 space-y-8 overflow-y-auto flex-1">
-                      <div className="space-y-3">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Knowledge Topic</label>
-                         <textarea className="input-premium py-4 text-sm resize-none" placeholder="E.g., Quantum Mechanics, Cell Biology..." />
+                   <div className="p-6 space-y-6 overflow-y-auto flex-1">
+                      <div className="space-y-2">
+                         <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Topic</label>
+                         <textarea className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm resize-none h-20" placeholder="E.g., Quantum Mechanics, Cell Biology..." />
                       </div>
-                      <div className="space-y-3">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Difficulty</label>
-                         <select className="input-premium h-14 text-sm bg-white">
+                      <div className="space-y-2">
+                         <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Difficulty</label>
+                         <select className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm bg-white">
                             <option>Introductory</option>
                             <option>Intermediate</option>
                             <option>Advanced</option>
                          </select>
                       </div>
-                      <div className="space-y-3">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Quantity</label>
-                         <input type="number" className="input-premium h-14 text-sm" defaultValue={5} />
+                      <div className="space-y-2">
+                         <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Number of Questions</label>
+                         <input type="number" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm" defaultValue={5} />
                       </div>
                    </div>
-                   <div className="p-8 border-t border-slate-100 bg-slate-50 shrink-0">
+                   <div className="p-6 border-t border-slate-200 bg-slate-50 shrink-0">
                       <button 
                         onClick={() => {
-                          toast.success('AI generation initiated (mocked).');
+                          toast.success('AI generation initiated (coming soon).');
                           setAiPanelOpen(false);
                         }}
-                        className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-xs uppercase tracking-widest hover:opacity-90 shadow-xl shadow-indigo-600/20 transition-all"
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-xs uppercase tracking-wide hover:opacity-90 transition-colors"
                       >
-                         <Zap size={16} /> Synthesize Questions
+                         <Zap size={14} /> Generate Questions
                       </button>
                    </div>
                 </motion.div>
@@ -529,19 +585,19 @@ function renderQuestionCanvas(q: Question, update: (id: string, u: Partial<Quest
   switch(q.type) {
     case 'multiple_choice':
       return (
-        <div className="space-y-4">
+        <div className="space-y-3">
            {q.options?.map((opt, i) => (
               <motion.div 
                 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                 key={i} 
-                className="flex items-center gap-4 group"
+                className="flex items-center gap-3 group"
               >
                  <button 
                    onClick={() => update(q.id, { correctAnswer: String(i) })}
-                   className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm transition-all border-2 ${
+                   className={`w-10 h-10 rounded-lg flex items-center justify-center font-semibold text-sm transition-all border-2 flex-shrink-0 ${
                      q.correctAnswer === String(i) 
-                      ? 'bg-primary-500 border-primary-500 text-white shadow-lg shadow-primary-500/20' 
-                      : 'bg-white border-slate-200 text-slate-400 hover:border-primary-200 hover:text-primary-500'
+                      ? 'bg-primary-600 border-primary-600 text-white shadow-md shadow-primary-600/30' 
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-primary-300 hover:text-primary-600'
                    }`}
                    title="Mark as correct answer"
                  >
@@ -549,9 +605,9 @@ function renderQuestionCanvas(q: Question, update: (id: string, u: Partial<Quest
                  </button>
                  <input 
                    title={`Option ${String.fromCharCode(65 + i)}`}
-                   placeholder="Enter answer option..."
-                   className={`flex-1 bg-white border-2 rounded-2xl px-6 h-16 text-slate-900 font-bold focus:border-primary-500 transition-all outline-none shadow-sm ${
-                     q.correctAnswer === String(i) ? 'border-primary-200 bg-primary-50/10' : 'border-slate-100'
+                   placeholder="Enter option text..."
+                   className={`flex-1 px-4 py-2.5 border rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm ${
+                     q.correctAnswer === String(i) ? 'border-primary-300 bg-primary-50' : 'border-slate-200 bg-white'
                    }`}
                    value={opt}
                    onChange={(e) => {
@@ -568,15 +624,15 @@ function renderQuestionCanvas(q: Question, update: (id: string, u: Partial<Quest
                       else if (parseInt(q.correctAnswer) > i) newCorrect = String(parseInt(q.correctAnswer) - 1);
                       update(q.id, { options: next, correctAnswer: newCorrect });
                     }}
-                    className="p-4 rounded-2xl bg-white text-slate-300 hover:bg-rose-50 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100 border border-slate-100 shadow-sm"
+                    className="p-2 rounded-lg bg-white text-slate-300 hover:bg-red-50 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 border border-slate-200 flex-shrink-0"
                   >
-                     <Trash2 size={18} />
+                     <Trash2 size={16} />
                   </button>
               </motion.div>
            ))}
            <button 
              onClick={() => update(q.id, { options: [...(q.options || []), 'New Option'] })}
-             className="flex items-center gap-2 px-6 py-4 rounded-2xl bg-white text-slate-500 font-black text-[10px] uppercase tracking-widest hover:bg-primary-50 hover:text-primary-600 hover:border-primary-200 transition-all border-2 border-dashed border-slate-200 mt-6 shadow-sm"
+             className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white text-slate-600 font-semibold text-xs uppercase tracking-wide hover:bg-slate-50 hover:text-primary-600 transition-all border-2 border-dashed border-slate-200 mt-4"
            >
               <Plus size={14} /> Add Option
            </button>
@@ -584,15 +640,15 @@ function renderQuestionCanvas(q: Question, update: (id: string, u: Partial<Quest
       );
     case 'true_false':
        return (
-         <div className="flex gap-6">
+         <div className="flex gap-4">
             {['true', 'false'].map(val => (
               <button 
                 key={val}
                 onClick={() => update(q.id, { correctAnswer: val })}
-                className={`flex-1 h-24 rounded-[24px] border-2 font-black text-lg uppercase tracking-widest transition-all shadow-sm ${
+                className={`flex-1 py-4 rounded-lg border-2 font-semibold text-sm uppercase tracking-wide transition-all ${
                   q.correctAnswer === val 
-                    ? 'bg-primary-500 border-primary-500 text-white shadow-xl shadow-primary-500/20' 
-                    : 'bg-white border-slate-200 text-slate-400 hover:border-primary-300 hover:text-primary-600'
+                    ? 'bg-primary-600 border-primary-600 text-white shadow-md shadow-primary-600/30' 
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-primary-300 hover:text-primary-600'
                 }`}
               >
                 {val}
@@ -602,11 +658,12 @@ function renderQuestionCanvas(q: Question, update: (id: string, u: Partial<Quest
        );
     case 'short_answer':
        return (
-         <div className="h-40 w-full bg-white border-2 border-slate-100 rounded-[24px] flex flex-col justify-center px-8 text-slate-400 shadow-sm">
-            <span className="text-xs font-black uppercase tracking-widest opacity-50 flex items-center gap-3"><Type size={16}/> Student Response Area</span>
+         <div className="h-32 w-full bg-slate-100 border-2 border-dashed border-slate-300 rounded-lg flex flex-col justify-center px-6 text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"><Type size={14}/> Student Response Area</span>
+            <p className="text-xs text-slate-400 mt-1">Responses will require manual grading</p>
          </div>
        );
     default:
-      return <div className="py-20 text-center bg-white rounded-[32px] border-2 border-dashed border-slate-200 text-slate-400 font-bold uppercase tracking-widest text-xs">Unsupported Type</div>;
+      return <div className="py-12 text-center bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 font-semibold uppercase tracking-wide text-xs">Unsupported Type</div>;
   }
 }

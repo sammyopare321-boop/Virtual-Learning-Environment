@@ -69,6 +69,11 @@ exports.getMyCourses = asyncHandler(async (req, res, next) => {
   const validEnrollments = enrollments.filter(e => e.course != null);
 
   const courseData = await Promise.all(validEnrollments.map(async (e) => {
+    // Double-check course exists before calling toObject()
+    if (!e.course) {
+      return null;
+    }
+
     const course = e.course.toObject();
 
     // Get quiz IDs for this course first
@@ -90,9 +95,12 @@ exports.getMyCourses = asyncHandler(async (req, res, next) => {
     return course;
   }));
 
+  // Filter out any null results from deleted courses
+  const filteredCourseData = courseData.filter(course => course != null);
+
   res.status(200).json({
     success: true,
-    count: courseData.length,
-    data: courseData,
+    count: filteredCourseData.length,
+    data: filteredCourseData,
   });
 });
