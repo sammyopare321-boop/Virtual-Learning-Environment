@@ -35,8 +35,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router                = useRouter();
 
   useEffect(() => {
+    // Restore token from relay cookie into memory before calling getMe
     const relay = getRelayToken();
-    if (relay) setAuthToken(relay);
+    if (relay) {
+      setAuthToken(relay);
+    } else {
+      // No token at all — skip the network call
+      setLoading(false);
+      return;
+    }
 
     authApi.getMe()
       .then(res => {
