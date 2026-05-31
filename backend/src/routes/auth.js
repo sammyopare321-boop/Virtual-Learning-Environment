@@ -5,6 +5,7 @@ const {
   logout,
   getMe,
   updateMe,
+  changePassword,
   googleLogin,
   forgotPassword,
   resetPassword,
@@ -37,5 +38,6 @@ router.post('/2fa/verify', protect, verify2FA);
 router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
 router.put('/me', protect, updateMe);
+router.patch('/password', protect, changePassword);
 
 module.exports = router;

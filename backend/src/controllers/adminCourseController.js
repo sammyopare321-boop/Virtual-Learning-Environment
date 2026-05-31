@@ -160,8 +160,8 @@ exports.changeCourseStatus = asyncHandler(async (req, res, next) => {
   course.status = req.body.status;
   await course.save();
 
-  // FIX: compute action correctly, ARCHIVE_COURSE is valid in AdminLog enum
-  const action = course.status === 'archived' ? 'ARCHIVE_COURSE' : 'ACTIVATE_USER';
+  // Derive the correct log action from the new status
+  const action = course.status === 'archived' ? 'ARCHIVE_COURSE' : 'ACTIVATE_COURSE';
   await logAdminAction(
     req.user.id,
     action,

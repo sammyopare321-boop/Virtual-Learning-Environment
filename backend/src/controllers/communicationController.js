@@ -153,20 +153,34 @@ exports.getConversations = asyncHandler(async (req, res, next) => {
 // @route   GET /api/communication/messages/:userId
 // @access  Private
 exports.getMessages = asyncHandler(async (req, res, next) => {
-  const messages = await Message.find({
+  const page  = Math.max(1, parseInt(req.query.page)  || 1);
+  const limit = Math.min(100, parseInt(req.query.limit) || 50);
+  const skip  = (page - 1) * limit;
+
+  const filter = {
     $or: [
       { sender: req.user.id, receiver: req.params.userId },
       { sender: req.params.userId, receiver: req.user.id }
     ]
-  }).sort('createdAt');
+  };
 
-  // Mark as read
+  const [messages, total] = await Promise.all([
+    Message.find(filter).sort('createdAt').skip(skip).limit(limit),
+    Message.countDocuments(filter)
+  ]);
+
+  // Mark received messages as read
   await Message.updateMany(
     { sender: req.params.userId, receiver: req.user.id, isRead: false },
     { isRead: true }
   );
 
-  res.status(200).json({ success: true, data: messages });
+  res.status(200).json({
+    success: true,
+    count: messages.length,
+    pagination: { total, page, limit, pages: Math.ceil(total / limit) },
+    data: messages
+  });
 });
 
 // @desc    Get my notifications
@@ -192,11 +206,25 @@ exports.markRead = asyncHandler(async (req, res, next) => {
 // @route   GET /api/communication/courses/:courseId/messages
 // @access  Private
 exports.getCourseMessages = asyncHandler(async (req, res, next) => {
-  const messages = await Message.find({ course: req.params.courseId })
+  const { courseId } = req.params;
+  
+  // Validate courseId format
+  if (!courseId || !courseId.match(/^[0-9a-fA-F]{24}$/)) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Invalid course ID format' 
+    });
+  }
+
+  const messages = await Message.find({ course: courseId })
     .populate('sender', 'name avatar role')
     .sort('createdAt');
 
-  res.status(200).json({ success: true, data: messages });
+  res.status(200).json({ 
+    success: true, 
+    count: messages.length,
+    data: messages 
+  });
 });
 
 // @desc    Mark ALL notifications as read

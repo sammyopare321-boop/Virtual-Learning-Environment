@@ -128,12 +128,21 @@ exports.gradeAttempt = asyncHandler(async (req, res, next) => {
   const attempt = await QuizAttempt.findById(req.params.id).populate('quiz');
   if (!attempt) return res.status(404).json({ success: false, message: 'Attempt not found' });
 
-  const { scoreAdjustment } = req.body;
-  attempt.score += Number(scoreAdjustment) || 0;
+  if (attempt.status === 'graded') {
+    return res.status(400).json({ success: false, message: 'Attempt has already been graded' });
+  }
+
+  const { scoreAdjustment, feedback } = req.body;
+  attempt.score = Math.min(
+    Math.max(0, attempt.score + (Number(scoreAdjustment) || 0)),
+    attempt.totalMarks
+  );
   attempt.percentage = (attempt.score / attempt.totalMarks) * 100;
   attempt.status = 'graded';
+  if (feedback) attempt.feedback = feedback;
   await attempt.save();
 
+  // attempt.quiz is already populated — no double-fetch needed
   await syncToGradeBook(attempt.quiz, attempt);
 
   res.status(200).json({ success: true, data: attempt });

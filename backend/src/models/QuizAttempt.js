@@ -42,6 +42,13 @@ const QuizAttemptSchema = new mongoose.Schema({
   submittedAt: {
     type: Date,
   },
+  feedback: {
+    type: String,
+    default: '',
+  },
 });
+
+QuizAttemptSchema.index({ quiz: 1, student: 1 }, { unique: true });
+QuizAttemptSchema.index({ student: 1 });
 
 module.exports = mongoose.model('QuizAttempt', QuizAttemptSchema);

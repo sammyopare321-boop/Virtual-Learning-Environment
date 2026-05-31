@@ -18,7 +18,9 @@ const AdminLogSchema = new mongoose.Schema({
       'IMPERSONATE_EXIT',
       'DELETE_COURSE',
       'REASSIGN_TEACHER',
-      'ARCHIVE_COURSE'
+      'ARCHIVE_COURSE',
+      'ACTIVATE_COURSE',
+      'UPDATE_USER'
     ]
   },
   targetModel: {

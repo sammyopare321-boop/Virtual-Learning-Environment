@@ -1,5 +1,7 @@
 const Submission = require('../models/Submission');
 const Assignment = require('../models/Assignment');
+const GradeBook = require('../models/GradeBook');
+const GradeItem = require('../models/GradeItem');
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const { createNotification } = require('../utils/notificationHelper');
@@ -105,7 +107,8 @@ exports.gradeSubmission = asyncHandler(async (req, res, next) => {
     return res.status(400).json({ success: false, message: 'Invalid ID' });
   }
 
-  let submission = await Submission.findById(req.params.id).populate({
+  // Populate before update so we have course/teacher for auth check
+  const submission = await Submission.findById(req.params.id).populate({
     path: 'assignment',
     populate: { path: 'course' }
   });
@@ -114,26 +117,45 @@ exports.gradeSubmission = asyncHandler(async (req, res, next) => {
     return res.status(404).json({ success: false, message: 'Submission not found' });
   }
 
-  // Check ownership
   if (submission.assignment.course.teacher.toString() !== req.user.id && req.user.role !== 'admin') {
     return res.status(403).json({ success: false, message: 'Not authorized' });
   }
 
-  submission = await Submission.findByIdAndUpdate(req.params.id, {
-    grade: req.body.grade,
-    feedback: req.body.feedback,
-    status: 'graded'
-  }, {
-    new: true,
-    runValidators: true
-  });
+  // Apply grade
+  submission.grade    = req.body.grade;
+  submission.feedback = req.body.feedback || '';
+  submission.status   = 'graded';
+  await submission.save();
 
-  // Create notification for student
+  // Sync to GradeBook
+  const assignment = submission.assignment;
+  let gradeBook = await GradeBook.findOne({ course: assignment.course._id });
+  if (!gradeBook) {
+    gradeBook = await GradeBook.create({
+      course: assignment.course._id,
+      semester: assignment.course.semester,
+      academicYear: assignment.course.academicYear
+    });
+  }
+
+  await GradeItem.findOneAndUpdate(
+    { student: submission.student, sourceId: assignment._id },
+    {
+      gradeBook: gradeBook._id,
+      sourceType: 'assignment',
+      score: submission.grade,
+      maxScore: assignment.totalMarks,
+      percentage: (submission.grade / assignment.totalMarks) * 100
+    },
+    { upsert: true, runValidators: true, new: true }
+  );
+
+  // Notify student — use data we already have (no stale reference)
   await createNotification(
     submission.student,
     'grade',
-    submission.assignment._id,
-    `Your submission for "${submission.assignment.title}" has been graded.`
+    assignment._id,
+    `Your submission for "${assignment.title}" has been graded: ${submission.grade}/${assignment.totalMarks}`
   );
 
   res.status(200).json({

@@ -292,11 +292,11 @@ exports.getMe = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/auth/me
 // @access  Private
 exports.updateMe = asyncHandler(async (req, res, next) => {
-  const fieldsToUpdate = {
-    name: req.body.name,
-    email: req.body.email,
-    department: req.body.department,
-  };
+  // Strip email — changing email requires re-verification (security)
+  const fieldsToUpdate = {};
+  if (req.body.name)       fieldsToUpdate.name       = req.body.name;
+  if (req.body.department) fieldsToUpdate.department = req.body.department;
+  if (req.body.avatar)     fieldsToUpdate.avatar     = req.body.avatar;
 
   const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
     new: true,
@@ -307,6 +307,33 @@ exports.updateMe = asyncHandler(async (req, res, next) => {
     success: true,
     data: user,
   });
+});
+
+// @desc    Change password (requires current password)
+// @route   PATCH /api/auth/password
+// @access  Private
+exports.changePassword = asyncHandler(async (req, res, next) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Please provide current and new password' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+  }
+
+  const user = await User.findById(req.user.id).select('+password');
+
+  const isMatch = await user.matchPassword(currentPassword);
+  if (!isMatch) {
+    return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+  }
+
+  user.password = newPassword;
+  await user.save(); // triggers pre-save hash
+
+  sendTokenResponse(user, 200, res);
 });
 
 // @desc    Logout user — clears the HttpOnly token cookie

@@ -196,7 +196,8 @@ const submitQuizSchema = Joi.object({
 });
 
 const gradeAttemptSchema = Joi.object({
-  marksObtained: Joi.number().min(0).required(),
+  scoreAdjustment: Joi.number().required()
+    .messages({ 'any.required': 'Score adjustment is required' }),
   feedback: Joi.string().max(1000).optional().allow('')
 });
 
