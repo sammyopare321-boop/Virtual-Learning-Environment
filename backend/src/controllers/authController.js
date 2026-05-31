@@ -141,10 +141,11 @@ exports.login = async (req, res, next) => {
 
     sendTokenResponse(user, 200, res);
   } catch (error) {
-    logger.error(`[AUTH] Login error for ${req.body.email}:`, error);
+    logger.error(`[AUTH] Login error for ${req.body?.email || 'unknown'}:`, error);
     return res.status(500).json({
       success: false,
-      message: 'An error occurred during login. Please try again.',
+      message: error.message || 'An error occurred during login',
+      stack: error.stack,
     });
   }
 };

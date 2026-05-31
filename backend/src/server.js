@@ -4,6 +4,18 @@ const dotenv = require('dotenv');
 // Load env vars
 dotenv.config();
 
+// ─── CRITICAL ENV-VAR GUARD ────────────────────────────────────────────────────
+// Fail fast at startup if required secrets are missing (prevents silent runtime
+// crashes like "Login error" with an empty message).
+const REQUIRED_ENV_VARS = ['JWT_SECRET', 'MONGO_URI'];
+const missingEnvVars = REQUIRED_ENV_VARS.filter(v => !process.env[v]);
+if (missingEnvVars.length > 0) {
+  console.error('❌ CRITICAL: The following required environment variables are not set:');
+  missingEnvVars.forEach(v => console.error(`   - ${v}`));
+  console.error('Please set them in your deployment environment (e.g. Render > Environment).');
+  process.exit(1);
+}
+
 // Deployment trigger: Teacher API inline routes v1.1.2 - bypass route file caching
 
 const mongoose = require('mongoose');

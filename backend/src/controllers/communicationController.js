@@ -204,7 +204,7 @@ exports.markRead = async (req, res, next) => {
 // @desc    Get course group messages
 // @route   GET /api/communication/courses/:courseId/messages
 // @access  Private
-exports.getCourseMessages = async (req, res, next) => {
+exports.getCourseMessages = asyncHandler(async (req, res, next) => {
   const { courseId } = req.params;
   
   // Validate courseId format
@@ -224,7 +224,7 @@ exports.getCourseMessages = async (req, res, next) => {
     count: messages.length,
     data: messages 
   });
-};
+});
 
 // @desc    Mark ALL notifications as read
 // @route   PATCH /api/communication/notifications/mark-all-read
