@@ -19,7 +19,7 @@ const errorHandler = require('./middleware/errorHandler');
 const requestLogger = require('./middleware/requestLogger');
 const securityLogger = require('./middleware/securityLogger');
 const timeoutHandler = require('./middleware/timeout');
-const logger = require('./utils/logger');
+
 
 // Route imports
 const authRoutes = require('./routes/auth');
