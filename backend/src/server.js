@@ -65,6 +65,13 @@ app.set('trust proxy', 1);
 
 // Security headers — configure helmet to allow Jitsi embedding
 app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", "https://www.pinterest.com"],
+      // keep other defaults (script-src, style-src, etc.)
+    },
+  },
   // Allow Jitsi to be framed inside our app
   frameguard: false,
   // Allow Jitsi's cross-origin scripts/media
