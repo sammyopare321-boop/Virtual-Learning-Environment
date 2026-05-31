@@ -63,9 +63,6 @@ const UserSchema = new mongoose.Schema({
   },
 });
 
-// Add index for email lookups
-UserSchema.index({ email: 1 });
-
 // Encrypt password using bcrypt
 UserSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {

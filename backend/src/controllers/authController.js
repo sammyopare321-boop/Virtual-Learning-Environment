@@ -67,78 +67,86 @@ exports.register = async (req, res, next) => {
 // @route   POST /api/auth/login
 // @access  Public
 exports.login = async (req, res, next) => {
-  const { email, password, mfaToken } = req.body;
+  try {
+    const { email, password, mfaToken } = req.body;
 
-  // Validate email & password
-  if (!email || !password) {
-    return res.status(400).json({
-      success: false,
-      message: 'Please provide an email and password',
-    });
-  }
-
-  // Check for user
-  const user = await User.findOne({ email }).select('+password +twoFactorSecret +isTwoFactorEnabled');
-
-  if (!user) {
-    logger.warn(`[AUTH] Login failed: User not found for email: ${email}`);
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid credentials',
-    });
-  }
-
-  // Prevent Google users from logging in manually (they don't know their random password)
-  if (user.authProvider === 'google') {
-    logger.warn(`[AUTH] Login failed: Google user attempting password login: ${email}`);
-    return res.status(401).json({
-      success: false,
-      message: 'This account was created using Google Sign-In. Please click the Google button to log in.',
-    });
-  }
-
-  // Check if password matches
-  const isMatch = await user.matchPassword(password);
-
-  if (!isMatch) {
-    logger.warn(`[AUTH] Login failed: Invalid password for email: ${email}`);
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid credentials',
-    });
-  }
-
-  // Check 2FA
-  if (user.isTwoFactorEnabled) {
-    if (!mfaToken) {
-      return res.status(200).json({
-        success: true,
-        require2FA: true,
-        message: 'Two-factor authentication required',
+    // Validate email & password
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an email and password',
       });
     }
 
-    const verified = speakeasy.totp.verify({
-      secret: user.twoFactorSecret,
-      encoding: 'base32',
-      token: mfaToken,
-    });
+    // Check for user
+    const user = await User.findOne({ email }).select('+password +twoFactorSecret +isTwoFactorEnabled');
 
-    if (!verified) {
+    if (!user) {
+      logger.warn(`[AUTH] Login failed: User not found for email: ${email}`);
       return res.status(401).json({
         success: false,
-        message: 'Invalid two-factor authentication code',
+        message: 'Invalid credentials',
       });
     }
+
+    // Prevent Google users from logging in manually (they don't know their random password)
+    if (user.authProvider === 'google') {
+      logger.warn(`[AUTH] Login failed: Google user attempting password login: ${email}`);
+      return res.status(401).json({
+        success: false,
+        message: 'This account was created using Google Sign-In. Please click the Google button to log in.',
+      });
+    }
+
+    // Check if password matches
+    const isMatch = await user.matchPassword(password);
+
+    if (!isMatch) {
+      logger.warn(`[AUTH] Login failed: Invalid password for email: ${email}`);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials',
+      });
+    }
+
+    // Check 2FA
+    if (user.isTwoFactorEnabled) {
+      if (!mfaToken) {
+        return res.status(200).json({
+          success: true,
+          require2FA: true,
+          message: 'Two-factor authentication required',
+        });
+      }
+
+      const verified = speakeasy.totp.verify({
+        secret: user.twoFactorSecret,
+        encoding: 'base32',
+        token: mfaToken,
+      });
+
+      if (!verified) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid two-factor authentication code',
+        });
+      }
+    }
+
+    logger.info(`[AUTH] Login successful: ${email} (${user.role})`);
+    
+    // Set lastLogin on success
+    user.lastLogin = Date.now();
+    await user.save({ validateBeforeSave: false });
+
+    sendTokenResponse(user, 200, res);
+  } catch (error) {
+    logger.error(`[AUTH] Login error for ${req.body.email}:`, error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred during login. Please try again.',
+    });
   }
-
-  logger.info(`[AUTH] Login successful: ${email} (${user.role})`);
-  
-  // Set lastLogin on success
-  user.lastLogin = Date.now();
-  await user.save({ validateBeforeSave: false });
-
-  sendTokenResponse(user, 200, res);
 };
 
 // @desc    Generate 2FA Secret
