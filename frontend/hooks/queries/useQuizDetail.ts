@@ -28,7 +28,7 @@ async function fetchQuizDetail(
   const qRes = await quizApi.getQuiz(quizId);
   const quiz = qRes.data.data as Quiz;
 
-  // Questions are stored separately — fetch from the questions endpoint
+  // Fetch questions from the dedicated endpoint — accessible to all roles
   let questions: Question[] = [];
   try {
     const qsRes = await quizApi.getQuestions(quizId);

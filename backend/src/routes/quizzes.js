@@ -42,7 +42,7 @@ quizRouter.put('/quizzes/:id',
 quizRouter.delete('/quizzes/:id', protect, authorize('teacher', 'admin'), deleteQuiz);
 quizRouter.patch('/quizzes/:id/publish', protect, authorize('teacher', 'admin'), publishQuiz);
 
-// Questions
+// Questions — readable by any authenticated user (students need questions to take the quiz)
 quizRouter.get('/quizzes/:id/questions', protect, getQuestions);
 quizRouter.post('/quizzes/:id/questions',
   protect,

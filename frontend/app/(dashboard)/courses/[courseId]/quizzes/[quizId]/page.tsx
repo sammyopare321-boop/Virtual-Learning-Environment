@@ -85,7 +85,10 @@ export default function QuizDetailPage() {
     setStarting(true);
     try {
       const res = await quizApi.startAttempt(quizId);
-      setAttempt(res.data.data);
+      const { attempt: newAttempt, questions: startQuestions } = res.data.data;
+      setAttempt(newAttempt);
+      // startAttempt returns questions — use them directly so student sees them immediately
+      if (startQuestions?.length) setQuestions(startQuestions);
       invalidateQuiz();
     } catch (e) {
       const error = e as { response?: { data?: { message?: string } } };
