@@ -432,28 +432,15 @@ export default function CourseWizard() {
 
       const courseId: string = res.data.data._id;
 
-      // 4. Persist modules AND their lessons in order
+          // 4. Persist modules in order (lessons are added later via the course editor)
       if (form.modules.length > 0) {
         for (let idx = 0; idx < form.modules.length; idx++) {
           const mod = form.modules[idx];
-          const modRes = await courseApi.createModule(courseId, {
+          await courseApi.createModule(courseId, {
             title: mod.title,
             weekNumber: idx + 1,
             order: idx + 1,
           });
-
-          // Persist lessons for this module
-          const createdModuleId: string | undefined =
-            modRes.data?.data?._id ?? modRes.data?._id;
-
-          if (createdModuleId && mod.lessons.length > 0) {
-            for (const lesson of mod.lessons) {
-              const lessonFormData = new FormData();
-              lessonFormData.append('title', lesson.title);
-              lessonFormData.append('type', lesson.type);
-              await courseApi.createLesson(courseId, createdModuleId, lessonFormData);
-            }
-          }
         }
       }
 
