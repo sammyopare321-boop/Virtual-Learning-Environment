@@ -17,6 +17,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { courseApi } from '@/utils/api/courseApi';
 import { aiApi } from '@/utils/api/aiApi';
+import { useCourse } from '@/hooks/queries/useCourse';
 import toast from 'react-hot-toast';
 
 // ─── TOOLBAR ─────────────────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ const DRAFT_KEY = 'assignmentBuilder_draft';
 export default function AssignmentBuilder({ courseId }: { courseId: string }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
+  const { data: course } = useCourse(courseId);
 
   const [title, setTitle] = useState('');
   const [points, setPoints] = useState<number>(100);
@@ -501,6 +503,8 @@ export default function AssignmentBuilder({ courseId }: { courseId: string }) {
       <AnimatePresence>
         {aiPanelOpen && (
           <AssignmentAIPanel
+            courseTitle={course?.title || ''}
+            courseDescription={course?.description || ''}
             onClose={() => setAiPanelOpen(false)}
             onGenerated={(result) => {
               if (result.title) setTitle(result.title);
@@ -556,25 +560,26 @@ function ProtocolToggle({ label, defaultChecked }: { label: string; defaultCheck
 }
 
 // ─── AI ASSIGNMENT GENERATOR PANEL ───────────────────────────────────────────
-function AssignmentAIPanel({ onClose, onGenerated }: {
+function AssignmentAIPanel({ courseTitle, courseDescription, onClose, onGenerated }: {
+  courseTitle: string;
+  courseDescription: string;
   onClose: () => void;
   onGenerated: (result: any) => void;
 }) {
-  const [topic, setTopic] = useState('');
-  const [outcomes, setOutcomes] = useState('');
   const [difficulty, setDifficulty] = useState('medium');
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
-    if (!topic.trim()) { setError('Please enter a topic'); return; }
     setError('');
     setGenerating(true);
     try {
-      const outcomeList = outcomes
-        ? outcomes.split(',').map((s: string) => s.trim()).filter(Boolean)
-        : ['Understand the topic', 'Apply key concepts', 'Analyse and evaluate'];
-      const res = await aiApi.generateAssignmentPrompt(topic, outcomeList, difficulty);
+      const outcomeList = ['Understand the topic', 'Apply key concepts', 'Analyse and evaluate'];
+      const res = await aiApi.generateAssignmentPrompt(
+        `${courseTitle}${courseDescription ? ': ' + courseDescription.slice(0, 200) : ''}`,
+        outcomeList,
+        difficulty
+      );
       const data = res.data?.data;
       if (!data) throw new Error('No data returned');
       onGenerated(data);
@@ -608,32 +613,13 @@ function AssignmentAIPanel({ onClose, onGenerated }: {
         </div>
 
         <div className="p-6 space-y-5 overflow-y-auto flex-1">
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Describe the assignment topic and AI will generate the title, instructions, objectives, and grading rubric — all filled directly into the builder.
-          </p>
-
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Topic *</label>
-            <textarea
-              rows={3}
-              placeholder="e.g. Build a REST API with Node.js, Analyse climate change data, Essay on the French Revolution..."
-              value={topic}
-              onChange={e => { setTopic(e.target.value); setError(''); }}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none transition-all text-sm resize-none"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
-              Learning Outcomes <span className="normal-case font-normal text-slate-400">(comma-separated, optional)</span>
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Understand REST principles, Apply HTTP methods, Test endpoints"
-              value={outcomes}
-              onChange={e => setOutcomes(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none transition-all text-sm"
-            />
+          {/* Show what course context is being used */}
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Generating for</p>
+            <p className="text-sm font-semibold text-slate-800 truncate">{courseTitle || 'This course'}</p>
+            {courseDescription && (
+              <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{courseDescription}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -669,7 +655,7 @@ function AssignmentAIPanel({ onClose, onGenerated }: {
         <div className="p-6 border-t border-slate-200 bg-slate-50 shrink-0">
           <button
             onClick={handleGenerate}
-            disabled={generating || !topic.trim()}
+            disabled={generating}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm transition-all disabled:opacity-50"
           >
             {generating ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}

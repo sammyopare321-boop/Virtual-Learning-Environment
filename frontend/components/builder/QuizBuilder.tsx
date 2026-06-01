@@ -30,6 +30,7 @@ import { quizApi } from '@/utils/api/extraApis';
 import { aiApi } from '@/utils/api/aiApi';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
+import { useCourse } from '@/hooks/queries/useCourse';
 
 // --- TYPES ---
 type QuestionType = 'multiple_choice' | 'true_false' | 'short_answer';
@@ -88,6 +89,7 @@ export default function QuizBuilder() {
   const { courseId } = useParams() as { courseId: string };
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { data: course } = useCourse(courseId);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [saving, setSaving] = useState(false);
@@ -524,6 +526,8 @@ export default function QuizBuilder() {
          <AnimatePresence>
             {aiPanelOpen && (
               <AIGeneratorPanel
+                courseTitle={course?.title || ''}
+                courseDescription={course?.description || ''}
                 onClose={() => setAiPanelOpen(false)}
                 onGenerated={(generated) => {
                   const newQuestions: Question[] = generated.map((q: any, i: number) => ({
@@ -550,18 +554,22 @@ export default function QuizBuilder() {
 }
 
 // --- AI GENERATOR PANEL ---
-function AIGeneratorPanel({ onClose, onGenerated }: { onClose: () => void; onGenerated: (questions: any[]) => void }) {
-  const [topic, setTopic] = useState('');
+function AIGeneratorPanel({ courseTitle, courseDescription, onClose, onGenerated }: {
+  courseTitle: string;
+  courseDescription: string;
+  onClose: () => void;
+  onGenerated: (questions: any[]) => void;
+}) {
   const [difficulty, setDifficulty] = useState('medium');
   const [count, setCount] = useState(5);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
-    if (!topic.trim()) { setError('Please enter a topic'); return; }
     setError('');
     setGenerating(true);
     try {
+      const topic = `${courseTitle}${courseDescription ? ': ' + courseDescription.slice(0, 200) : ''}`;
       const res = await aiApi.generateQuizQuestions(topic, difficulty, count);
       const data = res.data;
       const questions = Array.isArray(data.data) ? data.data : data.data?.questions || [];
@@ -600,18 +608,16 @@ function AIGeneratorPanel({ onClose, onGenerated }: { onClose: () => void; onGen
         {/* Body */}
         <div className="p-6 space-y-5 overflow-y-auto flex-1">
           <p className="text-xs text-slate-500 leading-relaxed">
-            Describe a topic and AI will generate ready-to-use quiz questions that are added directly to your quiz.
+            AI will generate quiz questions based on this course — added directly to your quiz.
           </p>
 
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Topic *</label>
-            <textarea
-              rows={3}
-              placeholder="e.g. Photosynthesis, World War II, Recursion in Python..."
-              value={topic}
-              onChange={e => { setTopic(e.target.value); setError(''); }}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none transition-all text-sm resize-none"
-            />
+          {/* Course context pill */}
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Generating for</p>
+            <p className="text-sm font-semibold text-slate-800 truncate">{courseTitle || 'This course'}</p>
+            {courseDescription && (
+              <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{courseDescription}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -660,7 +666,7 @@ function AIGeneratorPanel({ onClose, onGenerated }: { onClose: () => void; onGen
         <div className="p-6 border-t border-slate-200 bg-slate-50 shrink-0">
           <button
             onClick={handleGenerate}
-            disabled={generating || !topic.trim()}
+            disabled={generating}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm transition-all disabled:opacity-50"
           >
             {generating ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
