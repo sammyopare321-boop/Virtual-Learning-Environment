@@ -27,7 +27,15 @@ async function fetchQuizDetail(
 ): Promise<QuizDetailData> {
   const qRes = await quizApi.getQuiz(quizId);
   const quiz = qRes.data.data as Quiz;
-  const questions = (quiz.questions ?? []) as Question[];
+
+  // Questions are stored separately — fetch from the questions endpoint
+  let questions: Question[] = [];
+  try {
+    const qsRes = await quizApi.getQuestions(quizId);
+    questions = qsRes.data.data || [];
+  } catch {
+    questions = [];
+  }
 
   let attempt: QuizAttempt | null = null;
   let allAttempts: QuizAttempt[] = [];
