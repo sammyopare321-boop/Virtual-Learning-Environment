@@ -556,7 +556,7 @@ export default function CourseWizard() {
                       <span className="block text-xs font-black uppercase tracking-wider leading-none mb-1">
                         Step {idx + 1}
                       </span>
-                      <span className={`block text-sm font-extrabold truncate ${
+                      <span className={`block text-sm font-extrabold break-words leading-snug ${
                         isActive ? 'text-slate-900' : 'text-slate-700'
                       }`}>
                         {step.title}
@@ -1203,16 +1203,16 @@ export default function CourseWizard() {
                   </div>
                 </div>
 
-                <div className="p-6 space-y-4">
+                <div className="p-5 space-y-4">
                   <div>
                     <span className="text-[10px] font-bold text-primary-600 uppercase tracking-widest">{form.category || 'CATEGORY'}</span>
-                    <h3 className="text-lg font-extrabold text-slate-900 truncate mt-1">{form.title || 'Course Title'}</h3>
-                    <p className="text-xs text-slate-500 font-medium line-clamp-3 mt-1.5 leading-relaxed">
+                    <h3 className="text-sm font-extrabold text-slate-900 break-words leading-snug mt-1">{form.title || 'Course Title'}</h3>
+                    <p className="text-xs text-slate-500 font-medium line-clamp-3 mt-1.5 leading-relaxed break-words">
                       {form.description || 'Describe what your students will learn in this course catalog...'}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
+                  <div className="flex items-center gap-4 pt-3 border-t border-slate-100">
                     <div>
                       <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Students</span>
                       <span className="block text-base font-extrabold text-slate-900">{form.students.length} / {form.maxStudents || '50'}</span>
@@ -1222,18 +1222,44 @@ export default function CourseWizard() {
                       <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Modules</span>
                       <span className="block text-base font-extrabold text-slate-900">{form.modules.length}</span>
                     </div>
+                    <div className="h-6 w-px bg-slate-200" />
+                    <div>
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Level</span>
+                      <span className="block text-xs font-extrabold text-slate-900 capitalize">{form.level}</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* AI Guidance box */}
-              <div className="rounded-[24px] bg-slate-900 border border-slate-800 p-6 text-white shadow-xl relative overflow-hidden">
+              {/* AI Agent — fills form with AI-generated course */}
+              <div className="rounded-[24px] bg-slate-900 border border-slate-800 p-5 text-white shadow-xl relative overflow-hidden">
                 <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary-500 rounded-full blur-[40px] opacity-10" />
-                <div className="flex items-center gap-2 text-primary-400 text-xs font-black uppercase tracking-[0.15em] mb-3">
-                  <Sparkle size={14} /> AI Advisor
+                <div className="flex items-center gap-2 text-primary-400 text-xs font-black uppercase tracking-[0.15em] mb-2">
+                  <Sparkle size={14} /> AI Course Agent
                 </div>
-                <p className="text-xs font-medium leading-relaxed opacity-90">
-                  {currentStep === 0 && "Including an academic department and detailed description helps search indexing catalog lookups."}
+                <p className="text-xs font-medium leading-relaxed opacity-80 mb-4">
+                  Let AI fill in the entire form — title, code, description, schedule, and modules — in one click.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleAiGenerate}
+                  disabled={isAiGenerating}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-500 disabled:opacity-60 text-white font-bold text-xs transition-all"
+                >
+                  {isAiGenerating
+                    ? <><SpinnerIcon size={13} className="animate-spin" /> Generating...</>
+                    : <><Sparkles size={13} /> Auto-fill with AI</>
+                  }
+                </button>
+              </div>
+
+              {/* Step-specific AI tip */}
+              <div className="rounded-[24px] bg-violet-50 border border-violet-100 p-5">
+                <div className="flex items-center gap-2 text-violet-700 text-xs font-black uppercase tracking-[0.15em] mb-2">
+                  <Sparkle size={13} /> AI Tip
+                </div>
+                <p className="text-xs font-medium leading-relaxed text-violet-800">
+                  {currentStep === 0 && "Including an academic department and detailed description helps search indexing and catalog lookups."}
                   {currentStep === 1 && "Ensure recurring dates do not conflict with university term periods and schedule recurring sessions."}
                   {currentStep === 2 && "Splitting structures into logical, video-supported modules boosts curriculum completion rate by 40%."}
                   {currentStep === 3 && "Setting class maximum limits guarantees higher cohort focus streak scores."}
