@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/utils/api/axiosInstance';
+import { aiApi } from '@/utils/api/aiApi';
 
 interface ContentItem {
   _id: string;
@@ -60,9 +61,21 @@ export default function ModulesPage() {
   const [modForm, setModForm] = useState({ title: '', description: '', weekNumber: '', order: '' });
   const [creating, setCreating] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [courseOutline, setCourseOutline] = useState<any>(null);
 
   const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
   const isStudent = user?.role === 'student';
+
+  // Load saved AI outline for this course
+  useEffect(() => {
+    if (!courseId) return;
+    aiApi.getCourseOutline(courseId)
+      .then(res => {
+        const outline = res.data?.data?.outline;
+        if (outline) setCourseOutline(outline);
+      })
+      .catch(() => {});
+  }, [courseId]);
 
   const loadContent = useCallback(async (moduleId: string) => {
     if (content[moduleId]) return;
@@ -217,6 +230,51 @@ export default function ModulesPage() {
           </div>
         </div>
       </section>
+
+      {/* AI Course Outline — shown when a saved outline exists */}
+      {courseOutline?.modules?.length > 0 && (
+        <section className="bg-white rounded-3xl border border-violet-100 p-6 lg:p-8 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center">
+              <BookOpen size={18} className="text-violet-600" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Course Outline</h3>
+              <p className="text-xs text-slate-500 font-medium">AI-generated weekly structure for this course</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {courseOutline.modules.map((m: any, i: number) => (
+              <div key={i} className="flex gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 flex flex-col items-center justify-center shrink-0 font-bold text-xs">
+                  <span className="text-[8px] uppercase tracking-wide">Wk</span>
+                  <span className="text-base leading-none">{m.week ?? i + 1}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-slate-800 text-sm">{m.title}</p>
+                  {m.topics?.length > 0 && (
+                    <ul className="mt-1.5 space-y-0.5">
+                      {m.topics.map((t: string, j: number) => (
+                        <li key={j} className="text-xs text-slate-500 flex items-start gap-1.5">
+                          <span className="mt-1 w-1 h-1 rounded-full bg-violet-400 shrink-0" />
+                          {t}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {m.learningOutcomes?.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {m.learningOutcomes.map((o: string, j: number) => (
+                        <span key={j} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-50 border border-violet-100 text-violet-700 font-semibold">{o}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Module Creation Form */}
       <AnimatePresence>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, FileText, Shield, Target, BookOpen, Zap,
@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import gradingApi from '@/utils/api/gradingApi';
 import plagiarismApi from '@/utils/api/plagiarismApi';
 import { aiApi } from '@/utils/api/aiApi';
+import { courseApi } from '@/utils/api/courseApi';
 
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 
@@ -354,24 +355,129 @@ function PlagiarismTool({ onResult, loading, setLoading }: any) {
 }
 
 function OutlineTool({ onResult, loading, setLoading }: any) {
+  const [created, setCreated] = useState<{ courseId: string; title: string } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [lastValues, setLastValues] = useState<Record<string, string>>({});
+  const [courses, setCourses] = useState<{ _id: string; title: string; code: string }[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  // Load teacher's courses for the dropdown
+  useEffect(() => {
+    courseApi.getAll().then(res => {
+      setCourses(res.data?.data || []);
+    }).catch(() => {});
+  }, []);
+
+  const handleCreate = async () => {
+    setCreating(true);
+    try {
+      const res = await aiApi.createCourse(
+        lastValues.courseTitle,
+        lastValues.courseDescription,
+        Number(lastValues.duration) || 12
+      );
+      const course = res.data?.data?.course;
+      setCreated({ courseId: course._id, title: course.title });
+      toast.success(`Course "${course.title}" created with ${res.data?.data?.modules?.length} modules!`);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to create course');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
-    <ToolForm
-      loading={loading}
-      submitLabel="Generate Outline"
-      fields={[
-        { id: 'courseTitle', label: 'Course Title', placeholder: 'e.g. Introduction to Data Science' },
-        { id: 'courseDescription', label: 'Course Description', rows: 3, placeholder: 'Brief description of the course...' },
-        { id: 'duration', label: 'Duration', placeholder: 'e.g. 12 weeks' },
-      ]}
-      onSubmit={async (v) => {
-        setLoading(true);
-        try {
-          const res = await aiApi.generateCourseOutline(v.courseTitle, v.courseDescription, Number(v.duration) || 12);
-          onResult(res.data?.data);
-        } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed to generate outline'); }
-        finally { setLoading(false); }
-      }}
-    />
+    <div className="space-y-4">
+      {/* Course selector — save outline to an existing course */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+          Save outline to existing course <span className="text-slate-400 font-normal">(optional)</span>
+        </label>
+        <select
+          value={selectedCourseId}
+          onChange={e => { setSelectedCourseId(e.target.value); setSaved(false); }}
+          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none text-sm text-slate-800 bg-white transition-all"
+        >
+          <option value="">— Generate only, don't save to a course —</option>
+          {courses.map(c => (
+            <option key={c._id} value={c._id}>{c.title} ({c.code})</option>
+          ))}
+        </select>
+        {selectedCourseId && (
+          <p className="text-[11px] text-violet-600 font-semibold mt-1 px-1">
+            ✓ Outline will be saved to this course and visible to enrolled students
+          </p>
+        )}
+      </div>
+
+      <ToolForm
+        loading={loading}
+        submitLabel="Generate Outline"
+        fields={[
+          { id: 'courseTitle', label: 'Course Title', placeholder: 'e.g. Introduction to Data Science' },
+          { id: 'courseDescription', label: 'Course Description (optional)', rows: 3, placeholder: 'Brief description — leave blank to auto-generate' },
+          { id: 'duration', label: 'Duration (weeks)', placeholder: '12' },
+        ]}
+        onSubmit={async (v) => {
+          setLastValues(v);
+          setCreated(null);
+          setSaved(false);
+          setLoading(true);
+          try {
+            const res = await aiApi.generateCourseOutline(
+              v.courseTitle,
+              v.courseDescription || `A course on ${v.courseTitle}`,
+              Number(v.duration) || 12,
+              selectedCourseId || undefined
+            );
+            onResult(res.data?.data);
+            if (selectedCourseId) setSaved(true);
+          } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed to generate outline'); }
+          finally { setLoading(false); }
+        }}
+      />
+
+      {/* Saved confirmation */}
+      {saved && selectedCourseId && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-violet-50 border border-violet-200 text-violet-800 text-sm font-medium">
+          <CheckCircle2 size={16} className="text-violet-600 shrink-0" />
+          <span>Outline saved to course — students can now see it.</span>
+          <a
+            href={`/courses/${selectedCourseId}/modules`}
+            className="ml-auto text-violet-700 underline underline-offset-2 hover:text-violet-900 text-xs font-semibold"
+          >
+            View course →
+          </a>
+        </div>
+      )}
+
+      {/* Create brand-new course from outline */}
+      {lastValues.courseTitle && !created && !selectedCourseId && (
+        <button
+          onClick={handleCreate}
+          disabled={creating || loading}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-all disabled:opacity-50"
+        >
+          {creating ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+          {creating ? 'Creating course...' : 'Create Course in LMS'}
+        </button>
+      )}
+
+      {/* Success state after creating new course */}
+      {created && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium">
+          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+          <span>Course created!</span>
+          <a
+            href={`/courses/${created.courseId}/modules`}
+            className="ml-auto text-emerald-700 underline underline-offset-2 hover:text-emerald-900 text-xs font-semibold"
+          >
+            Open course →
+          </a>
+        </div>
+      )}
+    </div>
   );
 }
 
