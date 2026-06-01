@@ -71,7 +71,7 @@ UserSchema.pre('save', async function () {
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
-    // No next needed in async hook
+
 });
 
 // Sign JWT and return
@@ -97,8 +97,8 @@ UserSchema.methods.getResetPasswordToken = function () {
     .update(resetToken)
     .digest('hex');
 
-  // Set expire (10 minutes)
-  this.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+  // Set expire (24 hours)
+  this.resetPasswordExpire = Date.now() + 24 * 60 * 60 * 1000;
 
   return resetToken;
 };

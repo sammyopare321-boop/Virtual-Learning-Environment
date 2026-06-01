@@ -1,12 +1,18 @@
 const AttendanceSession = require('../models/AttendanceSession');
 const AttendanceRecord = require('../models/AttendanceRecord');
 const Enrollment = require('../models/Enrollment');
+const Course = require('../models/Course');
 const mongoose = require('mongoose');
 
 // @desc    Create attendance session
 // @route   POST /api/courses/:id/attendance
 // @access  Private (Teacher)
 exports.createSession = async (req, res, next) => {
+  const course = await Course.findById(req.params.id);
+  if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+  if (course.teacher.toString() !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Not authorized' });
+  }
   req.body.course = req.params.id;
   req.body.teacher = req.user.id;
   const session = await AttendanceSession.create(req.body);

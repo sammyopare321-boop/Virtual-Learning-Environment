@@ -1,6 +1,5 @@
 const LiveSession = require('../models/LiveSession');
 const Course = require('../models/Course');
-const axios = require('axios');
 const Enrollment = require('../models/Enrollment');
 const { createNotification } = require('../utils/notificationHelper');
 
@@ -9,6 +8,12 @@ const { createNotification } = require('../utils/notificationHelper');
 // @access  Private (Teacher)
 exports.createLiveSession = async (req, res, next) => {
   const { title, scheduledAt, duration, description } = req.body;
+
+  const course = await Course.findById(req.params.id);
+  if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+  if (course.teacher.toString() !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Not authorized' });
+  }
 
   // Generate a unique Jitsi room ID — no API key needed, works with meet.jit.si
   const slug = title

@@ -16,6 +16,12 @@ exports.enrollCourse = async (req, res, next) => {
     return res.status(404).json({ success: false, message: 'Course not found' });
   }
 
+  // Prevent duplicate enrollment
+  const existing = await Enrollment.findOne({ student: req.user.id, course: req.params.id });
+  if (existing) {
+    return res.status(400).json({ success: false, message: 'You are already enrolled in this course' });
+  }
+
   const enrollment = await Enrollment.create({
     student: req.user.id,
     course: req.params.id,
