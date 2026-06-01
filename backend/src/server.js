@@ -150,6 +150,10 @@ app.use(securityLogger);
 // Request timeout — from constants
 app.use(timeoutHandler(TIMEOUTS.GLOBAL_MS));
 
+// AI routes get a longer timeout (provider fallback chain can take up to 2 min)
+app.use('/api/v1/ai', timeoutHandler(TIMEOUTS.AI_MS));
+app.use('/api/ai', timeoutHandler(TIMEOUTS.AI_MS));
+
 // ─── GLOBAL RATE LIMITING ───────────────────────────────────────────────────
 // Protects every endpoint on the API
 const globalLimiter = rateLimit({

@@ -1,6 +1,7 @@
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
 const mongoose = require('mongoose');
+const logger = require('../utils/logger');
 
 // @desc    Get all courses
 // @route   GET /api/courses

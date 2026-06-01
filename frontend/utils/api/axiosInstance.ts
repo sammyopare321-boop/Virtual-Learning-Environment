@@ -3,7 +3,7 @@ import axios from 'axios';
 const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || '',
   headers: { 'Content-Type': 'application/json' },
-  timeout: 30000,
+  timeout: 90000, // 90s — AI calls can take up to 60s across provider fallbacks
   withCredentials: true,
 });
 

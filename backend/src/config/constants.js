@@ -18,6 +18,7 @@ module.exports = {
     }
   },
   TIMEOUTS: {
-    GLOBAL_MS: 30000
+    GLOBAL_MS: 30000,
+    AI_MS: 120000  // 2 minutes for AI provider fallback chain
   }
 };
