@@ -22,7 +22,7 @@ declare global {
   }
 }
 
-export default function JitsiRoom({ roomId, displayName, onLeave }: JitsiRoomProps) {
+export default function JitsiRoom({ roomId, displayName, onLeave, isHost = false }: JitsiRoomProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<JitsiAPI | null>(null);
   const [status, setStatus] = useState<'loading' | 'connected' | 'error'>('loading');
@@ -45,10 +45,16 @@ export default function JitsiRoom({ roomId, displayName, onLeave }: JitsiRoomPro
           height: '100%',
           userInfo: { displayName },
           configOverwrite: {
-            startWithAudioMuted: false,
-            startWithVideoMuted: false,
+            // Teachers start with mic + camera on; students start muted
+            startWithAudioMuted: !isHost,
+            startWithVideoMuted: !isHost,
             disableDeepLinking: true,
             prejoinPageEnabled: false,
+            // Students join as regular participants; teachers get moderator tools
+            ...(isHost ? {} : {
+              disableModeratorIndicator: false,
+              remoteVideoMenu: { disableKick: true },
+            }),
           },
           interfaceConfigOverwrite: {
             SHOW_JITSI_WATERMARK: false,
@@ -56,6 +62,10 @@ export default function JitsiRoom({ roomId, displayName, onLeave }: JitsiRoomPro
             SHOW_BRAND_WATERMARK: false,
             SHOW_POWERED_BY: false,
             MOBILE_APP_PROMO: false,
+            // Hide extra toolbar buttons for students to keep UI clean
+            TOOLBAR_BUTTONS: isHost
+              ? ['microphone', 'camera', 'desktop', 'chat', 'raisehand', 'participants-pane', 'tileview', 'hangup']
+              : ['microphone', 'camera', 'chat', 'raisehand', 'tileview', 'hangup'],
           },
         });
 
