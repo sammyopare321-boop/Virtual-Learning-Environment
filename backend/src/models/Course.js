@@ -52,6 +52,14 @@ const CourseSchema = new mongoose.Schema({
     day: String,
     time: String,
   }],
+  outline: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null,
+  },
+  outlineGeneratedAt: {
+    type: Date,
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

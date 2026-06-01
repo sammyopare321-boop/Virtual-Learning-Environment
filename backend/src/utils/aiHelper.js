@@ -26,10 +26,10 @@ async function generateAssignmentPrompt(topic, learningOutcomes, difficulty = 'm
 
 async function generateLectureNotes(topic, subtopics = []) {
   const response = await createCompletion([
-    { role: 'system', content: 'You are an expert educator. Create comprehensive, well-structured lecture notes.' },
-    { role: 'user', content: `Create detailed lecture notes for:\nTopic: ${topic}\n${subtopics.length > 0 ? `Subtopics: ${subtopics.join(', ')}` : ''}\n\nInclude clear headings, key concepts, examples, summary points, discussion questions, and further reading.` }
+    { role: 'system', content: 'You are an expert educator. Create comprehensive, well-structured lecture notes. Always respond with valid JSON only, no markdown symbols like #, *, **, or ==.' },
+    { role: 'user', content: `Create detailed lecture notes for:\nTopic: ${topic}\n${subtopics.length > 0 ? `Subtopics: ${subtopics.join(', ')}` : ''}\n\nFormat as JSON:\n{\n  "title": string,\n  "introduction": string,\n  "keyConcepts": [{"term": string, "definition": string}],\n  "sections": [{"heading": string, "content": string, "examples": [string]}],\n  "summaryPoints": [string],\n  "discussionQuestions": [string],\n  "furtherReading": [string]\n}` }
   ], 3000);
-  return response.choices[0].message.content;
+  return parseJSON(response.choices[0].message.content);
 }
 
 async function generateStudentFeedback(submissionContent, rubricCriteria, score) {
@@ -42,10 +42,10 @@ async function generateStudentFeedback(submissionContent, rubricCriteria, score)
 
 async function generateSyllabus(courseInfo) {
   const response = await createCompletion([
-    { role: 'system', content: 'You are an expert course designer. Create comprehensive, professional course syllabi.' },
-    { role: 'user', content: `Create a complete course syllabus for:\nCourse Title: ${courseInfo.title}\nCourse Code: ${courseInfo.code}\nInstructor: ${courseInfo.instructor}\nDuration: ${courseInfo.duration} weeks\nLevel: ${courseInfo.level}\nDescription: ${courseInfo.description}\n\nInclude course overview, objectives, learning outcomes, grading, weekly schedule, policies, and academic integrity statement. Format as professional markdown.` }
+    { role: 'system', content: 'You are an expert course designer. Create comprehensive, professional course syllabi. Always respond with valid JSON only, no markdown symbols like #, *, **, or ==.' },
+    { role: 'user', content: `Create a complete course syllabus for:\nCourse Title: ${courseInfo.title}\nCourse Code: ${courseInfo.code}\nInstructor: ${courseInfo.instructor}\nDuration: ${courseInfo.duration} weeks\nLevel: ${courseInfo.level}\nDescription: ${courseInfo.description}\n\nFormat as JSON:\n{\n  "courseOverview": string,\n  "objectives": [string],\n  "learningOutcomes": [string],\n  "grading": [{"component": string, "weight": string}],\n  "weeklySchedule": [{"week": number, "topic": string, "activities": string}],\n  "policies": [{"name": string, "description": string}],\n  "academicIntegrity": string\n}` }
   ], 3000);
-  return response.choices[0].message.content;
+  return parseJSON(response.choices[0].message.content);
 }
 
 module.exports = {

@@ -1,8 +1,11 @@
 import axiosInstance from './axiosInstance';
 
 export const aiApi = {
-  generateCourseOutline: (courseTitle: string, courseDescription: string, duration: number) =>
-    axiosInstance.post('/api/v1/ai/course-outline', { courseTitle, courseDescription, duration }),
+  generateCourseOutline: (courseTitle: string, courseDescription: string, duration: number, courseId?: string) =>
+    axiosInstance.post('/api/v1/ai/course-outline', { courseTitle, courseDescription, duration, ...(courseId && { courseId }) }),
+
+  getCourseOutline: (courseId: string) =>
+    axiosInstance.get(`/api/v1/ai/course-outline/${courseId}`),
 
   generateQuizQuestions: (topic: string, difficulty = 'medium', count = 5) =>
     axiosInstance.post('/api/v1/ai/quiz-questions', { topic, difficulty, count }),
@@ -27,4 +30,7 @@ export const aiApi = {
 
   generateRubric: (assignmentDescription: string, totalPoints = 100) =>
     axiosInstance.post('/api/v1/ai/generate-rubric', { assignmentDescription, totalPoints }),
+
+  createCourse: (courseTitle: string, courseDescription?: string, duration = 12, semester?: string, academicYear?: string) =>
+    axiosInstance.post('/api/v1/ai/create-course', { courseTitle, courseDescription, duration, semester, academicYear }),
 };

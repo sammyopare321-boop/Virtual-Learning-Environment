@@ -13,7 +13,6 @@ const { analyzeStudentPerformance, generateLearningPath, getRecommendedResources
 const { predictStudentRisk, generateInterventionPlan, identifyAtRiskStudents, generateRiskReport } = require('../utils/riskPrediction');
 const { advancedSearch, generateSearchSuggestions, getTrendingTopics } = require('../utils/aiSearch');
 
-// Models
 const Submission = require('../models/Submission');
 const User = require('../models/User');
 const Course = require('../models/Course');
@@ -42,10 +41,34 @@ const handleAIError = (res, error, defaultMessage) => {
 // ─── COURSE CONTENT GENERATION ───────────────────────────────────────────────
 
 router.post('/course-outline', auth, teacherOnly, asyncHandler(async (req, res) => {
-  const { courseTitle, courseDescription, duration } = req.body;
+  const { courseTitle, courseDescription, duration, courseId } = req.body;
   if (!courseTitle || !courseDescription || !duration) return res.status(400).json({ message: 'Missing required fields' });
+
   const outline = await generateCourseOutline(courseTitle, courseDescription, duration);
+
+  // Persist to MongoDB if a courseId was supplied
+  if (courseId) {
+    if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      return res.status(400).json({ success: false, message: 'Invalid courseId' });
+    }
+    const course = await Course.findById(courseId);
+    if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+    if (course.teacher.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to update this course' });
+    }
+    await Course.findByIdAndUpdate(courseId, { outline, outlineGeneratedAt: new Date() });
+  }
+
   res.json({ success: true, data: outline, message: 'Course outline generated successfully' });
+}));
+
+router.get('/course-outline/:courseId', auth, asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.courseId)) {
+    return res.status(400).json({ success: false, message: 'Invalid courseId' });
+  }
+  const course = await Course.findById(req.params.courseId).select('outline outlineGeneratedAt title');
+  if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+  res.json({ success: true, data: { outline: course.outline, generatedAt: course.outlineGeneratedAt, courseTitle: course.title } });
 }));
 
 router.post('/quiz-questions', auth, teacherOnly, asyncHandler(async (req, res) => {
@@ -81,6 +104,71 @@ router.post('/syllabus', auth, teacherOnly, asyncHandler(async (req, res) => {
   if (!title || !code || !instructor || !duration || !level || !description) return res.status(400).json({ message: 'Missing required fields' });
   const syllabus = await generateSyllabus({ title, code, instructor, duration, level, description });
   res.json({ success: true, data: syllabus, message: 'Syllabus generated successfully' });
+}));
+
+// ─── AI COURSE CREATION ───────────────────────────────────────────────────────
+// Give it a title (and optionally description/duration) and it generates the
+// outline then saves the course + modules to the database in one shot.
+
+router.post('/create-course', auth, teacherOnly, asyncHandler(async (req, res) => {
+  const { courseTitle, courseDescription, duration = 12, semester, academicYear } = req.body;
+
+  if (!courseTitle) return res.status(400).json({ success: false, message: 'courseTitle is required' });
+
+  // Derive defaults if not supplied
+  const now = new Date();
+  const year = now.getFullYear();
+  const resolvedSemester = semester || (now.getMonth() < 6 ? 'Semester 1' : 'Semester 2');
+  const resolvedYear = academicYear || `${year}/${year + 1}`;
+  const resolvedDescription = courseDescription || `An AI-generated course on ${courseTitle}`;
+
+  // 1. Generate outline via AI
+  const outline = await generateCourseOutline(courseTitle, resolvedDescription, duration);
+
+  // 2. Generate a unique course code from the title
+  const baseCode = courseTitle
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, '')
+    .split(/\s+/)
+    .map(w => w.slice(0, 3))
+    .join('')
+    .slice(0, 8);
+  const code = `${baseCode}-${Date.now().toString(36).toUpperCase().slice(-4)}`;
+
+  // 3. Create the course
+  const course = await Course.create({
+    title: courseTitle,
+    code,
+    description: resolvedDescription,
+    teacher: req.user.id,
+    semester: resolvedSemester,
+    academicYear: resolvedYear,
+    status: 'draft',
+  });
+
+  // 4. Create modules from the outline
+  const modules = outline.modules || [];
+  const createdModules = await Promise.all(
+    modules.map((m, idx) =>
+      Module.create({
+        course: course._id,
+        title: m.title || `Week ${m.week || idx + 1}`,
+        weekNumber: m.week || idx + 1,
+        order: idx + 1,
+        description: m.topics?.join(', ') || '',
+      })
+    )
+  );
+
+  res.status(201).json({
+    success: true,
+    message: `Course "${courseTitle}" created with ${createdModules.length} modules`,
+    data: {
+      course,
+      modules: createdModules,
+      outline,
+    },
+  });
 }));
 
 // ─── TUTORING ─────────────────────────────────────────────────────────────────

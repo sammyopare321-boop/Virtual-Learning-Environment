@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { aiApi } from '@/utils/api/aiApi';
 import {
@@ -21,6 +21,20 @@ export default function AIAssistant({ courseId, onClose }: AIAssistantProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
+  // Load saved outline from MongoDB when modal opens with a courseId
+  useEffect(() => {
+    if (!courseId) return;
+    aiApi.getCourseOutline(courseId)
+      .then((res) => {
+        const saved = res.data?.data?.outline;
+        if (saved) {
+          setResult(JSON.stringify(saved, null, 2));
+          setMode('outline');
+        }
+      })
+      .catch(() => {}); // silently ignore — no saved outline yet
+  }, [courseId]);
+
   // Form states
   const [courseTitle, setCourseTitle] = useState('');
   const [courseDescription, setCourseDescription] = useState('');
@@ -38,9 +52,9 @@ export default function AIAssistant({ courseId, onClose }: AIAssistantProps) {
     }
     setLoading(true);
     try {
-      const response = await aiApi.generateCourseOutline(courseTitle, courseDescription, duration);
+      const response = await aiApi.generateCourseOutline(courseTitle, courseDescription, duration, courseId);
       setResult(JSON.stringify(response.data.data, null, 2));
-      toast.success('Course outline generated!');
+      toast.success(courseId ? 'Course outline generated and saved!' : 'Course outline generated!');
     } catch (error) {
       toast.error('Failed to generate course outline');
     } finally {

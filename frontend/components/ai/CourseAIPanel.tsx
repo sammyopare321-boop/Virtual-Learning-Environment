@@ -60,9 +60,10 @@ const modes: Record<Mode, ModeConfig> = {
 interface CourseAIPanelProps {
   defaultMode?: Mode;
   courseTitle?: string;
+  courseId?: string;
 }
 
-export default function CourseAIPanel({ defaultMode = 'quiz', courseTitle }: CourseAIPanelProps) {
+export default function CourseAIPanel({ defaultMode = 'quiz', courseTitle, courseId }: CourseAIPanelProps) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>(defaultMode);
   const [topic, setTopic] = useState('');
@@ -95,7 +96,7 @@ export default function CourseAIPanel({ defaultMode = 'quiz', courseTitle }: Cou
           setResult(res.data?.data);
           break;
         case 'outline':
-          res = await aiApi.generateCourseOutline(topic, extra || courseTitle || topic, Number(count) || 12);
+          res = await aiApi.generateCourseOutline(topic, extra || courseTitle || topic, Number(count) || 12, courseId);
           setResult(res.data?.data);
           break;
         case 'feedback':
