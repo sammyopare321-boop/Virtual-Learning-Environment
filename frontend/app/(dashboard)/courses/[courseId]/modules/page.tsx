@@ -31,6 +31,18 @@ const CONTENT_CONFIG = {
   image: { icon: ImageIcon,    bg: 'bg-purple-50',  text: 'text-purple-600',  border: 'border-purple-100',  label: 'Illustration' }
 };
 
+/**
+ * Converts a Cloudinary URL to a browser-openable URL.
+ * Cloudinary raw uploads aren't directly viewable — this fixes the delivery type.
+ */
+function getOpenableUrl(url: string): string {
+  if (!url) return '#';
+  // Already a proper http URL that isn't Cloudinary raw — return as-is
+  if (!url.includes('res.cloudinary.com')) return url;
+  // Convert /raw/upload/ to /image/upload/ for PDFs so browser can open them
+  return url.replace('/raw/upload/', '/image/upload/');
+}
+
 export default function ModulesPage() {
   const { courseId } = useParams() as { courseId: string };
   const { user } = useAuth();
@@ -436,7 +448,7 @@ export default function ModulesPage() {
                                       </button>
                                     )}
                                     <a 
-                                      href={item.fileUrl} target="_blank" rel="noopener noreferrer" 
+                                      href={getOpenableUrl(item.fileUrl)} target="_blank" rel="noopener noreferrer" 
                                       aria-label={`Download ${item.title}`}
                                       title={`Download ${item.title}`}
                                       className="w-9 h-9 rounded-xl bg-primary-500 text-white hover:bg-primary-600 shadow-md shadow-primary-500/10 flex items-center justify-center transition-all active:scale-90"

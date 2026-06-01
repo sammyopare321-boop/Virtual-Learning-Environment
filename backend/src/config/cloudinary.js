@@ -13,20 +13,28 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
-    // Determine folder based on file type or route
     let folder = 'lms/others';
+    let resource_type = 'auto';
+
     if (file.mimetype.startsWith('video')) {
       folder = 'lms/videos';
+      resource_type = 'video';
     } else if (file.mimetype.startsWith('image')) {
       folder = 'lms/images';
+      resource_type = 'image';
     } else if (file.mimetype === 'application/pdf') {
       folder = 'lms/documents';
+      resource_type = 'image'; // Cloudinary renders PDFs as images when resource_type is 'image'
+    } else {
+      folder = 'lms/documents';
+      resource_type = 'raw';
     }
 
     return {
-      folder: folder,
-      resource_type: 'auto', // Important for non-image files
-      public_id: `${Date.now()}-${file.originalname.split('.')[0]}`,
+      folder,
+      resource_type,
+      public_id: `${Date.now()}-${file.originalname.replace(/\.[^/.]+$/, '').replace(/\s+/g, '_')}`,
+      format: file.mimetype === 'application/pdf' ? 'pdf' : undefined,
     };
   },
 });
