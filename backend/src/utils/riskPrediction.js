@@ -3,7 +3,7 @@
  * Predicts at-risk students and generates intervention recommendations
  */
 
-const { getClient, getModel } = require('./aiHelper');
+const { createCompletion, parseJSON } = require('./aiClient');
 
 /**
  * Analyze student data and predict risk level
@@ -34,27 +34,15 @@ Provide analysis in JSON format:
   "recommendations": ["recommendation1", "recommendation2"]
 }`;
 
-    const response = await getClient().chat.completions.create({
-      model: getModel(),
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: `Predict risk for this student:\n\nStudent Data: ${JSON.stringify(studentData)}\n\nHistorical Data: ${JSON.stringify(historicalData)}`,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-    });
+    const response = await createCompletion([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `Predict risk for this student:\n\nStudent Data: ${JSON.stringify(studentData)}\n\nHistorical Data: ${JSON.stringify(historicalData)}` }
+    ], 2000);
 
-    const content = response.choices[0].message.content;
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+    try {
+      return parseJSON(response.choices[0].message.content);
+    } catch (e) {
+      console.warn("Failed to parse AI response for predictStudentRisk, falling back to default.");
     }
 
     return {
@@ -69,7 +57,16 @@ Provide analysis in JSON format:
     };
   } catch (error) {
     console.error('Error predicting student risk:', error);
-    throw new Error('Failed to predict student risk');
+    return {
+      riskScore: 0,
+      riskLevel: 'low',
+      riskFactors: [],
+      predictedOutcome: 'Unknown',
+      interventionUrgency: 'low',
+      confidenceScore: 0,
+      keyIndicators: [],
+      recommendations: [],
+    };
   }
 }
 
@@ -115,32 +112,20 @@ Format response as JSON:
   "contingencyPlans": ["plan1", "plan2"]
 }`;
 
-    const response = await getClient().chat.completions.create({
-      model: getModel(),
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: `Create intervention plan for this at-risk student:\n\nRisk Prediction: ${JSON.stringify(riskPrediction)}\n\nStudent Data: ${JSON.stringify(studentData)}`,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 2500,
-    });
+    const response = await createCompletion([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `Create intervention plan for this at-risk student:\n\nRisk Prediction: ${JSON.stringify(riskPrediction)}\n\nStudent Data: ${JSON.stringify(studentData)}` }
+    ], 2500);
 
-    const content = response.choices[0].message.content;
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-
-    if (jsonMatch) {
-      const plan = JSON.parse(jsonMatch[0]);
+    try {
+      const plan = parseJSON(response.choices[0].message.content);
       return {
         ...plan,
         createdAt: new Date(),
         lastUpdated: new Date(),
       };
+    } catch (e) {
+      console.warn("Failed to parse AI response for generateInterventionPlan, falling back to default.");
     }
 
     return {
@@ -159,7 +144,20 @@ Format response as JSON:
     };
   } catch (error) {
     console.error('Error generating intervention plan:', error);
-    throw new Error('Failed to generate intervention plan');
+    return {
+      planName: 'Default Intervention Plan',
+      description: 'Default plan',
+      duration: '0',
+      interventions: [],
+      supportTeam: [],
+      checkpoints: [],
+      communicationPlan: '',
+      escalationProcedure: '',
+      expectedOutcome: '',
+      contingencyPlans: [],
+      createdAt: new Date(),
+      lastUpdated: new Date(),
+    };
   }
 }
 
@@ -187,33 +185,21 @@ Format response as JSON array:
   }
 ]`;
 
-    const response = await getClient().chat.completions.create({
-      model: getModel(),
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: `Identify at-risk students:\n\nStudents: ${JSON.stringify(students)}\n\nCourse Data: ${JSON.stringify(courseData)}`,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-    });
+    const response = await createCompletion([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `Identify at-risk students:\n\nStudents: ${JSON.stringify(students)}\n\nCourse Data: ${JSON.stringify(courseData)}` }
+    ], 2000);
 
-    const content = response.choices[0].message.content;
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+    try {
+      return parseJSON(response.choices[0].message.content);
+    } catch (e) {
+      console.warn("Failed to parse AI response for identifyAtRiskStudents, falling back to default.");
     }
 
     return [];
   } catch (error) {
     console.error('Error identifying at-risk students:', error);
-    throw new Error('Failed to identify at-risk students');
+    return [];
   }
 }
 
@@ -226,12 +212,7 @@ Format response as JSON array:
  */
 async function trackInterventionProgress(studentId, interventionPlan, progressData) {
   try {
-    const response = await getClient().chat.completions.create({
-      model: getModel(),
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert in tracking intervention effectiveness.
+    const systemPrompt = `You are an expert in tracking intervention effectiveness.
 Analyze the progress data and provide feedback on intervention effectiveness.
 
 Format response as JSON:
@@ -246,22 +227,17 @@ Format response as JSON:
   "estimatedTimeToRecovery": "estimated time",
   "motivationalMessage": "Encouraging message",
   "flagsForReview": ["flag1", "flag2"]
-}`,
-        },
-        {
-          role: 'user',
-          content: `Track intervention progress:\n\nIntervention Plan: ${JSON.stringify(interventionPlan)}\n\nProgress Data: ${JSON.stringify(progressData)}`,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 1500,
-    });
+}`;
 
-    const content = response.choices[0].message.content;
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    const response = await createCompletion([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `Track intervention progress:\n\nIntervention Plan: ${JSON.stringify(interventionPlan)}\n\nProgress Data: ${JSON.stringify(progressData)}` }
+    ], 1500, 0.7);
 
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+    try {
+      return parseJSON(response.choices[0].message.content);
+    } catch (e) {
+      console.warn("Failed to parse AI response for trackInterventionProgress, falling back to default.");
     }
 
     return {
@@ -278,7 +254,18 @@ Format response as JSON:
     };
   } catch (error) {
     console.error('Error tracking intervention progress:', error);
-    throw new Error('Failed to track intervention progress');
+    return {
+      progressScore: 0,
+      progressLevel: 'no progress',
+      completedInterventions: [],
+      pendingInterventions: [],
+      effectivenessAnalysis: '',
+      adjustments: [],
+      nextSteps: [],
+      estimatedTimeToRecovery: '',
+      motivationalMessage: '',
+      flagsForReview: [],
+    };
   }
 }
 
@@ -290,12 +277,7 @@ Format response as JSON:
  */
 async function generateRiskReport(students, courseData) {
   try {
-    const response = await getClient().chat.completions.create({
-      model: getModel(),
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert educational analyst.
+    const systemPrompt = `You are an expert educational analyst.
 Generate a comprehensive risk report for a course.
 
 Format response as JSON:
@@ -316,22 +298,17 @@ Format response as JSON:
   "resourcesNeeded": ["resource1", "resource2"],
   "successStories": ["story1", "story2"],
   "areasOfConcern": ["area1", "area2"]
-}`,
-        },
-        {
-          role: 'user',
-          content: `Generate risk report:\n\nStudents: ${JSON.stringify(students)}\n\nCourse Data: ${JSON.stringify(courseData)}`,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 1500,
-    });
+}`;
 
-    const content = response.choices[0].message.content;
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    const response = await createCompletion([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `Generate risk report:\n\nStudents: ${JSON.stringify(students)}\n\nCourse Data: ${JSON.stringify(courseData)}` }
+    ], 1500, 0.7);
 
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+    try {
+      return parseJSON(response.choices[0].message.content);
+    } catch (e) {
+      console.warn("Failed to parse AI response for generateRiskReport, falling back to default.");
     }
 
     return {
@@ -349,7 +326,19 @@ Format response as JSON:
     };
   } catch (error) {
     console.error('Error generating risk report:', error);
-    throw new Error('Failed to generate risk report');
+    return {
+      reportDate: new Date(),
+      courseOverview: '',
+      totalStudents: 0,
+      atRiskCount: 0,
+      riskDistribution: { low: 0, medium: 0, high: 0, critical: 0 },
+      commonRiskFactors: [],
+      trends: [],
+      recommendations: [],
+      resourcesNeeded: [],
+      successStories: [],
+      areasOfConcern: [],
+    };
   }
 }
 

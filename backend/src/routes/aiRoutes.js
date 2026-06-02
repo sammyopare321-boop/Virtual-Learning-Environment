@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
+const rateLimit = require('express-rate-limit');
 const { protect: auth, authorize } = require('../middleware/auth');
 
 // AI utility imports
@@ -24,6 +25,116 @@ const AttendanceRecord = require('../models/AttendanceRecord');
 
 const teacherOnly = authorize('teacher', 'admin');
 
+// ─── INPUT VALIDATION MIDDLEWARE ──────────────────────────────────────────────
+
+/**
+ * Validate quiz generation request parameters
+ * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 5.4
+ */
+function validateQuizRequest(req, res, next) {
+  const { topic, count, difficulty } = req.body;
+  
+  // Validate topic is a non-empty string
+  if (!topic || typeof topic !== 'string' || topic.trim().length === 0) {
+    console.info('[VALIDATION_ERROR]', {
+      timestamp: new Date().toISOString(),
+      userId: req.user?.id,
+      endpoint: req.path,
+      field: 'topic',
+      error: 'Topic is required and must be a non-empty string',
+    });
+    return res.status(400).json({
+      success: false,
+      message: 'Topic is required and must be a non-empty string',
+    });
+  }
+  
+  // Validate count is an integer between 1 and 20
+  if (count !== undefined) {
+    const countNum = Number(count);
+    if (!Number.isInteger(countNum) || countNum < 1 || countNum > 20) {
+      console.info('[VALIDATION_ERROR]', {
+        timestamp: new Date().toISOString(),
+        userId: req.user?.id,
+        endpoint: req.path,
+        field: 'count',
+        value: count,
+        error: 'Count must be an integer between 1 and 20',
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Count must be an integer between 1 and 20',
+      });
+    }
+    req.body.count = countNum;
+  } else {
+    req.body.count = 5; // default
+  }
+  
+  // Validate difficulty is one of the allowed values
+  const validDifficulties = ['easy', 'medium', 'hard'];
+  if (difficulty && !validDifficulties.includes(difficulty)) {
+    console.info('[VALIDATION_ERROR]', {
+      timestamp: new Date().toISOString(),
+      userId: req.user?.id,
+      endpoint: req.path,
+      field: 'difficulty',
+      value: difficulty,
+      error: `Difficulty must be one of: ${validDifficulties.join(', ')}`,
+    });
+    return res.status(400).json({
+      success: false,
+      message: `Difficulty must be one of: ${validDifficulties.join(', ')}`,
+    });
+  }
+  
+  next();
+}
+
+// ─── RATE LIMITING CONFIGURATION ─────────────────────────────────────────────
+
+// Rate limiter factory function
+const createRateLimiter = (max, message) => rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max,
+  keyGenerator: (req) => {
+    // Use user ID if authenticated, otherwise fall back to IP
+    if (req.user?.id) {
+      return `user:${req.user.id}`;
+    }
+    // For IP-based limiting, let express-rate-limit handle IPv6 automatically
+    return undefined; // This tells express-rate-limit to use default IP extraction
+  },
+  handler: (req, res) => {
+    console.info('[RATE_LIMIT]', {
+      event: 'limit_exceeded',
+      timestamp: new Date().toISOString(),
+      userId: req.user?.id,
+      endpoint: req.path,
+      limit: max,
+    });
+    res.status(429).json({
+      success: false,
+      message: message || 'Too many requests. Please try again later.',
+      retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000),
+    });
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Skip failed requests (don't count them against the limit)
+  skipFailedRequests: false,
+  // Skip successful requests (useful for debugging, set to false in production)
+  skipSuccessfulRequests: false,
+});
+
+// Rate limiter tiers
+const restrictiveLimiter = createRateLimiter(3, 'Too many requests for this resource-intensive operation. Please try again later.');
+const conservativeLimiter = createRateLimiter(5, 'Too many requests. Please try again later.');
+const standardLimiter = createRateLimiter(10, 'Too many requests. Please try again later.');
+const moderateLimiter = createRateLimiter(15, 'Too many requests. Please try again later.');
+const generousLimiter = createRateLimiter(20, 'Too many requests. Please try again later.');
+const veryGenerousLimiter = createRateLimiter(30, 'Too many requests. Please try again later.');
+
 // Custom error handler for AI routes to provide better error messages
 const handleAIError = (res, error, defaultMessage) => {
   if (error.message?.includes('API key')) {
@@ -40,7 +151,7 @@ const handleAIError = (res, error, defaultMessage) => {
 
 // ─── COURSE CONTENT GENERATION ───────────────────────────────────────────────
 
-router.post('/course-outline', auth, teacherOnly, asyncHandler(async (req, res) => {
+router.post('/course-outline', auth, teacherOnly, conservativeLimiter, asyncHandler(async (req, res) => {
   const { courseTitle, courseDescription, duration, courseId } = req.body;
   if (!courseTitle || !courseDescription || !duration) return res.status(400).json({ message: 'Missing required fields' });
 
@@ -71,35 +182,34 @@ router.get('/course-outline/:courseId', auth, asyncHandler(async (req, res) => {
   res.json({ success: true, data: { outline: course.outline, generatedAt: course.outlineGeneratedAt, courseTitle: course.title } });
 }));
 
-router.post('/quiz-questions', auth, teacherOnly, asyncHandler(async (req, res) => {
+router.post('/quiz-questions', auth, teacherOnly, standardLimiter, validateQuizRequest, asyncHandler(async (req, res) => {
   const { topic, difficulty = 'medium', count = 5 } = req.body;
-  if (!topic) return res.status(400).json({ message: 'Topic is required' });
   const questions = await generateQuizQuestions(topic, difficulty, count);
   res.json({ success: true, data: questions, message: 'Quiz questions generated successfully' });
 }));
 
-router.post('/assignment-prompt', auth, teacherOnly, asyncHandler(async (req, res) => {
+router.post('/assignment-prompt', auth, teacherOnly, standardLimiter, asyncHandler(async (req, res) => {
   const { topic, learningOutcomes, difficulty = 'medium' } = req.body;
   if (!topic || !learningOutcomes?.length) return res.status(400).json({ message: 'Topic and learning outcomes are required' });
   const assignment = await generateAssignmentPrompt(topic, learningOutcomes, difficulty);
   res.json({ success: true, data: assignment, message: 'Assignment prompt generated successfully' });
 }));
 
-router.post('/lecture-notes', auth, teacherOnly, asyncHandler(async (req, res) => {
+router.post('/lecture-notes', auth, teacherOnly, standardLimiter, asyncHandler(async (req, res) => {
   const { topic, subtopics = [] } = req.body;
   if (!topic) return res.status(400).json({ message: 'Topic is required' });
   const notes = await generateLectureNotes(topic, subtopics);
   res.json({ success: true, data: notes, message: 'Lecture notes generated successfully' });
 }));
 
-router.post('/student-feedback', auth, teacherOnly, asyncHandler(async (req, res) => {
+router.post('/student-feedback', auth, teacherOnly, generousLimiter, asyncHandler(async (req, res) => {
   const { submissionContent, rubricCriteria, score } = req.body;
   if (!submissionContent || !rubricCriteria || score === undefined) return res.status(400).json({ message: 'Missing required fields' });
   const feedback = await generateStudentFeedback(submissionContent, rubricCriteria, score);
   res.json({ success: true, data: feedback, message: 'Student feedback generated successfully' });
 }));
 
-router.post('/syllabus', auth, teacherOnly, asyncHandler(async (req, res) => {
+router.post('/syllabus', auth, teacherOnly, conservativeLimiter, asyncHandler(async (req, res) => {
   const { title, code, instructor, duration, level, description } = req.body;
   if (!title || !code || !instructor || !duration || !level || !description) return res.status(400).json({ message: 'Missing required fields' });
   const syllabus = await generateSyllabus({ title, code, instructor, duration, level, description });
@@ -110,7 +220,7 @@ router.post('/syllabus', auth, teacherOnly, asyncHandler(async (req, res) => {
 // Give it a title (and optionally description/duration) and it generates the
 // outline then saves the course + modules to the database in one shot.
 
-router.post('/create-course', auth, teacherOnly, asyncHandler(async (req, res) => {
+router.post('/create-course', auth, teacherOnly, restrictiveLimiter, asyncHandler(async (req, res) => {
   const { courseTitle, courseDescription, duration = 12, semester, academicYear } = req.body;
 
   if (!courseTitle) return res.status(400).json({ success: false, message: 'courseTitle is required' });
@@ -173,28 +283,28 @@ router.post('/create-course', auth, teacherOnly, asyncHandler(async (req, res) =
 
 // ─── TUTORING ─────────────────────────────────────────────────────────────────
 
-router.post('/tutoring', auth, asyncHandler(async (req, res) => {
+router.post('/tutoring', auth, veryGenerousLimiter, asyncHandler(async (req, res) => {
   const { question, courseTitle, topic, studentLevel = 'intermediate' } = req.body;
   if (!question || !courseTitle || !topic) return res.status(400).json({ message: 'Missing required fields' });
   const response = await generateTutoringResponse(question, courseTitle, topic, studentLevel);
   res.json({ success: true, data: response, message: 'Tutoring response generated successfully' });
 }));
 
-router.post('/practice-problems', auth, asyncHandler(async (req, res) => {
+router.post('/practice-problems', auth, moderateLimiter, asyncHandler(async (req, res) => {
   const { topic, difficulty = 'medium', count = 5 } = req.body;
   if (!topic) return res.status(400).json({ message: 'Topic is required' });
   const problems = await generatePracticeProblems(topic, difficulty, count);
   res.json({ success: true, data: problems, message: 'Practice problems generated successfully' });
 }));
 
-router.post('/analyze-answer', auth, asyncHandler(async (req, res) => {
+router.post('/analyze-answer', auth, generousLimiter, asyncHandler(async (req, res) => {
   const { question, studentAnswer, topic } = req.body;
   if (!question || !studentAnswer || !topic) return res.status(400).json({ message: 'Missing required fields' });
   const feedback = await analyzeStudentAnswer(question, studentAnswer, topic);
   res.json({ success: true, data: feedback, message: 'Answer analysis completed successfully' });
 }));
 
-router.post('/explain-concept', auth, asyncHandler(async (req, res) => {
+router.post('/explain-concept', auth, generousLimiter, asyncHandler(async (req, res) => {
   const { concept, courseContext, studentLevel = 'intermediate' } = req.body;
   if (!concept || !courseContext) return res.status(400).json({ message: 'Missing required fields' });
   const explanation = await explainConcept(concept, courseContext, studentLevel);
@@ -203,7 +313,7 @@ router.post('/explain-concept', auth, asyncHandler(async (req, res) => {
 
 // ─── GRADING ──────────────────────────────────────────────────────────────────
 
-router.post('/grade-submission', auth, teacherOnly, asyncHandler(async (req, res) => {
+router.post('/grade-submission', auth, teacherOnly, veryGenerousLimiter, asyncHandler(async (req, res) => {
   const { submissionId, rubricCriteria, totalPoints, assignmentDescription } = req.body;
   if (!submissionId || !rubricCriteria || !totalPoints || !assignmentDescription) {
     return res.status(400).json({ message: 'Missing required fields' });
@@ -218,7 +328,7 @@ router.post('/grade-submission', auth, teacherOnly, asyncHandler(async (req, res
   res.json({ success: true, data: gradingResult, message: 'Submission graded successfully' });
 }));
 
-router.post('/grade-batch', auth, teacherOnly, asyncHandler(async (req, res) => {
+router.post('/grade-batch', auth, teacherOnly, restrictiveLimiter, asyncHandler(async (req, res) => {
   const { assignmentId, rubricCriteria, totalPoints, assignmentDescription } = req.body;
   if (!assignmentId || !rubricCriteria || !totalPoints || !assignmentDescription) {
     return res.status(400).json({ message: 'Missing required fields' });
@@ -247,7 +357,7 @@ router.get('/grading-history/:assignmentId', auth, teacherOnly, asyncHandler(asy
   res.json({ success: true, data: submissions, message: 'Grading history retrieved successfully' });
 }));
 
-router.post('/generate-rubric', auth, teacherOnly, asyncHandler(async (req, res) => {
+router.post('/generate-rubric', auth, teacherOnly, standardLimiter, asyncHandler(async (req, res) => {
   const { assignmentDescription, totalPoints = 100 } = req.body;
   if (!assignmentDescription) return res.status(400).json({ message: 'Assignment description is required' });
   const rubric = await generateRubric(assignmentDescription, totalPoints);
@@ -272,7 +382,7 @@ router.post('/personalized-feedback', auth, teacherOnly, asyncHandler(async (req
 
 // ─── PLAGIARISM ───────────────────────────────────────────────────────────────
 
-router.post('/check-plagiarism', auth, teacherOnly, asyncHandler(async (req, res) => {
+router.post('/check-plagiarism', auth, teacherOnly, generousLimiter, asyncHandler(async (req, res) => {
   const { submissionId } = req.body;
   if (!submissionId) return res.status(400).json({ message: 'Submission ID is required' });
 
@@ -367,7 +477,7 @@ router.get('/flagged-submissions/:assignmentId', auth, teacherOnly, asyncHandler
 
 // ─── LEARNING PATH ────────────────────────────────────────────────────────────
 
-router.post('/learning-path', auth, asyncHandler(async (req, res) => {
+router.post('/learning-path', auth, standardLimiter, asyncHandler(async (req, res) => {
   const { studentId, courseId } = req.body;
   if (!studentId || !courseId) return res.status(400).json({ message: 'Student ID and course ID are required' });
 
@@ -428,7 +538,7 @@ router.get('/learning-resources', auth, asyncHandler(async (req, res) => {
 
 // ─── RISK PREDICTION ──────────────────────────────────────────────────────────
 
-router.post('/at-risk-students', auth, teacherOnly, asyncHandler(async (req, res) => {
+router.post('/at-risk-students', auth, teacherOnly, standardLimiter, asyncHandler(async (req, res) => {
   const { courseId } = req.body;
   if (!courseId) return res.status(400).json({ message: 'Course ID is required' });
 
@@ -497,7 +607,7 @@ router.get('/risk-score/:studentId', auth, asyncHandler(async (req, res) => {
   res.json({ success: true, data: riskPrediction, message: 'Risk score calculated successfully' });
 }));
 
-router.post('/intervention', auth, teacherOnly, asyncHandler(async (req, res) => {
+router.post('/intervention', auth, teacherOnly, moderateLimiter, asyncHandler(async (req, res) => {
   const { studentId, riskPrediction } = req.body;
   if (!studentId || !riskPrediction) return res.status(400).json({ message: 'Student ID and risk prediction are required' });
 
@@ -531,7 +641,7 @@ router.post('/risk-report', auth, teacherOnly, asyncHandler(async (req, res) => 
 
 // ─── SEARCH ───────────────────────────────────────────────────────────────────
 
-router.post('/search', auth, asyncHandler(async (req, res) => {
+router.post('/search', auth, veryGenerousLimiter, asyncHandler(async (req, res) => {
   const { query, courseId, filters = {} } = req.body;
   if (!query) return res.status(400).json({ message: 'Search query is required' });
 
@@ -554,7 +664,7 @@ router.post('/search', auth, asyncHandler(async (req, res) => {
   res.json({ success: true, data: { results, totalResults: results.length, executionTime: Date.now() - startTime }, message: 'Search completed successfully' });
 }));
 
-router.post('/search/suggestions', auth, asyncHandler(async (req, res) => {
+router.post('/search/suggestions', auth, veryGenerousLimiter, asyncHandler(async (req, res) => {
   const { query } = req.body;
   if (!query) return res.status(400).json({ message: 'Query is required' });
   const suggestions = await generateSearchSuggestions(query, [], []);

@@ -1,33 +1,42 @@
-const { createCompletion, parseJSON } = require('./aiClient');
+const { createCompletion, parseJSON, sanitizeInput } = require('./aiClient');
 
 async function generateCourseOutline(courseTitle, courseDescription, duration) {
+  const sanitizedTitle = sanitizeInput(courseTitle);
+  const sanitizedDescription = sanitizeInput(courseDescription);
+  
   const response = await createCompletion([
     { role: 'system', content: 'You are an expert course designer. Generate detailed, structured course outlines. Always respond with valid JSON only, no markdown.' },
-    { role: 'user', content: `Create a detailed course outline for:\nTitle: ${courseTitle}\nDescription: ${courseDescription}\nDuration: ${duration} weeks\n\nFormat as JSON:\n{\n  "modules": [{"week": number, "title": string, "topics": [string], "learningOutcomes": [string], "activities": [string]}],\n  "assessments": [string],\n  "resources": [string]\n}` }
+    { role: 'user', content: `Create a detailed course outline for:\nTitle: ${sanitizedTitle}\nDescription: ${sanitizedDescription}\nDuration: ${duration} weeks\n\nFormat as JSON:\n{\n  "modules": [{"week": number, "title": string, "topics": [string], "learningOutcomes": [string], "activities": [string]}],\n  "assessments": [string],\n  "resources": [string]\n}` }
   ], 2000);
   return parseJSON(response.choices[0].message.content);
 }
 
 async function generateQuizQuestions(topic, difficulty = 'medium', count = 5) {
+  const sanitizedTopic = sanitizeInput(topic);
+  
   const response = await createCompletion([
     { role: 'system', content: 'You are an expert educator. Generate high-quality quiz questions. Always respond with valid JSON only, no markdown.' },
-    { role: 'user', content: `Generate ${count} ${difficulty} quiz questions about: ${topic}\n\nFormat as JSON:\n{\n  "questions": [\n    {\n      "question": string,\n      "type": "multiple_choice",\n      "options": [string, string, string, string],\n      "correctAnswer": number (0-3 index),\n      "explanation": string,\n      "difficulty": "${difficulty}"\n    }\n  ]\n}` }
+    { role: 'user', content: `Generate ${count} ${difficulty} quiz questions about: ${sanitizedTopic}\n\nFormat as JSON:\n{\n  "questions": [\n    {\n      "question": string,\n      "type": "multiple_choice",\n      "options": [string, string, string, string],\n      "correctAnswer": number (0-3 index),\n      "explanation": string,\n      "difficulty": "${difficulty}"\n    }\n  ]\n}` }
   ], 2000);
   return parseJSON(response.choices[0].message.content);
 }
 
 async function generateAssignmentPrompt(topic, learningOutcomes, difficulty = 'medium') {
+  const sanitizedTopic = sanitizeInput(topic);
+  
   const response = await createCompletion([
     { role: 'system', content: 'You are an expert course designer. Create engaging assignment prompts. Always respond with valid JSON only, no markdown.' },
-    { role: 'user', content: `Create an assignment prompt for:\nTopic: ${topic}\nLearning Outcomes: ${learningOutcomes.join(', ')}\nDifficulty: ${difficulty}\n\nFormat as JSON:\n{\n  "title": string,\n  "description": string,\n  "objectives": [string],\n  "requirements": [string],\n  "rubric": {"criteria": [{"name": string, "description": string, "points": number}], "totalPoints": number},\n  "dueDate": "2 weeks",\n  "resources": [string]\n}` }
+    { role: 'user', content: `Create an assignment prompt for:\nTopic: ${sanitizedTopic}\nLearning Outcomes: ${learningOutcomes.join(', ')}\nDifficulty: ${difficulty}\n\nFormat as JSON:\n{\n  "title": string,\n  "description": string,\n  "objectives": [string],\n  "requirements": [string],\n  "rubric": {"criteria": [{"name": string, "description": string, "points": number}], "totalPoints": number},\n  "dueDate": "2 weeks",\n  "resources": [string]\n}` }
   ], 2000);
   return parseJSON(response.choices[0].message.content);
 }
 
 async function generateLectureNotes(topic, subtopics = []) {
+  const sanitizedTopic = sanitizeInput(topic);
+  
   const response = await createCompletion([
     { role: 'system', content: 'You are an expert educator. Create comprehensive, well-structured lecture notes. Always respond with valid JSON only, no markdown symbols like #, *, **, or ==.' },
-    { role: 'user', content: `Create detailed lecture notes for:\nTopic: ${topic}\n${subtopics.length > 0 ? `Subtopics: ${subtopics.join(', ')}` : ''}\n\nFormat as JSON:\n{\n  "title": string,\n  "introduction": string,\n  "keyConcepts": [{"term": string, "definition": string}],\n  "sections": [{"heading": string, "content": string, "examples": [string]}],\n  "summaryPoints": [string],\n  "discussionQuestions": [string],\n  "furtherReading": [string]\n}` }
+    { role: 'user', content: `Create detailed lecture notes for:\nTopic: ${sanitizedTopic}\n${subtopics.length > 0 ? `Subtopics: ${subtopics.join(', ')}` : ''}\n\nFormat as JSON:\n{\n  "title": string,\n  "introduction": string,\n  "keyConcepts": [{"term": string, "definition": string}],\n  "sections": [{"heading": string, "content": string, "examples": [string]}],\n  "summaryPoints": [string],\n  "discussionQuestions": [string],\n  "furtherReading": [string]\n}` }
   ], 3000);
   return parseJSON(response.choices[0].message.content);
 }

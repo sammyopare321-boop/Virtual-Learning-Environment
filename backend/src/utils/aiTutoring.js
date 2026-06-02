@@ -3,18 +3,22 @@
  * Provides personalized tutoring assistance to students
  */
 
-const { createCompletion } = require('./aiClient');
+const { createCompletion, sanitizeInput } = require('./aiClient');
 
 async function generateTutoringResponse(question, courseTitle, topic, studentLevel = 'intermediate') {
+  const sanitizedQuestion = sanitizeInput(question);
+  const sanitizedCourseTitle = sanitizeInput(courseTitle);
+  const sanitizedTopic = sanitizeInput(topic);
+  
   const response = await createCompletion([
     {
       role: 'system',
-      content: `You are an expert tutor. Course: ${courseTitle}, Topic: ${topic}, Level: ${studentLevel}. Respond with JSON only.
+      content: `You are an expert tutor. Course: ${sanitizedCourseTitle}, Topic: ${sanitizedTopic}, Level: ${studentLevel}. Respond with JSON only.
 
 Format:
 {"explanation": string, "keyPoints": [string], "examples": [string], "practiceProblems": [string], "relatedConcepts": [string], "tips": string}`,
     },
-    { role: 'user', content: question },
+    { role: 'user', content: sanitizedQuestion },
   ], 1500);
 
   const content = response.choices[0].message.content;
@@ -24,15 +28,17 @@ Format:
 }
 
 async function generatePracticeProblems(topic, difficulty = 'medium', count = 5) {
+  const sanitizedTopic = sanitizeInput(topic);
+  
   const response = await createCompletion([
     {
       role: 'system',
-      content: `You are an expert educator. Generate ${count} ${difficulty} practice problems for: ${topic}. Respond with JSON array only.
+      content: `You are an expert educator. Generate ${count} ${difficulty} practice problems for: ${sanitizedTopic}. Respond with JSON array only.
 
 Format:
 [{"problem": string, "hint": string, "solution": string, "explanation": string}]`,
     },
-    { role: 'user', content: `Generate ${count} ${difficulty} practice problems for: ${topic}` },
+    { role: 'user', content: `Generate ${count} ${difficulty} practice problems for: ${sanitizedTopic}` },
   ], 2000);
 
   const content = response.choices[0].message.content;
@@ -41,15 +47,19 @@ Format:
 }
 
 async function analyzeStudentAnswer(question, studentAnswer, topic) {
+  const sanitizedQuestion = sanitizeInput(question);
+  const sanitizedAnswer = sanitizeInput(studentAnswer);
+  const sanitizedTopic = sanitizeInput(topic);
+  
   const response = await createCompletion([
     {
       role: 'system',
-      content: `You are an expert tutor analyzing a student's answer. Topic: ${topic}. Respond with JSON only.
+      content: `You are an expert tutor analyzing a student's answer. Topic: ${sanitizedTopic}. Respond with JSON only.
 
 Format:
 {"isCorrect": boolean, "correctnessScore": number, "strengths": [string], "improvements": [string], "correctAnswer": string, "feedback": string, "nextSteps": string}`,
     },
-    { role: 'user', content: `Question: ${question}\n\nStudent's Answer: ${studentAnswer}` },
+    { role: 'user', content: `Question: ${sanitizedQuestion}\n\nStudent's Answer: ${sanitizedAnswer}` },
   ], 1000);
 
   const content = response.choices[0].message.content;
@@ -59,15 +69,18 @@ Format:
 }
 
 async function explainConcept(concept, courseContext, studentLevel = 'intermediate') {
+  const sanitizedConcept = sanitizeInput(concept);
+  const sanitizedContext = sanitizeInput(courseContext);
+  
   const response = await createCompletion([
     {
       role: 'system',
-      content: `You are an expert tutor. Course: ${courseContext}, Level: ${studentLevel}. Respond with JSON only.
+      content: `You are an expert tutor. Course: ${sanitizedContext}, Level: ${studentLevel}. Respond with JSON only.
 
 Format:
 {"definition": string, "explanation": string, "realWorldExamples": [string], "commonMisconceptions": [string], "relatedConcepts": [string], "visualDescription": string, "practiceAdvice": string}`,
     },
-    { role: 'user', content: `Explain the concept: ${concept}` },
+    { role: 'user', content: `Explain the concept: ${sanitizedConcept}` },
   ], 1500);
 
   const content = response.choices[0].message.content;
