@@ -211,35 +211,6 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/v1/auth', authRoutes);
 
-// ─── TEACHER ROUTES (inline to guarantee registration) ───────────────────────
-const { protect, authorize } = require('./middleware/auth');
-const teacherController = require('./controllers/teacherController');
-
-logger.info('[SERVER] Registering inline teacher routes...');
-app.get('/api/teachers/test', (req, res) => res.json({ success: true, message: 'Teacher routes OK', version: '1.1.2' }));
-app.get('/api/teachers/me/stats',               protect, authorize('teacher'), teacherController.getMyStats);
-app.get('/api/teachers/me/courses',             protect, authorize('teacher'), teacherController.getMyCourses);
-app.get('/api/teachers/me/pending-submissions', protect, authorize('teacher'), teacherController.getPendingSubmissions);
-app.get('/api/teachers/me/courses/:courseId/gradebook',   protect, authorize('teacher'), teacherController.getCourseGradebook);
-app.get('/api/teachers/me/courses/:courseId/analytics',   protect, authorize('teacher'), teacherController.getCourseAnalytics);
-app.get('/api/teachers/me/courses/:courseId/at-risk',     protect, authorize('teacher'), teacherController.getAtRiskStudents);
-app.get('/api/teachers/me/courses/:courseId/assignments', protect, authorize('teacher'), teacherController.getCourseAssignments);
-app.get('/api/teachers/me/courses/:courseId/quizzes',     protect, authorize('teacher'), teacherController.getCourseQuizzes);
-app.get('/api/teachers/me/assignments/:assignmentId/submissions', protect, authorize('teacher'), teacherController.getAssignmentSubmissions);
-app.get('/api/teachers/me/quizzes/:quizId/attempts',      protect, authorize('teacher'), teacherController.getQuizAttempts);
-
-app.get('/api/v1/teachers/test', (req, res) => res.json({ success: true, message: 'Teacher routes OK', version: '1.1.2' }));
-app.get('/api/v1/teachers/me/stats',               protect, authorize('teacher'), teacherController.getMyStats);
-app.get('/api/v1/teachers/me/courses',             protect, authorize('teacher'), teacherController.getMyCourses);
-app.get('/api/v1/teachers/me/pending-submissions', protect, authorize('teacher'), teacherController.getPendingSubmissions);
-app.get('/api/v1/teachers/me/courses/:courseId/gradebook',   protect, authorize('teacher'), teacherController.getCourseGradebook);
-app.get('/api/v1/teachers/me/courses/:courseId/analytics',   protect, authorize('teacher'), teacherController.getCourseAnalytics);
-app.get('/api/v1/teachers/me/courses/:courseId/at-risk',     protect, authorize('teacher'), teacherController.getAtRiskStudents);
-app.get('/api/v1/teachers/me/courses/:courseId/assignments', protect, authorize('teacher'), teacherController.getCourseAssignments);
-app.get('/api/v1/teachers/me/courses/:courseId/quizzes',     protect, authorize('teacher'), teacherController.getCourseQuizzes);
-app.get('/api/v1/teachers/me/assignments/:assignmentId/submissions', protect, authorize('teacher'), teacherController.getAssignmentSubmissions);
-app.get('/api/v1/teachers/me/quizzes/:quizId/attempts',      protect, authorize('teacher'), teacherController.getQuizAttempts);
-logger.info('[SERVER] Inline teacher routes registered.');
 
 // Standard API routes
 app.use('/api/teachers', teacherRoutes);

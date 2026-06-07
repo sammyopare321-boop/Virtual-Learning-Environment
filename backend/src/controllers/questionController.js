@@ -32,8 +32,31 @@ exports.getQuestions = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: 'This quiz has not been published yet' });
   }
 
-  const questions = await Question.find({ quiz: req.params.id }).sort('order');
-  res.status(200).json({ success: true, count: questions.length, data: questions });
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 100;
+  const startIndex = (page - 1) * limit;
+
+  const total = await Question.countDocuments({ quiz: req.params.id });
+
+  let query = Question.find({ quiz: req.params.id })
+    .sort('order')
+    .skip(startIndex)
+    .limit(limit);
+
+  if (req.user && (req.user.role === 'teacher' || req.user.role === 'admin')) {
+    query = query.select('+correctAnswer');
+  }
+
+  const questions = await query;
+
+  const pagination = {
+    total,
+    page,
+    limit,
+    pages: Math.ceil(total / limit)
+  };
+
+  res.status(200).json({ success: true, count: questions.length, pagination, data: questions });
 });
 
 exports.updateQuestion = asyncHandler(async (req, res) => {

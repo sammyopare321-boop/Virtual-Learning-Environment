@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -52,6 +52,7 @@ interface CourseFormState {
   schedule: Session[];
   modules: Module[];
   enrollmentType: 'open' | 'invite';
+  semester: 'Semester 1' | 'Semester 2';
   students: string[];
   maxStudents: number;
   gradingSystem: 'percentage' | 'passfail';
@@ -75,21 +76,12 @@ const STEPS = [
   { id: 'publish', title: 'Settings & Publish', icon: Settings, desc: 'Grading options and catalog launch' },
 ];
 
-export default function CourseWizard() {
+function CourseWizardContent() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   
-  // Auto-save status — initialized from localStorage to show restore message immediately
-  const [autoSaveStatus, setAutoSaveStatus] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem('courseWizard_draft');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed?.title || parsed?.code) return 'Draft restored from local save';
-      }
-    } catch { /* ignore */ }
-    return 'Saved just now';
-  });
+  const [autoSaveStatus, setAutoSaveStatus] = useState<string>('Saved just now');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // AI assist state
@@ -100,36 +92,46 @@ export default function CourseWizard() {
   const defaultTitle = searchParams.get('title') || '';
   const defaultCode = searchParams.get('code') || '';
 
-  // Form core state — lazy initializer merges localStorage draft on first render
-  const [form, setForm] = useState<CourseFormState>(() => {
-    const defaults: CourseFormState = {
-      title: defaultTitle,
-      code: defaultCode,
-      description: '',
-      thumbnail: '',
-      category: '',
-      level: 'beginner',
-      startDate: '',
-      endDate: '',
-      schedule: [],
-      modules: [],
-      enrollmentType: 'open',
-      students: [],
-      maxStudents: 50,
-      gradingSystem: 'percentage',
-      assignmentsEnabled: true,
-      certificateEnabled: true,
-      visibility: 'draft',
-    };
+  // Form core state
+  const [form, setForm] = useState<CourseFormState>({
+    title: defaultTitle,
+    code: defaultCode,
+    description: '',
+    thumbnail: '',
+    category: '',
+    level: 'beginner',
+    startDate: '',
+    endDate: '',
+    schedule: [],
+    modules: [],
+    enrollmentType: 'open',
+    semester: 'Semester 1',
+    students: [],
+    maxStudents: 50,
+    gradingSystem: 'percentage',
+    assignmentsEnabled: true,
+    certificateEnabled: true,
+    visibility: 'draft',
+  });
+
+  // Load from localStorage on mount (safe for SSR)
+  useEffect(() => {
     try {
       const saved = localStorage.getItem('courseWizard_draft');
       if (saved) {
         const parsed = JSON.parse(saved) as Partial<CourseFormState>;
-        if (parsed.title || parsed.code) return { ...defaults, ...parsed };
+        if (parsed.title || parsed.code) {
+          setForm(prev => ({
+            ...prev,
+            ...parsed,
+            title: defaultTitle || parsed.title || '',
+            code: defaultCode || parsed.code || '',
+          }));
+          setAutoSaveStatus('Draft restored from local save');
+        }
       }
     } catch { /* ignore corrupt drafts */ }
-    return defaults;
-  });
+  }, [defaultTitle, defaultCode]);
 
   const [availableStudents, setAvailableStudents] = useState<StudentOption[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
@@ -165,16 +167,19 @@ export default function CourseWizard() {
     fetchStudents();
   }, []);
 
-  // Auto-save: persist form draft to localStorage on every change
+  // Auto-save: debounced persist to localStorage — 800ms after the last form change
   useEffect(() => {
-    try {
-      localStorage.setItem('courseWizard_draft', JSON.stringify(form));
-      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const id = setTimeout(() => setAutoSaveStatus(`Draft saved at ${now}`), 0);
-      return () => clearTimeout(id);
-    } catch {
-      // localStorage unavailable
-    }
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem('courseWizard_draft', JSON.stringify(form));
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setAutoSaveStatus(`Draft saved at ${now}`);
+      } catch {
+        // localStorage unavailable
+      }
+    }, 800);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [form]);
 
   // Debounced course code uniqueness check
@@ -187,10 +192,9 @@ export default function CourseWizard() {
     if (codeCheckTimer.current) clearTimeout(codeCheckTimer.current);
     codeCheckTimer.current = setTimeout(async () => {
       try {
-        const res = await courseApi.getAll();
-        const courses: { code: string }[] = res.data?.data ?? [];
-        const taken = courses.some(c => c.code.toLowerCase() === form.code.toLowerCase());
-        setCodeStatus(taken ? 'taken' : 'available');
+        const res = await courseApi.checkCode(form.code);
+        const available: boolean = res.data?.data?.available ?? true;
+        setCodeStatus(available ? 'available' : 'taken');
       } catch {
         setCodeStatus('idle');
       }
@@ -205,10 +209,11 @@ export default function CourseWizard() {
       : 'CRS';
     let candidate = `${base}${Math.floor(100 + Math.random() * 900)}`;
     try {
-      const res = await courseApi.getAll();
-      const codes = new Set((res.data?.data ?? []).map((c: { code: string }) => c.code.toLowerCase()));
+      // Try up to 10 candidates until we find an available one
       let attempts = 0;
-      while (codes.has(candidate.toLowerCase()) && attempts < 10) {
+      while (attempts < 10) {
+        const res = await courseApi.checkCode(candidate);
+        if (res.data?.data?.available) break;
         candidate = `${base}${Math.floor(100 + Math.random() * 900)}`;
         attempts++;
       }
@@ -218,8 +223,8 @@ export default function CourseWizard() {
 
 
 
-  // Real-time validation system calculated dynamically during render
-  const warnings: string[] = (() => {
+  // Real-time validation — memoised so it only recomputes when relevant state changes
+  const warnings = useMemo(() => {
     const activeWarnings: string[] = [];
     if (currentStep === 0) {
       if (!form.title) activeWarnings.push('Please enter a course title to continue');
@@ -241,10 +246,11 @@ export default function CourseWizard() {
       if (form.modules.length === 0) activeWarnings.push('Add at least one module to architect your curriculum skeleton');
     }
     return activeWarnings;
-  })();
+  }, [currentStep, form, codeStatus]);
 
   const handleNext = () => {
     if (warnings.length > 0) return;
+    setCompletedSteps(prev => new Set([...prev, currentStep]));
     setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
   };
 
@@ -252,7 +258,11 @@ export default function CourseWizard() {
     setCurrentStep(prev => Math.max(prev - 1, 0));
   };
 
-  const handleAiGenerate = useCallback(() => {
+  const handleAiGenerate = useCallback((skipConfirm = false) => {
+    const hasContent = form.title || form.description || form.modules.length > 0;
+    if (hasContent && !skipConfirm) {
+      if (!confirm('AI will replace your current form data. Continue?')) return;
+    }
     setIsAiGenerating(true);
     setTimeout(() => {
       setForm(prev => ({
@@ -288,12 +298,13 @@ export default function CourseWizard() {
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setAutoSaveStatus(`AI generation loaded & saved at ${now}`);
     }, 1500);
-  }, []);
+  }, [form]);
 
   useEffect(() => {
     if (searchParams.get('ai') === 'true') {
-      // Defer to avoid synchronous setState inside effect body
-      const id = setTimeout(() => handleAiGenerate(), 0);
+      // Defer to avoid synchronous setState inside effect body.
+      // Skip confirm — on fresh load the form is empty, no content to protect.
+      const id = setTimeout(() => handleAiGenerate(true), 0);
       return () => clearTimeout(id);
     }
   }, [handleAiGenerate, searchParams]);
@@ -373,41 +384,53 @@ export default function CourseWizard() {
 
   // Memoized filtered student list
   const filteredStudents = useMemo(
-    () => availableStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase())),
+    () => availableStudents.filter(s => (s.name || '').toLowerCase().includes(studentSearch.toLowerCase())),
     [availableStudents, studentSearch]
   );
 
+  // Save Draft = flush to localStorage immediately and confirm — no API call.
+  // The auto-save effect already writes on every change; this just gives explicit feedback.
+  const handleSaveDraft = () => {
+    try {
+      localStorage.setItem('courseWizard_draft', JSON.stringify(form));
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setAutoSaveStatus(`Draft saved at ${now}`);
+      toast.success('Draft saved locally. Complete all steps to publish.');
+    } catch {
+      toast.error('Unable to save draft — localStorage may be full or blocked.');
+    }
+  };
+
   // Submit complete course details
   const handleSubmit = async (visibility: 'draft' | 'published') => {
-    // Block if code is taken or still being checked
-    if (codeStatus === 'taken') {
-      toast.error(`Course code "${form.code}" is already taken. Please use a different code.`);
+    // Block if code is empty or not confirmed available
+    if (!form.code || codeStatus !== 'available') {
+      toast.error(
+        !form.code           ? 'Please enter a course code.' :
+        codeStatus === 'taken'    ? `Course code "${form.code}" is already taken. Please use a different code.` :
+        codeStatus === 'checking' ? 'Please wait — checking code availability...' :
+                                    'Please enter and verify a unique course code.'
+      );
       setCurrentStep(0);
-      return;
-    }
-    if (codeStatus === 'checking') {
-      toast.error('Please wait — checking code availability...');
       return;
     }
 
     const submitToast = toast.loading('Publishing course and persisting structure...');
     try {
-      // 1. Derive semester & academic year from start date
+      // 1. Derive academic year from start date; semester is user-selected
       const currentYear = new Date().getFullYear();
       let academicYear = `${currentYear}/${currentYear + 1}`;
-      let semester: 'Semester 1' | 'Semester 2' = 'Semester 1';
       if (form.startDate) {
-        const dateObj = new Date(form.startDate);
-        const startYear = dateObj.getFullYear();
+        const startYear = new Date(form.startDate).getFullYear();
         academicYear = `${startYear}/${startYear + 1}`;
-        semester = dateObj.getMonth() >= 6 ? 'Semester 1' : 'Semester 2';
       }
+      const semester = form.semester;
 
       // 2. Build full course payload — all collected form fields
       const coursePayload = {
-        title: form.title || 'Untitled Course',
-        code: form.code || `CS-${Math.floor(Math.random() * 900 + 100)}`,
-        description: form.description || 'No description provided for this course.',
+        title: form.title,
+        code: form.code,
+        description: form.description,
         thumbnail: form.thumbnail || undefined,
         semester,
         academicYear,
@@ -432,7 +455,8 @@ export default function CourseWizard() {
 
       const courseId: string = res.data.data._id;
 
-          // 4. Persist modules in order (lessons are added later via the course editor)
+      // 4. Persist modules in order — lesson content requires file uploads and
+      //    must be added via the course editor after creation (createLesson uses multipart/form-data)
       if (form.modules.length > 0) {
         for (let idx = 0; idx < form.modules.length; idx++) {
           const mod = form.modules[idx];
@@ -476,9 +500,18 @@ export default function CourseWizard() {
       {/* 🧭 TOP NAVIGATION BAR */}
       <header className="sticky top-0 bg-white border-b border-slate-100 px-8 py-4 z-40 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
-          <Link href="/courses" className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:text-slate-900 flex items-center justify-center transition-colors">
+          <button
+            onClick={() => {
+              const hasWork = !!(form.title || form.modules.length > 0);
+              if (!hasWork || confirm('Leave without finishing? Your draft is saved locally.')) {
+                router.push('/courses');
+              }
+            }}
+            className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:text-slate-900 flex items-center justify-center transition-colors"
+            aria-label="Close wizard"
+          >
             <X size={20} />
-          </Link>
+          </button>
           <div className="h-6 w-px bg-slate-200" />
           <div>
             <h1 className="text-base font-extrabold text-slate-900 tracking-tight">Create Course</h1>
@@ -494,7 +527,7 @@ export default function CourseWizard() {
 
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => handleSubmit('draft')}
+            onClick={handleSaveDraft}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
           >
             <Save size={14} /> Save Draft
@@ -512,22 +545,21 @@ export default function CourseWizard() {
               {STEPS.map((step, idx) => {
                 const Icon = step.icon;
                 const isActive = currentStep === idx;
-                const isCompleted = idx < currentStep;
+                const isCompleted = completedSteps.has(idx);
+                const isNavigable = idx === currentStep || completedSteps.has(idx);
                 return (
                   <button
                     key={step.id}
                     onClick={() => {
-                      if (idx < currentStep || warnings.length === 0) {
-                        setCurrentStep(idx);
-                      }
+                      if (isNavigable) setCurrentStep(idx);
                     }}
-                    disabled={idx > currentStep && warnings.length > 0}
+                    disabled={!isNavigable}
                     className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all text-left group ${
                       isActive 
                         ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600' 
                         : isCompleted
                           ? 'text-emerald-600 hover:bg-slate-50' 
-                          : 'text-slate-400 hover:bg-slate-50'
+                          : 'text-slate-400 cursor-not-allowed opacity-50'
                     }`}
                   >
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
@@ -712,9 +744,15 @@ export default function CourseWizard() {
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 text-sm font-medium focus:bg-white focus:border-primary-500 transition-all outline-none"
                         />
                         {form.thumbnail && (
-                          <div className="mt-3 rounded-xl overflow-hidden border border-slate-200 h-28">
-                            <img src={form.thumbnail} alt="Thumbnail preview" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
-                          </div>
+                          /^https?:\/\//i.test(form.thumbnail) ? (
+                            <div className="mt-3 rounded-xl overflow-hidden border border-slate-200 h-28">
+                              <img src={form.thumbnail} alt="Thumbnail preview" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
+                            </div>
+                          ) : (
+                            <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                              <AlertCircle size={11} /> URL must start with https://
+                            </p>
+                          )
                         )}
                       </div>
                     </div>
@@ -755,10 +793,29 @@ export default function CourseWizard() {
                         </div>
                       </div>
 
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Semester *</label>
+                        <div className="h-11 flex rounded-xl overflow-hidden border border-slate-200">
+                          {(['Semester 1', 'Semester 2'] as const).map(s => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => setForm(p => ({ ...p, semester: s }))}
+                              className={`flex-1 h-full text-xs font-bold uppercase tracking-wider transition-all ${
+                                form.semester === s
+                                  ? 'bg-primary-600 text-white border-primary-600'
+                                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       <div className="border-t border-slate-100 pt-4">
                         <div className="flex items-center justify-between mb-4">
-                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Class Schedule *</label>
-                          <button 
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Class Schedule *</label>                          <button 
                             type="button" 
                             onClick={addScheduleSession}
                             className="flex items-center gap-1 text-xs font-bold text-primary-600 hover:underline"
@@ -826,6 +883,14 @@ export default function CourseWizard() {
                       >
                         <Plus size={14} /> Add Module
                       </button>
+                    </div>
+
+                    {/* Lesson persistence notice */}
+                    <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+                      <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                      <span>
+                        Module titles are saved when you publish. Lesson content (videos, documents, quizzes) must be uploaded from the course editor after creation — lesson titles added here are for planning only and will not be persisted.
+                      </span>
                     </div>
 
                     <div className="space-y-4">
@@ -1229,7 +1294,7 @@ export default function CourseWizard() {
                 </p>
                 <button
                   type="button"
-                  onClick={handleAiGenerate}
+                  onClick={() => handleAiGenerate()}
                   disabled={isAiGenerating}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-500 disabled:opacity-60 text-white font-bold text-xs transition-all"
                 >
@@ -1260,5 +1325,20 @@ export default function CourseWizard() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CourseWizard() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="flex flex-col items-center text-slate-400">
+          <SpinnerIcon size={32} className="animate-spin mb-4 text-primary-500" />
+          <p className="font-semibold text-sm">Loading builder...</p>
+        </div>
+      </div>
+    }>
+      <CourseWizardContent />
+    </Suspense>
   );
 }

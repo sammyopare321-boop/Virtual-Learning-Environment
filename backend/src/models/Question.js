@@ -36,5 +36,6 @@ const QuestionSchema = new mongoose.Schema({
     required: false
   }
 });
+QuestionSchema.index({ quiz: 1, order: 1 });
 
 module.exports = mongoose.model('Question', QuestionSchema);

@@ -19,6 +19,15 @@ exports.submitAssignment = async (req, res, next) => {
     return res.status(404).json({ success: false, message: 'Assignment not found' });
   }
 
+  const existingSubmission = await Submission.findOne({
+    assignment: req.params.id,
+    student: req.user.id
+  });
+
+  if (existingSubmission) {
+    return res.status(400).json({ success: false, message: 'You have already submitted this assignment' });
+  }
+
   const fileUrls = req.files ? req.files.map(file => file.path) : [];
 
   const submission = await Submission.create({
@@ -167,8 +176,7 @@ exports.gradeSubmission = async (req, res, next) => {
 // @route   GET /api/courses/:courseId/my-submissions
 // @access  Private (Student)
 exports.getMyCourseSubmissions = async (req, res, next) => {
-  const assignments = await Assignment.find({ course: req.params.courseId });
-  const assignmentIds = assignments.map(a => a._id);
+  const assignmentIds = await Assignment.find({ course: req.params.courseId }).distinct('_id');
 
   const submissions = await Submission.find({
     student: req.user.id,

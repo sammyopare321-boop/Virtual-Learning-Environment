@@ -100,11 +100,19 @@ exports.getMyStats = async (req, res, next) => {
     });
   }
 
-  const [assignmentsSubmitted, totalCourses, grades] = await Promise.all([
-    Submission.countDocuments({ student: req.user.id }),
+  const [submissions, totalCourses, grades] = await Promise.all([
+    Submission.find({ student: req.user.id }),
     Enrollment.countDocuments({ student: req.user.id, status: 'active' }),
     GradeItem.find({ student: req.user.id })
   ]);
+  
+  const assignmentsSubmitted = submissions.length;
+  
+  let onTimeRate = 100;
+  if (assignmentsSubmitted > 0) {
+    const lateSubmissions = submissions.filter(s => s.status === 'late').length;
+    onTimeRate = Math.round(((assignmentsSubmitted - lateSubmissions) / assignmentsSubmitted) * 100);
+  }
   
   let overallCompletion = 0;
   let gpa = 0;
@@ -124,7 +132,7 @@ exports.getMyStats = async (req, res, next) => {
       totalCourses,
       gpa: gpa || 0.0,
       studyHours: Math.floor(assignmentsSubmitted * 1.5) + 5, // Estimated based on activity
-      onTimeRate: 98 // Placeholder for now until we track late status more strictly
+      onTimeRate
     }
   });
 };

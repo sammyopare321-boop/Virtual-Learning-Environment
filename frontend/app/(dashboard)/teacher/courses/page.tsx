@@ -13,6 +13,16 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+interface Course {
+  _id: string;
+  title: string;
+  code: string;
+  studentCount?: number;
+  createdAt: string;
+  status: string;
+  description?: string;
+}
+
 export default function TeacherCoursesPage() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
@@ -26,11 +36,16 @@ export default function TeacherCoursesPage() {
   });
 
   const filteredCourses = courses
-    .filter((c: any) => c.title.toLowerCase().includes(search.toLowerCase()) || c.code.toLowerCase().includes(search.toLowerCase()))
-    .sort((a: any, b: any) => {
-      if (sortBy === 'name') return a.title.localeCompare(b.title);
+    .filter((c: Course) => {
+      const searchLower = search.toLowerCase();
+      const titleMatch = (c.title || '').toLowerCase().includes(searchLower);
+      const codeMatch = (c.code || '').toLowerCase().includes(searchLower);
+      return titleMatch || codeMatch;
+    })
+    .sort((a: Course, b: Course) => {
+      if (sortBy === 'name') return (a.title || '').localeCompare(b.title || '');
       if (sortBy === 'students') return (b.studentCount || 0) - (a.studentCount || 0);
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     });
 
   return (
@@ -62,7 +77,7 @@ export default function TeacherCoursesPage() {
         <div className="flex gap-2">
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as 'name' | 'students' | 'recent')}
             className="input-premium"
           >
             <option value="name">Sort by Name</option>
@@ -79,7 +94,7 @@ export default function TeacherCoursesPage() {
             <div key={i} className="h-64 rounded-xl bg-slate-100 animate-pulse" />
           ))}
         </div>
-      ) : filteredCourses.length === 0 ? (
+      ) : courses.length === 0 ? (
         <div className="py-16 text-center border border-dashed border-slate-200 rounded-xl">
           <BookOpen size={40} className="mx-auto text-slate-200 mb-3" />
           <h3 className="text-lg font-semibold text-slate-700 mb-1">No courses found</h3>
@@ -88,9 +103,15 @@ export default function TeacherCoursesPage() {
             Create Course
           </Link>
         </div>
+      ) : filteredCourses.length === 0 ? (
+        <div className="py-16 text-center border border-dashed border-slate-200 rounded-xl">
+          <Search size={40} className="mx-auto text-slate-200 mb-3" />
+          <h3 className="text-lg font-semibold text-slate-700 mb-1">No results found</h3>
+          <p className="text-slate-500">No courses match your search "{search}"</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCourses.map((course: any, idx: number) => (
+          {filteredCourses.map((course: Course, idx: number) => (
             <motion.div
               key={course._id}
               initial={{ opacity: 0, y: 12 }}

@@ -579,7 +579,7 @@ router.post('/at-risk-students', auth, teacherOnly, standardLimiter, asyncHandle
   res.json({ success: true, data: { students: atRiskStudents, report }, message: 'At-risk students identified successfully' });
 }));
 
-router.get('/risk-score/:studentId', auth, asyncHandler(async (req, res) => {
+router.get('/risk-score/:studentId', auth, teacherOnly, asyncHandler(async (req, res) => {
   const { studentId } = req.params;
   const { courseId } = req.query;
   if (!courseId) return res.status(400).json({ message: 'courseId query param is required' });

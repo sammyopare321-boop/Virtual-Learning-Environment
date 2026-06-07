@@ -6,9 +6,15 @@ services:
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
+      # Server-side only: used by Next.js rewrite proxy to forward /api/* to backend.
+      # Set this to your actual backend Render service URL (check Render dashboard).
+      - key: API_URL
+        value: https://virtual-learning-environment-backend.onrender.com
+      # NEXT_PUBLIC_API_URL is no longer used as axios baseURL.
+      # Axios uses empty baseURL; Next.js proxy rewrites /api/* to API_URL.
       - key: NEXT_PUBLIC_API_URL
-        value: https://virtual-learning-environment-th7m.onrender.com
+        value: ''
       - key: NEXT_PUBLIC_SOCKET_URL
-        value: https://virtual-learning-environment-th7m.onrender.com
+        value: https://virtual-learning-environment-backend.onrender.com
       - key: NODE_ENV
         value: production

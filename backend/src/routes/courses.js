@@ -9,9 +9,11 @@ const {
   updateCourse,
   deleteCourse,
   getCourseStudents,
-  enrollStudents
+  enrollStudents,
+  checkCode
 } = require('../controllers/courseController');
 
+router.get('/check-code', protect, checkCode);
 router.get('/', protect, getCourses);
 router.get('/:id', protect, getCourse);
 router.post('/',

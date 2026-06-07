@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+// Use empty baseURL so /api/* requests go to the same origin and are handled
+// by Next.js rewrite rules (which proxy to the real backend via API_URL or
+// NEXT_PUBLIC_API_URL set in next.config.ts). Avoids circular requests when
+// NEXT_PUBLIC_API_URL points to the frontend's own domain.
 const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || '',
+  baseURL: '',
   headers: { 'Content-Type': 'application/json' },
   timeout: 90000, // 90s — AI calls can take up to 60s across provider fallbacks
   withCredentials: true,

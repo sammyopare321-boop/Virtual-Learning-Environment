@@ -73,7 +73,7 @@ export interface Question {
   text: string;
   type: 'multiple_choice' | 'true_false' | 'short_answer';
   options?: string[];
-  correctAnswer: string;
+  correctAnswer?: string;
   marks: number;
   order: number;
   explanation?: string;
@@ -85,9 +85,12 @@ export interface Attempt {
   quiz: string | Quiz;
   startTime: string;
   endTime?: string;
-  answers: Record<string, string>;
+  submittedAt?: string;
+  answers?: { questionId: string; answer: string }[];
   score?: number;
-  status: 'started' | 'submitted' | 'graded';
+  totalMarks?: number;
+  percentage?: number;
+  status: 'in_progress' | 'submitted' | 'graded';
   feedback?: string;
 }
 
@@ -98,6 +101,7 @@ export interface LiveSession {
   course: string;
   instructor: string | User;
   scheduledAt: string;
+  duration?: number;
   status: 'scheduled' | 'live' | 'ended';
   roomUrl?: string;
 }

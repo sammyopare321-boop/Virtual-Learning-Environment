@@ -17,17 +17,17 @@ exports.register = async (req, res, next) => {
     role = 'student';
   }
 
-  // Check if user already exists
-  const existingUser = await User.findOne({ email });
-  if (existingUser) {
-    logger.warn(`[AUTH] Registration failed: Email already exists: ${email}`);
-    return res.status(400).json({
-      success: false,
-      message: 'An account with this email already exists. Please log in instead.',
-    });
-  }
-
   try {
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      logger.warn(`[AUTH] Registration failed: Email already exists: ${email}`);
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this email already exists. Please log in instead.',
+      });
+    }
+
     const user = await User.create({
       name,
       email,
@@ -144,7 +144,6 @@ exports.login = async (req, res, next) => {
     return res.status(500).json({
       success: false,
       message: error.message || 'An error occurred during login',
-      stack: error.stack,
     });
   }
 };
@@ -230,7 +229,7 @@ exports.forgotPassword = async (req, res, next) => {
             <a href="${resetUrl}" style="background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">Reset Password</a>
           </div>
           <p style="color: #999; font-size: 12px; line-height: 1.6;">Or copy this link: <a href="${resetUrl}" style="color: #667eea;">${resetUrl}</a></p>
-          <p style="color: #999; font-size: 12px; line-height: 1.6;">This link expires in 24 hours.</p>
+          <p style="color: #999; font-size: 12px; line-height: 1.6;">This link expires in 1 hour.</p>
           <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
           <p style="color: #999; font-size: 12px;">If you didn't request this, please ignore this email.</p>
         </div>
@@ -240,7 +239,7 @@ exports.forgotPassword = async (req, res, next) => {
     await sendEmail({
       to: user.email,
       subject: 'Reset Your UniLearn Password',
-      text: `Password Reset Request\n\nHi ${user.name},\n\nClick here to reset your password: ${resetUrl}\n\nThis link expires in 24 hours.`,
+      text: `Password Reset Request\n\nHi ${user.name},\n\nClick here to reset your password: ${resetUrl}\n\nThis link expires in 1 hour.`,
       html,
     });
   } catch (err) {
@@ -399,7 +398,12 @@ exports.googleLogin = async (req, res, next) => {
     const { email, name, email_verified, picture, aud } = googleRes.data;
 
     // Security: Verify audience to ensure the token was issued for our app
-    if (aud !== process.env.GOOGLE_CLIENT_ID) {
+    const allowedClients = [process.env.GOOGLE_CLIENT_ID];
+    const tokenAudiences = Array.isArray(aud) ? aud : [aud];
+    
+    const hasValidAudience = tokenAudiences.some(a => allowedClients.includes(a));
+
+    if (!hasValidAudience) {
       return res.status(401).json({
         success: false,
         message: 'Token audience mismatch',

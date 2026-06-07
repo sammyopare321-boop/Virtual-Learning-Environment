@@ -96,7 +96,10 @@ exports.submitAttempt = asyncHandler(async (req, res) => {
 
 exports.getMyAttempt = asyncHandler(async (req, res) => {
   const attempt = await QuizAttempt.findOne({ quiz: req.params.id, student: req.user.id });
-  if (!attempt) return res.status(404).json({ success: false, message: 'Attempt not found' });
+  if (!attempt) {
+    // Return 200 with null data instead of 404 for "no attempt yet" state
+    return res.status(200).json({ success: true, data: null });
+  }
   
   // If graded, build answer results for student review
   let answerResults = [];
@@ -115,8 +118,25 @@ exports.getMyAttempt = asyncHandler(async (req, res) => {
 });
 
 exports.getAllAttempts = asyncHandler(async (req, res) => {
-  const attempts = await QuizAttempt.find({ quiz: req.params.id }).populate('student', 'name email');
-  res.status(200).json({ success: true, count: attempts.length, data: attempts });
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 50;
+  const startIndex = (page - 1) * limit;
+
+  const total = await QuizAttempt.countDocuments({ quiz: req.params.id });
+
+  const attempts = await QuizAttempt.find({ quiz: req.params.id })
+    .populate('student', 'name email')
+    .skip(startIndex)
+    .limit(limit);
+
+  const pagination = {
+    total,
+    page,
+    limit,
+    pages: Math.ceil(total / limit)
+  };
+
+  res.status(200).json({ success: true, count: attempts.length, pagination, data: attempts });
 });
 
 exports.gradeAttempt = asyncHandler(async (req, res) => {

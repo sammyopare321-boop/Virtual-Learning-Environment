@@ -25,6 +25,9 @@ const EnrollmentSchema = new mongoose.Schema({
 // Prevent duplicate enrollments (unique compound index)
 EnrollmentSchema.index({ student: 1, course: 1 }, { unique: true });
 
+// Optimize common query finding students by course
+EnrollmentSchema.index({ course: 1, student: 1 });
+
 // Single-field indexes for individual query patterns
 EnrollmentSchema.index({ student: 1 });
 EnrollmentSchema.index({ course: 1 });

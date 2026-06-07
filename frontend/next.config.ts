@@ -7,14 +7,19 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'res.cloudinary.com' },
     ],
   },
-  // Proxy API calls in development to avoid CORS issues locally
+  // Proxy /api/* to the backend in both development and production.
+  // API_URL is a server-side env var pointing to the backend service URL.
+  // This keeps the backend URL private and avoids circular requests when
+  // NEXT_PUBLIC_API_URL was mistakenly set to the frontend's own domain.
   async rewrites() {
-    return process.env.NODE_ENV === 'development' ? [
+    const backendUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
+    if (!backendUrl) return [];
+    return [
       {
         source: '/api/:path*',
-        destination: 'https://virtual-learning-environment-th7m.onrender.com/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
       },
-    ] : [];
+    ];
   },
   async headers() {
     return [

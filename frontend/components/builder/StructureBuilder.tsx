@@ -19,8 +19,8 @@ import {
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { 
   Plus, Layers, FileText, Video, HelpCircle, 
-  Trash2, GripVertical, ChevronDown, ChevronRight,
-  Sparkles, Clock, Globe, Shield, MessageCircle
+  Trash2, GripVertical, ChevronDown,
+  Sparkles, MessageCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
@@ -38,16 +38,67 @@ interface Module {
   id: string;
   title: string;
   items: ContentItem[];
-  isExpanded?: boolean;
+}
+
+// --- SORTABLE ITEM COMPONENT ---
+function SortableItem({ item, onDelete, onUpdate, autoFocus }: { item: ContentItem; onDelete: () => void; onUpdate: (title: string) => void; autoFocus?: boolean }) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
+  React.useEffect(() => {
+    if (autoFocus && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [autoFocus]);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-4 p-4 rounded-2xl bg-slate-50/50 border border-slate-100 hover:bg-white hover:border-blue-200 hover:shadow-md transition-all group/item ${isDragging ? 'opacity-50 shadow-lg' : ''}`}
+    >
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 transition-colors">
+        <GripVertical size={16} />
+      </div>
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${getItemStyles(item.type)}`}>
+        {getItemIcon(item.type)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <input
+          ref={inputRef}
+          type="text"
+          value={item.title}
+          onChange={e => onUpdate(e.target.value)}
+          placeholder="Enter title..."
+          className="w-full bg-transparent border-none outline-none font-bold text-slate-900 text-sm focus:ring-2 focus:ring-blue-200 rounded px-1 py-0.5"
+        />
+        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{item.type}</span>
+      </div>
+      <button
+        title="Remove Item"
+        aria-label={`Delete the ${item.type}: ${item.title}`}
+        onClick={onDelete}
+        className="p-2 rounded-lg text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover/item:opacity-100 flex-shrink-0"
+      >
+        <Trash2 size={14} />
+      </button>
+    </div>
+  );
 }
 
 // --- SORTABLE MODULE COMPONENT ---
-function SortableModule({ module, onAddItem, onDeleteModule, onToggle, onUpdateModule }: { 
-  module: Module, 
+function SortableModule({ module, isExpanded, onAddItem, onDeleteModule, onDeleteItem, onReorderItems, onToggle, onUpdateModule, onUpdateItem }: { 
+  module: Module,
+  isExpanded: boolean,
   onAddItem: (type: ContentItem['type']) => void,
   onDeleteModule: () => void,
+  onDeleteItem: (itemId: string) => void,
+  onReorderItems: (newItems: ContentItem[]) => void,
   onToggle: () => void,
-  onUpdateModule: (title: string) => void
+  onUpdateModule: (title: string) => void,
+  onUpdateItem: (itemId: string, title: string) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: module.id });
 
@@ -57,9 +108,23 @@ function SortableModule({ module, onAddItem, onDeleteModule, onToggle, onUpdateM
     zIndex: isDragging ? 50 : 1,
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleItemDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = module.items.findIndex(i => i.id === active.id);
+      const newIndex = module.items.findIndex(i => i.id === over.id);
+      onReorderItems(arrayMove(module.items, oldIndex, newIndex));
+    }
+  };
+
   return (
     <div ref={setNodeRef} style={style} className={`mb-6 group ${isDragging ? 'opacity-50' : ''}`}>
-      <div className={`bg-white rounded-[32px] border-2 transition-all duration-500 overflow-hidden ${module.isExpanded ? 'border-blue-500 shadow-2xl shadow-blue-900/10' : 'border-slate-100 hover:border-slate-200 shadow-sm'}`}>
+      <div className={`bg-white rounded-[32px] border-2 transition-all duration-500 overflow-hidden ${isExpanded ? 'border-blue-500 shadow-2xl shadow-blue-900/10' : 'border-slate-100 hover:border-slate-200 shadow-sm'}`}>
         
         {/* Module Header */}
         <div className="flex items-center gap-4 p-6 lg:p-8">
@@ -69,7 +134,7 @@ function SortableModule({ module, onAddItem, onDeleteModule, onToggle, onUpdateM
            
            <div className="flex-1 min-w-0">
               <input 
-                className={`w-full bg-transparent border-none font-black text-xl lg:text-2xl tracking-tight outline-none focus:text-blue-600 transition-colors ${module.isExpanded ? 'text-blue-700' : 'text-slate-900'}`}
+                className={`w-full bg-transparent border-none font-black text-xl lg:text-2xl tracking-tight outline-none focus:text-blue-600 transition-colors ${isExpanded ? 'text-blue-700' : 'text-slate-900'}`}
                 value={module.title}
                 onChange={(e) => onUpdateModule(e.target.value)}
                 placeholder="Module Title..."
@@ -85,7 +150,12 @@ function SortableModule({ module, onAddItem, onDeleteModule, onToggle, onUpdateM
 
            <div className="flex items-center gap-2">
               <button 
-                onClick={onDeleteModule} 
+                onClick={() => {
+                  if (module.items.length > 0) {
+                    if (!confirm(`Delete "${module.title}" and its ${module.items.length} item${module.items.length !== 1 ? 's' : ''}?`)) return;
+                  }
+                  onDeleteModule();
+                }}
                 title="Delete Module"
                 aria-label={`Delete the module titled ${module.title}`}
                 className="p-3 rounded-2xl bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100"
@@ -94,9 +164,9 @@ function SortableModule({ module, onAddItem, onDeleteModule, onToggle, onUpdateM
               </button>
               <button 
                 onClick={onToggle} 
-                title={module.isExpanded ? "Collapse Module" : "Expand Module"}
-                aria-label={module.isExpanded ? "Collapse module details" : "Expand module details"}
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${module.isExpanded ? 'bg-blue-600 text-white rotate-180' : 'bg-slate-50 text-slate-400'}`}
+                title={isExpanded ? "Collapse Module" : "Expand Module"}
+                aria-label={isExpanded ? "Collapse module details" : "Expand module details"}
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${isExpanded ? 'bg-blue-600 text-white rotate-180' : 'bg-slate-50 text-slate-400'}`}
               >
                 <ChevronDown size={20} strokeWidth={3} />
               </button>
@@ -105,7 +175,7 @@ function SortableModule({ module, onAddItem, onDeleteModule, onToggle, onUpdateM
 
         {/* Module Content */}
         <AnimatePresence>
-          {module.isExpanded && (
+          {isExpanded && (
             <motion.div 
               initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
@@ -114,25 +184,24 @@ function SortableModule({ module, onAddItem, onDeleteModule, onToggle, onUpdateM
                  <div className="h-px bg-slate-100 mb-8" />
                  
                  <div className="space-y-3 mb-8">
-                    {module.items.map((item, i) => (
-                      <div key={item.id} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/50 border border-slate-100 hover:bg-white hover:border-blue-200 hover:shadow-md transition-all group/item">
-                         <div className="text-slate-300"><GripVertical size={16} /></div>
-                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${getItemStyles(item.type)}`}>
-                            {getItemIcon(item.type)}
-                         </div>
-                         <div className="flex-1">
-                            <h5 className="font-bold text-slate-900 text-sm">{item.title}</h5>
-                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{item.type}</span>
-                         </div>
-                         <button 
-                           title="Remove Item"
-                           aria-label={`Delete the ${item.type}: ${item.title}`}
-                           className="p-2 rounded-lg text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover/item:opacity-100"
-                         >
-                            <Trash2 size={14} />
-                         </button>
-                      </div>
-                    ))}
+                    <DndContext
+                      id={`dnd-ctx-${module.id}`}
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      modifiers={[restrictToVerticalAxis]}
+                      onDragEnd={handleItemDragEnd}
+                    >
+                      <SortableContext items={module.items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                        {module.items.map(item => (
+                          <SortableItem
+                            key={item.id}
+                            item={item}
+                            onDelete={() => onDeleteItem(item.id)}
+                            onUpdate={(title) => onUpdateItem(item.id, title)}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
                     {module.items.length === 0 && (
                       <div className="py-12 text-center border-2 border-dashed border-slate-100 rounded-[32px] flex flex-col items-center">
                          <Sparkles size={32} className="text-slate-200 mb-4" />
@@ -186,16 +255,31 @@ function getItemStyles(type: ContentItem['type']) {
 // --- MAIN BUILDER COMPONENT ---
 export default function StructureBuilder() {
   const [modules, setModules] = useState<Module[]>([
-    { id: 'm1', title: 'Getting Started: Fundamentals', isExpanded: true, items: [
+    { id: 'm1', title: 'Getting Started: Fundamentals', items: [
       { id: 'i1', title: 'Course Welcome & Vision', type: 'lesson' },
       { id: 'i2', title: 'Knowledge Assessment', type: 'quiz' },
     ] }
   ]);
+  
+  // Track expanded state separately - session-only, resets on component unmount
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(['m1']));
 
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  const handleToggle = (moduleId: string) => {
+    setExpandedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(moduleId)) {
+        newSet.delete(moduleId);
+      } else {
+        newSet.add(moduleId);
+      }
+      return newSet;
+    });
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -210,16 +294,17 @@ export default function StructureBuilder() {
 
   const addModule = () => {
     const newId = `m${Date.now()}`;
-    setModules([...modules, { id: newId, title: 'Untitled Module', items: [], isExpanded: true }]);
+    setModules(prev => [...prev, { id: newId, title: 'Untitled Module', items: [] }]);
   };
 
   const addItem = (moduleId: string, type: ContentItem['type']) => {
-    setModules(modules.map(m => {
-      if (m.id === moduleId) {
-        return { ...m, items: [...m.items, { id: `i${Date.now()}`, title: `New ${type}`, type }] };
-      }
-      return m;
-    }));
+    setModules(prev =>
+      prev.map(m =>
+        m.id === moduleId
+          ? { ...m, items: [...m.items, { id: `i${Date.now()}`, title: `New ${type}`, type }] }
+          : m
+      )
+    );
   };
 
   return (
@@ -248,11 +333,19 @@ export default function StructureBuilder() {
             {modules.map((module) => (
               <SortableModule 
                 key={module.id} 
-                module={module} 
-                onToggle={() => setModules(modules.map(m => m.id === module.id ? { ...m, isExpanded: !m.isExpanded } : m))}
+                module={module}
+                isExpanded={expandedIds.has(module.id)}
+                onToggle={() => handleToggle(module.id)}
                 onAddItem={(type) => addItem(module.id, type)}
-                onDeleteModule={() => setModules(modules.filter(m => m.id !== module.id))}
-                onUpdateModule={(title) => setModules(modules.map(m => m.id === module.id ? { ...m, title } : m))}
+                onDeleteModule={() => setModules(prev => prev.filter(m => m.id !== module.id))}
+                onDeleteItem={(itemId) => setModules(prev => prev.map(m =>
+                  m.id === module.id ? { ...m, items: m.items.filter(i => i.id !== itemId) } : m
+                ))}
+                onReorderItems={(newItems) => setModules(prev => prev.map(m =>
+                  m.id === module.id ? { ...m, items: newItems } : m
+                ))}
+                onUpdateModule={(title) => setModules(prev => prev.map(m => m.id === module.id ? { ...m, title } : m))}
+                onUpdateItem={(itemId, title) => setModules(prev => prev.map(m => m.id === module.id ? { ...m, items: m.items.map(i => i.id === itemId ? { ...i, title } : i) } : m))}
               />
             ))}
           </div>

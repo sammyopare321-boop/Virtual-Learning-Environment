@@ -3,6 +3,7 @@ import api from './axiosInstance';
 
 export const courseApi = {
   getAll:      (params?: { search?: string; status?: string })  => api.get('/api/v1/courses', { params }),
+  checkCode:   (code: string)  => api.get('/api/v1/courses/check-code', { params: { code } }),
   getOne:      (id: string)    => api.get(`/api/v1/courses/${id}`),
   create:      (data: Partial<Course>)     => api.post('/api/v1/courses', data),
   update:      (id: string, data: Partial<Course>)   => api.put(`/api/v1/courses/${id}`, data),

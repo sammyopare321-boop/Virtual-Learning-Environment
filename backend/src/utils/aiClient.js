@@ -4,7 +4,17 @@
  * Switches on any error (429 quota, 5xx, network, etc.)
  */
 
+const crypto = require('crypto');
 const OpenAI = require('openai');
+const logger = require('./logger');
+
+const aiCache = new Map();
+const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
+
+function getCacheKey(messages, maxTokens, temperature) {
+  const data = JSON.stringify({ messages, maxTokens, temperature });
+  return crypto.createHash('sha256').update(data).digest('hex');
+}
 
 const PROVIDERS = [
   {
@@ -67,6 +77,13 @@ const PROVIDERS = [
  * @returns {Promise<Object>} OpenAI-compatible completion response
  */
 async function createCompletion(messages, maxTokens = 2000, temperature = 0.7) {
+  const cacheKey = getCacheKey(messages, maxTokens, temperature);
+  const cached = aiCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    logger.info('[AI] Serving response from memory cache');
+    return cached.response;
+  }
+
   const active = PROVIDERS.filter(p => p.enabled());
 
   if (active.length === 0) {
@@ -77,14 +94,23 @@ async function createCompletion(messages, maxTokens = 2000, temperature = 0.7) {
 
   for (const provider of active) {
     try {
-      console.log(`[AI] Trying provider: ${provider.name}`);
+      logger.info(`[AI] Trying provider: ${provider.name}`);
       const response = await provider.client().chat.completions.create({
         model: provider.model,
         messages,
         max_tokens: maxTokens,
         temperature,
       });
-      console.log(`[AI] Success with provider: ${provider.name}`);
+      logger.info(`[AI] Success with provider: ${provider.name}`);
+      aiCache.set(cacheKey, { timestamp: Date.now(), response });
+      
+      // Basic cache cleanup (prevent memory leaks)
+      if (aiCache.size > 1000) {
+        for (const [key, val] of aiCache.entries()) {
+          if (Date.now() - val.timestamp > CACHE_TTL_MS) aiCache.delete(key);
+        }
+      }
+      
       return response;
     } catch (err) {
       console.error(`[AI] Provider ${provider.name} failed: ${err.message}`);

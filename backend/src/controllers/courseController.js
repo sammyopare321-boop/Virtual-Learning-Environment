@@ -138,7 +138,19 @@ exports.deleteCourse = async (req, res, next) => {
   });
 };
 
-// @desc    Get students enrolled in course
+// @desc    Check if a course code is available
+// @route   GET /api/courses/check-code?code=CS101
+// @access  Private
+exports.checkCode = async (req, res) => {
+  const { code } = req.query;
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ success: false, message: 'code query param is required' });
+  }
+  const exists = await Course.exists({ code: { $regex: new RegExp(`^${code.trim()}$`, 'i') } });
+  res.status(200).json({ success: true, data: { available: !exists } });
+};
+
+
 // @route   GET /api/courses/:id/students
 // @access  Private (Teacher)
 exports.getCourseStudents = async (req, res, next) => {

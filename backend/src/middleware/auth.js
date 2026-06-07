@@ -1,6 +1,9 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const userCache = new Map();
+const CACHE_TTL_MS = 1000 * 60; // 1 minute cache
+
 // Protect routes
 exports.protect = async (req, res, next) => {
   let token;
@@ -28,7 +31,21 @@ exports.protect = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = await User.findById(decoded.id);
+    const cachedUser = userCache.get(decoded.id);
+    if (cachedUser && Date.now() - cachedUser.timestamp < CACHE_TTL_MS) {
+      req.user = cachedUser.data;
+    } else {
+      req.user = await User.findById(decoded.id);
+      if (req.user) {
+        userCache.set(decoded.id, { timestamp: Date.now(), data: req.user });
+        
+        if (userCache.size > 2000) {
+          for (const [key, val] of userCache.entries()) {
+            if (Date.now() - val.timestamp > CACHE_TTL_MS) userCache.delete(key);
+          }
+        }
+      }
+    }
 
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Not authorized' });

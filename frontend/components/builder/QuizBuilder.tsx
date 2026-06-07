@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useRouter } from 'next/navigation';
 import { 
@@ -47,14 +47,17 @@ interface Question {
 }
 
 // --- SORTABLE QUESTION ITEM ---
-function QuestionSidebarItem({ question, isActive, onClick, onDelete, index }: { question: Question, isActive: boolean, onClick: () => void, onDelete: () => void, index: number }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: question.id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
-
+function QuestionSidebarItemContent({ 
+  question, isActive, isDragging, onClick, onDelete, index, attributes, listeners, setNodeRef, style 
+}: any) {
   return (
     <div 
       ref={setNodeRef} 
       style={style}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isActive}
+      onKeyDown={e => e.key === 'Enter' && onClick()}
       className={`group flex items-center gap-2 p-3 rounded-lg border transition-all cursor-pointer mb-2 ${
         isDragging
           ? 'opacity-50 bg-primary-50 border-primary-300'
@@ -85,6 +88,12 @@ function QuestionSidebarItem({ question, isActive, onClick, onDelete, index }: {
   );
 }
 
+function QuestionSidebarItem({ question, isActive, onClick, onDelete, index }: { question: Question, isActive: boolean, onClick: () => void, onDelete: () => void, index: number }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: question.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  return <QuestionSidebarItemContent {...{ question, isActive, isDragging, onClick, onDelete, index, attributes, listeners, setNodeRef, style }} />;
+}
+
 // --- MAIN QUIZ BUILDER ---
 export default function QuizBuilder() {
   const { courseId } = useParams() as { courseId: string };
@@ -95,7 +104,6 @@ export default function QuizBuilder() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [saving, setSaving] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
   
   // Form State
   const [quizDetails, setQuizDetails] = useState({
@@ -107,19 +115,35 @@ export default function QuizBuilder() {
     duration: 30,
     startTime: '',
     endTime: '',
-    totalMarks: 20
   });
 
   const [questions, setQuestions] = useState<Question[]>([
-    { id: 'q1', type: 'multiple_choice', text: 'What is the primary law of thermodynamics?', marks: 10, required: true, options: ['Option A', 'Option B', 'Option C', 'Option D'], correctAnswer: '0' }
+    { id: 'q1', type: 'multiple_choice', text: '', marks: 5, required: true, options: ['Option A', 'Option B', 'Option C', 'Option D'], correctAnswer: '0' }
   ]);
   const [activeId, setActiveId] = useState('q1');
   const activeQuestion = questions.find(q => q.id === activeId) || questions[0];
+  const totalMarks = questions.reduce((sum, q) => sum + q.marks, 0);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { distance: 8 } as any));
+  const isDirty = !!quizDetails.title || questions.some(q => q.text);
+
+  // Warn on browser refresh / tab close when there's unsaved work
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) { e.preventDefault(); }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
+  const handleBack = () => {
+    if (isDirty && !confirm('Leave without saving? All changes will be lost.')) return;
+    router.push(`/courses/${courseId}/quizzes`);
+  };
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const handleDragEnd = (event: DragEndEvent) => {
-    setDraggedId(null);
     const { active, over } = event;
     if (over && active.id !== over.id) {
       setQuestions((items) => {
@@ -143,21 +167,14 @@ export default function QuizBuilder() {
     }
     const updated = questions.filter(q => q.id !== id);
     setQuestions(updated);
-    setQuizSettings(s => ({ ...s, totalMarks: updated.reduce((sum, q) => sum + q.marks, 0) }));
     if (activeId === id) {
-      setActiveId(questions[0].id === id ? questions[1].id : questions[0].id);
+      setActiveId(updated[0]?.id ?? null);
     }
     toast.success('Question deleted');
   };
 
   const updateQuestion = (id: string, updates: Partial<Question>) => {
-    setQuestions(prev => {
-      const updated = prev.map(q => q.id === id ? { ...q, ...updates } : q);
-      if ('marks' in updates) {
-        setQuizSettings(s => ({ ...s, totalMarks: updated.reduce((sum, q) => sum + q.marks, 0) }));
-      }
-      return updated;
-    });
+    setQuestions(prev => prev.map(q => q.id === id ? { ...q, ...updates } : q));
   };
 
   // Validation
@@ -170,14 +187,10 @@ export default function QuizBuilder() {
       errors.push('End time must be after start time');
     }
     if (quizSettings.duration <= 0) errors.push('Duration must be greater than 0');
-    if (quizSettings.totalMarks <= 0) errors.push('Total marks must be greater than 0');
+    if (totalMarks <= 0) errors.push('Total marks must be greater than 0 — add at least one question with marks');
     if (questions.some(q => !q.text.trim())) errors.push('All questions must have text');
     if (questions.some(q => q.type === 'multiple_choice' && q.options.filter(o => o.trim()).length < 2)) {
       errors.push('Multiple choice questions need at least 2 options');
-    }
-    const totalMarks = questions.reduce((sum, q) => sum + q.marks, 0);
-    if (totalMarks !== quizSettings.totalMarks) {
-      errors.push(`Question marks (${totalMarks}) must equal total marks (${quizSettings.totalMarks})`);
     }
     return errors;
   };
@@ -195,14 +208,14 @@ export default function QuizBuilder() {
       const res = await quizApi.createQuiz(courseId, {
         ...quizDetails,
         ...quizSettings,
+        totalMarks,
         startTime: new Date(quizSettings.startTime).toISOString(),
         endTime: new Date(quizSettings.endTime).toISOString(),
       });
       const newQuiz = res.data.data;
       
-      // 2. Create Questions
-      for (let i = 0; i < questions.length; i++) {
-        const q = questions[i];
+      // 2. Create Questions — sequential to guarantee order field integrity
+      for (const [i, q] of questions.entries()) {
         const payload: Record<string, unknown> = {
           text: q.text,
           type: q.type,
@@ -211,8 +224,19 @@ export default function QuizBuilder() {
           explanation: q.explanation,
         };
         if (q.type === 'multiple_choice') {
-          payload.options = q.options.filter(o => o.trim());
-          payload.correctAnswer = q.correctAnswer;
+          const validOptions: string[] = [];
+          let newCorrect = parseInt(q.correctAnswer) || 0;
+          for (let optIdx = 0; optIdx < q.options.length; optIdx++) {
+            if (q.options[optIdx].trim()) {
+              validOptions.push(q.options[optIdx]);
+            } else if (String(optIdx) === q.correctAnswer) {
+              newCorrect = 0; // Correct answer was empty, fallback to 0
+            } else if (parseInt(q.correctAnswer) > optIdx) {
+              newCorrect -= 1; // Shift correct answer index down
+            }
+          }
+          payload.options = validOptions.length ? validOptions : ['Option A', 'Option B'];
+          payload.correctAnswer = String(Math.max(0, newCorrect));
         } else if (q.type === 'true_false') {
           payload.correctAnswer = q.correctAnswer;
         }
@@ -245,8 +269,9 @@ export default function QuizBuilder() {
            
            <div className="space-y-6 bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
               <div className="space-y-2">
-                 <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Quiz Title *</label>
+                 <label htmlFor="quiz-title" className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Quiz Title *</label>
                  <input 
+                   id="quiz-title"
                    autoFocus
                    className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm" 
                    placeholder="e.g., Midterm Exam - Chapter 5"
@@ -255,8 +280,9 @@ export default function QuizBuilder() {
                  />
               </div>
               <div className="space-y-2">
-                 <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Instructions (Optional)</label>
+                 <label htmlFor="quiz-description" className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Instructions (Optional)</label>
                  <textarea 
+                   id="quiz-description"
                    className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm resize-none h-32" 
                    placeholder="Add any instructions or context for students..."
                    value={quizDetails.description}
@@ -264,7 +290,13 @@ export default function QuizBuilder() {
                  />
               </div>
               <button 
-                onClick={() => setStep(2)}
+                onClick={() => {
+                  if (!quizDetails.title.trim()) {
+                    toast.error('Quiz title is required');
+                    return;
+                  }
+                  setStep(2);
+                }}
                 className="w-full btn btn-primary py-3 text-sm font-semibold gap-2 rounded-lg"
               >
                 Continue to Settings <ArrowRight size={16} />
@@ -287,47 +319,54 @@ export default function QuizBuilder() {
            <div className="space-y-6 bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
               <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                    <label htmlFor="quiz-duration" className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
                       <Clock size={14}/> Duration (mins) *
                     </label>
                     <input 
+                      id="quiz-duration"
                       type="number"
+                      placeholder="e.g. 30"
                       className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm" 
                       value={quizSettings.duration}
                       onChange={e => setQuizSettings({...quizSettings, duration: parseInt(e.target.value) || 0})}
                     />
                  </div>
                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
-                      <Target size={14}/> Total Marks *
+                    <label htmlFor="quiz-total-marks" className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                      <Target size={14}/> Total Marks
                     </label>
-                    <input 
-                      type="number"
-                      className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm" 
-                      value={quizSettings.totalMarks}
-                      onChange={e => setQuizSettings({...quizSettings, totalMarks: parseInt(e.target.value) || 0})}
-                    />
+                    <div
+                      id="quiz-total-marks"
+                      className="w-full px-4 py-3 border border-slate-200 rounded-lg bg-slate-50 text-sm text-slate-500"
+                      title="Computed automatically from question marks"
+                    >
+                      {totalMarks} <span className="text-xs">(set per question)</span>
+                    </div>
                  </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                    <label htmlFor="quiz-start-time" className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
                       <Clock size={14}/> Start Time *
                     </label>
                     <input 
+                      id="quiz-start-time"
                       type="datetime-local"
+                      title="Quiz start date and time"
                       className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm" 
                       value={quizSettings.startTime}
                       onChange={e => setQuizSettings({...quizSettings, startTime: e.target.value})}
                     />
                  </div>
                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                    <label htmlFor="quiz-end-time" className="text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
                       <Clock size={14}/> End Time *
                     </label>
                     <input 
+                      id="quiz-end-time"
                       type="datetime-local"
+                      title="Quiz end date and time"
                       className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm" 
                       value={quizSettings.endTime}
                       onChange={e => setQuizSettings({...quizSettings, endTime: e.target.value})}
@@ -367,7 +406,12 @@ export default function QuizBuilder() {
            </div>
 
            <div className="flex-1 overflow-y-auto p-4 scrollbar-premium">
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} onDragStart={(e) => setDraggedId(e.active.id as string)}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={e => setDraggingId(String(e.active.id))}
+                onDragEnd={e => { handleDragEnd(e); setDraggingId(null); }}
+              >
                  <SortableContext items={questions.map(q => q.id)} strategy={verticalListSortingStrategy}>
                     {questions.map((q, idx) => (
                       <QuestionSidebarItem 
@@ -380,6 +424,23 @@ export default function QuizBuilder() {
                       />
                     ))}
                  </SortableContext>
+                 <DragOverlay>
+                   {draggingId ? (() => {
+                     const dq = questions.find(q => q.id === draggingId);
+                     const idx = questions.findIndex(q => q.id === draggingId);
+                     return dq ? (
+                       <QuestionSidebarItemContent
+                         question={dq}
+                         index={idx}
+                         isActive={false}
+                         isDragging={true}
+                         onClick={() => {}}
+                         onDelete={() => {}}
+                         style={{ transform: 'none', transition: 'none' }}
+                       />
+                     ) : null;
+                   })() : null}
+                 </DragOverlay>
               </DndContext>
            </div>
 
@@ -390,7 +451,7 @@ export default function QuizBuilder() {
               </div>
               <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
                  <span>Total Points</span>
-                 <span className="text-primary-600">{questions.reduce((acc, q) => acc + q.marks, 0)} / {quizSettings.totalMarks}</span>
+                 <span className="text-primary-600">{totalMarks}</span>
               </div>
            </div>
         </aside>
@@ -408,8 +469,9 @@ export default function QuizBuilder() {
                      className="space-y-8"
                    >
                       <div className="space-y-3">
-                         <label className="text-xs font-semibold text-primary-600 uppercase tracking-wide">Question Text *</label>
+                         <label htmlFor="question-text" className="text-xs font-semibold text-primary-600 uppercase tracking-wide">Question Text *</label>
                          <textarea 
+                           id="question-text"
                            className="w-full px-4 py-4 border border-slate-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-lg font-medium resize-none min-h-[100px]"
                            placeholder="Enter your question here..."
                            value={activeQuestion.text}
@@ -419,7 +481,7 @@ export default function QuizBuilder() {
 
                       <div className="space-y-4">
                          <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Answer Options</label>
-                         {renderQuestionCanvas(activeQuestion, updateQuestion)}
+                         <QuestionCanvas q={activeQuestion} update={updateQuestion} />
                       </div>
                    </motion.div>
                  ) : (
@@ -444,7 +506,12 @@ export default function QuizBuilder() {
                       {['multiple_choice', 'true_false', 'short_answer'].map((type) => (
                         <button 
                           key={type}
-                          onClick={() => updateQuestion(activeId, { type: type as QuestionType })}
+                          onClick={() => {
+                            const updates: Partial<Question> = { type: type as QuestionType };
+                            if (type === 'true_false') updates.correctAnswer = 'true';
+                            if (type === 'multiple_choice') updates.correctAnswer = '0';
+                            updateQuestion(activeId, updates);
+                          }}
                           className={`w-full flex items-center gap-2 p-2.5 rounded-lg border transition-all text-xs font-semibold ${activeQuestion.type === type ? 'bg-primary-50 border-primary-300 text-primary-700' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
                         >
                            <div className="w-5 h-5 rounded flex items-center justify-center text-slate-400">
@@ -480,7 +547,7 @@ export default function QuizBuilder() {
       <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-6">
            <button 
-             onClick={() => router.push(`/courses/${courseId}/quizzes`)} 
+             onClick={handleBack} 
              className="text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
            >
               ← Back
@@ -540,7 +607,7 @@ export default function QuizBuilder() {
                 courseDescription={course?.description || ''}
                 onClose={() => setAiPanelOpen(false)}
                 onGenerated={(generated) => {
-                  const newQuestions: Question[] = generated.map((q: any, i: number) => ({
+                  const newQuestions: Question[] = generated.map((q: Partial<Question> & { question?: string }, i: number) => ({
                     id: `ai-${Date.now()}-${i}`,
                     type: q.type === 'true_false' ? 'true_false' : q.type === 'short_answer' ? 'short_answer' : 'multiple_choice',
                     text: q.question || q.text || '',
@@ -552,9 +619,6 @@ export default function QuizBuilder() {
                   }));
                   setQuestions(prev => {
                     const updated = [...prev, ...newQuestions];
-                    // Sync totalMarks to the sum of all question marks
-                    const total = updated.reduce((sum, q) => sum + q.marks, 0);
-                    setQuizSettings(s => ({ ...s, totalMarks: total }));
                     return updated;
                   });
                   if (newQuestions.length > 0) setActiveId(newQuestions[0].id);
@@ -575,7 +639,7 @@ function AIGeneratorPanel({ courseTitle, courseDescription, onClose, onGenerated
   courseTitle: string;
   courseDescription: string;
   onClose: () => void;
-  onGenerated: (questions: any[]) => void;
+  onGenerated: (questions: Partial<Question>[]) => void;
 }) {
   const [difficulty, setDifficulty] = useState('medium');
   const [count, setCount] = useState(5);
@@ -592,8 +656,9 @@ function AIGeneratorPanel({ courseTitle, courseDescription, onClose, onGenerated
       const questions = Array.isArray(data.data) ? data.data : data.data?.questions || [];
       if (!questions.length) throw new Error('No questions returned');
       onGenerated(questions);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Failed to generate questions');
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } }, message?: string };
+      setError(err?.response?.data?.message || err?.message || 'Failed to generate questions');
     } finally {
       setGenerating(false);
     }
@@ -617,7 +682,7 @@ function AIGeneratorPanel({ courseTitle, courseDescription, onClose, onGenerated
             <Brain size={18} />
             <span className="font-bold text-sm">AI Question Generator</span>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-900 transition-colors">
+          <button onClick={onClose} title="Close" aria-label="Close" className="text-slate-400 hover:text-slate-900 transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -639,8 +704,9 @@ function AIGeneratorPanel({ courseTitle, courseDescription, onClose, onGenerated
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Difficulty</label>
+              <label htmlFor="ai-difficulty" className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Difficulty</label>
               <select
+                id="ai-difficulty"
                 value={difficulty}
                 onChange={e => setDifficulty(e.target.value)}
                 className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none transition-all text-sm bg-white"
@@ -651,11 +717,13 @@ function AIGeneratorPanel({ courseTitle, courseDescription, onClose, onGenerated
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Questions</label>
+              <label htmlFor="ai-count" className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Questions</label>
               <input
+                id="ai-count"
                 type="number"
                 min={1}
                 max={20}
+                placeholder="1–20"
                 value={count}
                 onChange={e => setCount(Math.min(20, Math.max(1, Number(e.target.value))))}
                 className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none transition-all text-sm"
@@ -670,7 +738,7 @@ function AIGeneratorPanel({ courseTitle, courseDescription, onClose, onGenerated
           )}
 
           <div className="bg-violet-50 border border-violet-100 rounded-xl p-4 space-y-2">
-            <p className="text-xs font-bold text-violet-800">What you'll get</p>
+            <p className="text-xs font-bold text-violet-800">What you&apos;ll get</p>
             <ul className="space-y-1 text-xs text-violet-700">
               <li>• Multiple choice questions with correct answers</li>
               <li>• Questions added directly to your quiz</li>
@@ -704,7 +772,7 @@ function getItemIcon(type: QuestionType) {
   }
 }
 
-function renderQuestionCanvas(q: Question, update: (id: string, u: Partial<Question>) => void) {
+function QuestionCanvas({ q, update }: { q: Question; update: (id: string, u: Partial<Question>) => void }) {
   switch(q.type) {
     case 'multiple_choice':
       return (
@@ -743,11 +811,19 @@ function renderQuestionCanvas(q: Question, update: (id: string, u: Partial<Quest
                     onClick={() => {
                       const next = q.options.filter((_, idx) => idx !== i);
                       let newCorrect = q.correctAnswer;
-                      if (q.correctAnswer === String(i)) newCorrect = "0";
-                      else if (parseInt(q.correctAnswer) > i) newCorrect = String(parseInt(q.correctAnswer) - 1);
+                      if (q.correctAnswer === String(i)) {
+                        // removed the correct option — pick the first remaining one
+                        newCorrect = "0";
+                      } else if (parseInt(q.correctAnswer) > i) {
+                        // an option before the correct one was removed — shift index down
+                        newCorrect = String(parseInt(q.correctAnswer) - 1);
+                      }
                       update(q.id, { options: next, correctAnswer: newCorrect });
                     }}
-                    className="p-2 rounded-lg bg-white text-slate-300 hover:bg-red-50 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 border border-slate-200 flex-shrink-0"
+                    disabled={q.options.length <= 2}
+                    title="Remove option"
+                    aria-label="Remove option"
+                    className="p-2 rounded-lg bg-white text-slate-300 hover:bg-red-50 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 border border-slate-200 flex-shrink-0 disabled:pointer-events-none disabled:opacity-0"
                   >
                      <Trash2 size={16} />
                   </button>
